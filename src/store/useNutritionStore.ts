@@ -49,11 +49,20 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
         set({ isLoading: true });
 
         try {
+            const { useUserStore } = require('./useUserStore');
+            const userStore = useUserStore.getState();
+            const userId = userStore.user?.id;
+
+            if (!userId) {
+                set({ logs: [], totals: { calories: 0, protein: 0, carbs: 0, fats: 0 }, isLoading: false });
+                return;
+            }
+
             const db = await getDatabase();
             // Query nutrition_logs table using correct column names: name, type
             const logs = await db.getAllAsync<any>(
-                'SELECT * FROM nutrition_logs WHERE date LIKE ? ORDER BY id DESC',
-                [`${dateStr}%`]
+                'SELECT * FROM nutrition_logs WHERE date LIKE ? AND user_id = ? ORDER BY id DESC',
+                [`${dateStr}%`, userId]
             );
 
             // Map DB columns to interface: name→foodName, type→mealType
@@ -89,12 +98,18 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
         try {
+            const { useUserStore } = require('./useUserStore');
+            const userStore = useUserStore.getState();
+            const userId = userStore.user?.id;
+
+            if (!userId) throw new Error("No user ID found");
+
             const db = await getDatabase();
             // Use correct column names: name, type
             await db.runAsync(
-                `INSERT INTO nutrition_logs (date, name, calories, protein, carbs, fats, type)
-               VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [dateStr, log.foodName, log.calories, log.protein, log.carbs, log.fats, log.mealType]
+                `INSERT INTO nutrition_logs (date, name, calories, protein, carbs, fats, type, user_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [dateStr, log.foodName, log.calories, log.protein, log.carbs, log.fats, log.mealType, userId]
             );
             await get().loadLogs();
         } catch (e) {
@@ -131,16 +146,23 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
     },
     getNutritionHistory: async (days = 7) => {
         try {
+            const { useUserStore } = require('./useUserStore');
+            const userStore = useUserStore.getState();
+            const userId = userStore.user?.id;
+
+            if (!userId) return [];
+
             const db = await getDatabase();
             // Get all logs from the last X days
             const results = await db.getAllAsync<any>(
                 `SELECT date, SUM(calories) as calories, SUM(protein) as protein, 
                         SUM(carbs) as carbs, SUM(fats) as fats
                  FROM nutrition_logs 
+                 WHERE user_id = ?
                  GROUP BY date 
                  ORDER BY date DESC 
                  LIMIT ?`,
-                [days]
+                [userId, days]
             );
             return results || [];
         } catch (e) {

@@ -102,8 +102,17 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     loadRoutines: async () => {
         set({ isLoading: true });
         try {
+            const { useUserStore } = require('./useUserStore');
+            const userStore = useUserStore.getState();
+            const userId = userStore.user?.id;
+
+            if (!userId) {
+                set({ routines: [], isLoading: false });
+                return;
+            }
+
             const db = await getDatabase();
-            const routines = await db.getAllAsync<Routine>('SELECT * FROM routines', []);
+            const routines = await db.getAllAsync<Routine>('SELECT * FROM routines WHERE user_id = ? OR program_id IS NOT NULL', [userId]);
 
             // Load exercises for each routine
             const routinesWithExercises = await Promise.all(routines.map(async (routine) => {
@@ -166,8 +175,17 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             const safeName = String(name || "New Routine");
             const safeProgramId = programId || null;
 
+            const { useUserStore } = require('./useUserStore');
+            const userStore = useUserStore.getState();
+            const userId = userStore.user?.id;
+
+            if (!userId) {
+                console.error("No user ID found for creating routine");
+                return;
+            }
+
             console.log("Creating routine:", safeName, "for program:", safeProgramId);
-            const result = await db.runAsync('INSERT INTO routines (name, program_id) VALUES (?, ?)', [safeName, safeProgramId]);
+            const result = await db.runAsync('INSERT INTO routines (name, program_id, user_id) VALUES (?, ?, ?)', [safeName, safeProgramId, userId]);
             const routineId = result.lastInsertRowId;
 
             if (!routineId) {
@@ -287,12 +305,16 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                 const safeDate = new Date().toISOString();
                 const safeRoutineName = routineName?.trim() || 'Quick Workout';
 
-                console.log("Saving workout:", { safeRoutineName, safeRoutineId, safeDuration, setsCount: sets.length });
+                const { useUserStore } = require('./useUserStore');
+                const userStore = useUserStore.getState();
+                const userId = userStore.user?.id;
+
+                console.log("Saving workout:", { safeRoutineName, safeRoutineId, safeDuration, setsCount: sets.length, userId });
 
                 // Insert into workouts table
                 const result = await db.runAsync(
-                    'INSERT INTO workouts (routine_id, routine_name, duration_minutes, notes, date) VALUES (?, ?, ?, ?, ?)',
-                    [safeRoutineId, safeRoutineName, safeDuration, safeNotes, safeDate]
+                    'INSERT INTO workouts (routine_id, routine_name, duration_minutes, notes, date, user_id) VALUES (?, ?, ?, ?, ?, ?)',
+                    [safeRoutineId, safeRoutineName, safeDuration, safeNotes, safeDate, userId || null]
                 );
                 workoutId = result.lastInsertRowId;
                 console.log("Workout saved, workoutId:", workoutId);
@@ -341,6 +363,8 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             if (isNaN(safeRoutineId)) return null;
 
             // Query workouts table (not workout_logs)
+            // We can relax user_id check here if we assume routine_id is already validated,
+            // but safer to include it if possible, though routine_id implies ownership usually.
             const logs = await db.getAllAsync<any>(
                 'SELECT * FROM workouts WHERE routine_id = ? ORDER BY date DESC LIMIT 1',
                 [safeRoutineId]
@@ -562,10 +586,16 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
 
     getWorkoutHistory: async (limit = 10) => {
         try {
+            const { useUserStore } = require('./useUserStore');
+            const userStore = useUserStore.getState();
+            const userId = userStore.user?.id;
+
+            if (!userId) return [];
+
             const db = await getDatabase();
             const logs = await db.getAllAsync<any>(
-                'SELECT * FROM workouts ORDER BY date DESC LIMIT ?',
-                [limit]
+                'SELECT * FROM workouts WHERE user_id = ? ORDER BY date DESC LIMIT ?',
+                [userId, limit]
             );
 
             // Enrich with summary data

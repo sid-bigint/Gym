@@ -69,6 +69,28 @@ export async function initDatabase() {
 
     console.log('Database initialization (V7) completed successfully');
 
+    // Migration: Add user_id to relevant tables if missing
+    const tablesToCheck = [
+      'routines',
+      'workouts',
+      'nutrition_logs',
+      'progress_measurements'
+    ];
+
+    for (const tableName of tablesToCheck) {
+      try {
+        const tableInfo = await db.getAllAsync<any>(`PRAGMA table_info(${tableName})`);
+        const hasUserId = tableInfo.some(col => col.name === 'user_id');
+        if (!hasUserId) {
+          console.log(`Migrating ${tableName} table: Adding user_id column`);
+          await db.execAsync(`ALTER TABLE ${tableName} ADD COLUMN user_id TEXT`);
+        }
+      } catch (e) {
+        console.warn(`Migration failed for ${tableName}:`, e);
+      }
+    }
+
+
     // Create all tables
     await db.execAsync(`
             -- Users table
@@ -106,7 +128,8 @@ export async function initDatabase() {
                 name TEXT NOT NULL,
                 program_id TEXT,
                 description TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                user_id TEXT
             );
 
             -- Routine exercises junction table
@@ -127,7 +150,8 @@ export async function initDatabase() {
                 routine_name TEXT,
                 date TEXT NOT NULL,
                 duration_minutes INTEGER,
-                notes TEXT
+                notes TEXT,
+                user_id TEXT
             );
 
             -- Workout sets (individual sets within a workout)
@@ -153,7 +177,8 @@ export async function initDatabase() {
                 protein INTEGER,
                 carbs INTEGER,
                 fats INTEGER,
-                type TEXT
+                type TEXT,
+                user_id TEXT
             );
 
             -- Custom foods (user-defined foods)
@@ -183,7 +208,8 @@ export async function initDatabase() {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 weight REAL,
                 body_fat_percentage REAL,
-                date TEXT NOT NULL
+                date TEXT NOT NULL,
+                user_id TEXT
             );
         `);
 

@@ -25,8 +25,17 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     loadMeasurements: async () => {
         set({ isLoading: true });
         try {
+            const { useUserStore } = require('./useUserStore');
+            const userStore = useUserStore.getState();
+            const userId = userStore.user?.id;
+
+            if (!userId) {
+                set({ measurements: [], isLoading: false });
+                return;
+            }
+
             const db = await getDatabase();
-            const results = await db.getAllAsync<any>('SELECT * FROM progress_measurements ORDER BY date DESC', []);
+            const results = await db.getAllAsync<any>('SELECT * FROM progress_measurements WHERE user_id = ? ORDER BY date DESC', [userId]);
 
             set({
                 measurements: results.map(r => ({
@@ -49,10 +58,16 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
             const dateStr = customDate || new Date().toISOString();
             const targetDate = format(new Date(dateStr), 'yyyy-MM-dd');
 
-            // Check if record exists for this date
+            const { useUserStore } = require('./useUserStore');
+            const userStore = useUserStore.getState();
+            const userId = userStore.user?.id;
+
+            if (!userId) throw new Error("No user ID found");
+
+            // Check if record exists for this date and user
             const existing = await db.getFirstAsync<any>(
-                "SELECT id FROM progress_measurements WHERE date LIKE ? LIMIT 1",
-                [`${targetDate}%`]
+                "SELECT id FROM progress_measurements WHERE date LIKE ? AND user_id = ? LIMIT 1",
+                [`${targetDate}%`, userId]
             );
 
             if (existing) {
@@ -62,8 +77,8 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
                 );
             } else {
                 await db.runAsync(
-                    `INSERT INTO progress_measurements (weight, date) VALUES (?, ?)`,
-                    [data.weight, dateStr]
+                    `INSERT INTO progress_measurements (weight, date, user_id) VALUES (?, ?, ?)`,
+                    [data.weight, dateStr, userId]
                 );
             }
 

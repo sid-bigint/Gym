@@ -6,8 +6,10 @@ import { useTheme } from '../../src/store/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
+import { format, addDays, isSameDay } from 'date-fns';
+
 export default function NutritionScreen() {
-    const { logs, totals, loadLogs, deleteLog, updateLog } = useNutritionStore();
+    const { logs, totals, loadLogs, deleteLog, updateLog, selectedDate, setDate } = useNutritionStore();
     const { user, loadUser } = useUserStore();
     const { colors } = useTheme();
 
@@ -108,7 +110,28 @@ export default function NutritionScreen() {
                     {renderProgressBar('Fats', totals.fats, user?.targetFats || 70, 'fats')}
                 </View>
 
-                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Today's Logs</Text>
+                <View style={[styles.dateNavigator, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}>
+                    <TouchableOpacity onPress={() => setDate(addDays(selectedDate, -1))}>
+                        <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+                    </TouchableOpacity>
+                    <View style={styles.dateInfo}>
+                        <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
+                        <Text style={[styles.dateText, { color: colors.text.primary }]}>
+                            {isSameDay(selectedDate, new Date())
+                                ? "Today"
+                                : isSameDay(selectedDate, addDays(new Date(), -1))
+                                    ? "Yesterday"
+                                    : format(selectedDate, 'MMMM do, yyyy')}
+                        </Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setDate(addDays(selectedDate, 1))}>
+                        <Ionicons name="chevron-forward" size={24} color={colors.text.primary} />
+                    </TouchableOpacity>
+                </View>
+
+                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+                    {isSameDay(selectedDate, new Date()) ? "Today's Logs" : `Logs for ${format(selectedDate, 'MMM do')}`}
+                </Text>
                 {logs.length === 0 ? (
                     <Text style={[styles.emptyText, { color: colors.text.disabled }]}>No meals logged yet today.</Text>
                 ) : (
@@ -289,6 +312,24 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold',
         marginBottom: 16,
+    },
+    dateNavigator: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 24,
+        borderWidth: 1,
+    },
+    dateInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    dateText: {
+        fontSize: 16,
+        fontWeight: '600',
     },
     logItem: {
         padding: 16,
