@@ -5,85 +5,113 @@ import {
     StyleSheet,
     TouchableOpacity,
     ActivityIndicator,
-    Image,
     Dimensions,
     Alert,
+    Platform,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+// import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuthStore } from '../../src/store/useAuthStore';
-import { fetchGoogleUserInfo, convertGoogleUserToAuthUser } from '../../src/services/authService';
-
-WebBrowser.maybeCompleteAuthSession();
 
 const { width, height } = Dimensions.get('window');
 
 import { useUserStore } from '../../src/store/useUserStore';
 
-// ... (keep existing imports)
+// Configure Google Sign-In
+GoogleSignin.configure({
+    webClientId: '1082475202315-k7beecp9gfncd1tpnl264u7tt57qifbd.apps.googleusercontent.com',
+    offlineAccess: true,
+});
 
 export default function LoginScreen() {
     const { login } = useAuthStore();
     const { updateProfile, tempProfileData, setTempProfileData } = useUserStore();
     const [isLoading, setIsLoading] = useState(false);
 
-    // Google Auth Request
-    const [request, response, promptAsync] = Google.useAuthRequest({
-        // Replace with your actual client IDs from Google Cloud Console
-        webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
-        androidClientId: 'YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com',
-        iosClientId: 'YOUR_IOS_CLIENT_ID.apps.googleusercontent.com',
-    });
-
-    useEffect(() => {
-        handleGoogleResponse();
-    }, [response]);
-
-    const handleGoogleResponse = async () => {
-        if (response?.type === 'success') {
-            setIsLoading(true);
-            try {
-                const { authentication } = response;
-                if (authentication?.accessToken) {
-                    const userInfo = await fetchGoogleUserInfo(authentication.accessToken);
-                    if (userInfo) {
-                        const authUser = convertGoogleUserToAuthUser(userInfo);
-                        await login(authUser);
-
-                        // Check if we have onboarding data to save
-                        if (tempProfileData) {
-                            await updateProfile(tempProfileData);
-                            setTempProfileData(null); // Clear temp data
-                            router.replace('/(tabs)');
-                        } else {
-                            router.replace('/');
-                        }
-                    } else {
-                        Alert.alert('Error', 'Failed to get user information');
-                    }
-                }
-            } catch (error) {
-                console.error('Google auth error:', error);
-                Alert.alert('Error', 'Authentication failed. Please try again.');
-            } finally {
-                setIsLoading(false);
-            }
-        } else if (response?.type === 'error') {
-            Alert.alert('Error', response.error?.message || 'Authentication failed');
-        }
-    };
-
-    const handleGoogleSignIn = async () => {
+    // Apple Login Handler
+    const handleAppleLogin = async () => {
+        Alert.alert('Notice', 'Apple Login is currently disabled for Android build stability.');
+        /* 
         try {
-            await promptAsync();
-        } catch (error) {
-            console.error('Error starting Google auth:', error);
-            Alert.alert('Error', 'Could not start authentication');
+            const credential = await AppleAuthentication.signInAsync({
+                requestedScopes: [
+                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                ],
+            });
+            // Signed in
+            console.log(credential);
+            Alert.alert('Success', 'Apple Login Successful (Mock Implementation)');
+            // TODO: Process the actual Apple credential
+        } catch (e: any) {
+            if (e.code === 'ERR_REQUEST_CANCELED') {
+                // handle that the user canceled the sign-in flow
+            } else {
+                Alert.alert('Error', 'Apple Sign-In failed');
+            }
+        }
+        */
+    };
+
+    // Phone Login Handler
+    const handlePhoneLogin = async () => {
+        // Navigate to phone login screen or show modal
+        Alert.alert('Notice', 'Phone Login implementation pending');
+    };
+
+    // Native Google Sign-In Handler
+    const handleGoogleSignIn = async () => {
+        setIsLoading(true);
+        try {
+            // Check if device supports Google Play Services
+            await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+            // Sign in
+            const userInfo = await GoogleSignin.signIn();
+
+            if (userInfo.data) {
+                const { user } = userInfo.data;
+
+                // Create auth user object
+                const authUser = {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name || '',
+                    photo: user.photo || undefined,
+                    provider: 'google' as const,
+                };
+
+                // Login and navigate
+                await login(authUser);
+
+                if (tempProfileData) {
+                    await updateProfile(tempProfileData);
+                    setTempProfileData(null);
+                    router.replace('/(tabs)');
+                } else {
+                    router.replace('/');
+                }
+            }
+        } catch (error: any) {
+            console.error('Google Sign-In Error:', error);
+
+            if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+                // User cancelled the sign-in
+                console.log('Sign in cancelled');
+            } else if (error.code === statusCodes.IN_PROGRESS) {
+                Alert.alert('Notice', 'Sign in already in progress');
+            } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+                Alert.alert('Error', 'Google Play Services not available');
+            } else {
+                Alert.alert('Error', 'Google Sign-In failed. Please try again.');
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
+
 
     // Guest login
     const handleDemoLogin = async () => {
@@ -126,17 +154,11 @@ export default function LoginScreen() {
 
     return (
         <View style={styles.container}>
-            {/* Background Gradient */}
-            <View style={styles.gradientContainer}>
-                <View style={[styles.gradientCircle, styles.circle1]} />
-                <View style={[styles.gradientCircle, styles.circle2]} />
-                <View style={[styles.gradientCircle, styles.circle3]} />
-            </View>
-
-            {/* Content */}
+            {/* ... other UI ... */}
             <View style={styles.content}>
-                {/* Logo Section */}
+                {/* ... logo ... */}
                 <View style={styles.logoSection}>
+                    {/* ... */}
                     <View style={styles.logoContainer}>
                         <Ionicons name="barbell" size={48} color="#8B5CF6" />
                     </View>
@@ -157,7 +179,7 @@ export default function LoginScreen() {
                     <TouchableOpacity
                         style={styles.googleButton}
                         onPress={handleGoogleSignIn}
-                        disabled={!request || isLoading}
+                        disabled={isLoading}
                     >
                         {isLoading ? (
                             <ActivityIndicator color="#000" />
@@ -169,6 +191,32 @@ export default function LoginScreen() {
                                 <Text style={styles.googleButtonText}>Continue with Google</Text>
                             </>
                         )}
+                    </TouchableOpacity>
+
+                    {/* Apple Sign In (iOS only) - COMMENTED OUT FOR ANDROID BUILD FIX
+                    {Platform.OS === 'ios' && (
+                        <TouchableOpacity
+                            style={styles.appleButton}
+                            onPress={handleAppleLogin}
+                            disabled={isLoading}
+                        >
+                            <Ionicons name="logo-apple" size={24} color="#FFFFFF" />
+                            <Text style={styles.appleButtonText}>Continue with Apple</Text>
+                        </TouchableOpacity>
+                    )}
+                    */}
+
+                    {/* Phone Sign In */}
+
+
+                    {/* Phone Sign In */}
+                    <TouchableOpacity
+                        style={styles.phoneButton}
+                        onPress={handlePhoneLogin}
+                        disabled={isLoading}
+                    >
+                        <Ionicons name="call" size={20} color="#FFFFFF" />
+                        <Text style={styles.phoneButtonText}>Continue with Phone</Text>
                     </TouchableOpacity>
 
                     {/* Divider */}
@@ -330,6 +378,36 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#1F2937',
+    },
+    appleButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#000000',
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 16,
+        gap: 12,
+    },
+    appleButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    phoneButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#10B981',
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 16,
+        gap: 12,
+    },
+    phoneButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
     divider: {
         flexDirection: 'row',

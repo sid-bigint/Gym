@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1082475202315",
+    "project_id": "my-gym-native",
+    "storage_bucket": "my-gym-native.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1082475202315:android:6b344a435dca478ac8840e",
+        "android_client_info": {
+          "package_name": "com.gymnative.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1082475202315-ql80kvudchtajb0rmpupovqamdv5pt45.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.gymnative.app",
+            "certificate_hash": "2b340ef593003a32e9a5739332be85863932defe"
+          }
+        },
+        {
+          "client_id": "1082475202315-k7beecp9gfncd1tpnl264u7tt57qifbd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCghU7eyX9IYNo5zBP2Nv5PojY7KC_Uc5M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1082475202315-k7beecp9gfncd1tpnl264u7tt57qifbd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

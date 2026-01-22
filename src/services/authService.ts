@@ -5,16 +5,11 @@ import { AuthUser } from '../store/useAuthStore';
 // Complete auth session for web browser
 WebBrowser.maybeCompleteAuthSession();
 
-// Google OAuth client IDs - You'll need to replace these with your own
-// Get them from: https://console.cloud.google.com/apis/credentials
-const GOOGLE_CLIENT_ID_WEB = 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com';
-const GOOGLE_CLIENT_ID_ANDROID = 'YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com';
-const GOOGLE_CLIENT_ID_IOS = 'YOUR_IOS_CLIENT_ID.apps.googleusercontent.com';
+// Firebase Google OAuth client IDs
+const GOOGLE_CLIENT_ID_WEB = '1082475202315-k7beecp9gfncd1tpnl264u7tt57qifbd.apps.googleusercontent.com';
 
 export const googleAuthConfig = {
     webClientId: GOOGLE_CLIENT_ID_WEB,
-    androidClientId: GOOGLE_CLIENT_ID_ANDROID,
-    iosClientId: GOOGLE_CLIENT_ID_IOS,
 };
 
 export interface GoogleUserInfo {
@@ -58,7 +53,5 @@ export function convertGoogleUserToAuthUser(googleUser: GoogleUserInfo): AuthUse
 export function useGoogleAuthConfig() {
     return Google.useAuthRequest({
         webClientId: GOOGLE_CLIENT_ID_WEB,
-        androidClientId: GOOGLE_CLIENT_ID_ANDROID,
-        iosClientId: GOOGLE_CLIENT_ID_IOS,
     });
 }

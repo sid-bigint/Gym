@@ -1,5 +1,9 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as WebBrowser from 'expo-web-browser';
+
+// Complete auth session for web browser
+WebBrowser.maybeCompleteAuthSession();
 
 export interface AuthUser {
     id: string;
