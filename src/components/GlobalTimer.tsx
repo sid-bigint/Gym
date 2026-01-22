@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, Animated } from 'react-native';
 import { useWorkoutStore } from '../store/useWorkoutStore';
 import { useTheme } from '../store/useTheme';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, borderRadius, shadows } from '../constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export function GlobalTimer() {
     const { activeWorkout } = useWorkoutStore();
     const { colors } = useTheme();
+    const pathname = usePathname();
     const [elapsedTime, setElapsedTime] = useState('0:00');
+    const pulseAnim = React.useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
         if (!activeWorkout) return;
@@ -24,25 +26,80 @@ export function GlobalTimer() {
         return () => clearInterval(interval);
     }, [activeWorkout]);
 
-    if (!activeWorkout) return null;
+    // Pulsing animation
+    useEffect(() => {
+        if (!activeWorkout) return;
+
+        const pulse = Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, {
+                    toValue: 1.3,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(pulseAnim, {
+                    toValue: 1,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+        pulse.start();
+
+        return () => pulse.stop();
+    }, [activeWorkout]);
+
+    // Don't show on dashboard (route '/') as it has its own active card
+    if (!activeWorkout || pathname === '/' || pathname === '/index') return null;
 
     return (
-        <View style={[styles.wrapper, { backgroundColor: colors.background.primary }]}>
+        <View style={styles.wrapper}>
             <TouchableOpacity
-                style={[styles.container, { backgroundColor: colors.background.elevated, borderColor: colors.border.accent }]}
+                style={styles.container}
                 onPress={() => router.push('/workout/active')}
-                activeOpacity={0.8}
+                activeOpacity={0.9}
             >
-                <View style={[styles.iconContainer, { backgroundColor: `${colors.accent.primary}33` }]}>
-                    <Ionicons name="barbell" size={20} color={colors.accent.primary} />
-                </View>
-                <View style={styles.textContainer}>
-                    <Text style={[styles.title, { color: colors.text.secondary }]} numberOfLines={1}>{activeWorkout.routineName}</Text>
-                    <Text style={[styles.timer, { color: colors.accent.secondary }]}>{elapsedTime}</Text>
-                </View>
-                <View style={styles.chevronContainer}>
-                    <Ionicons name="chevron-forward" size={20} color={colors.accent.secondary} />
-                </View>
+                <LinearGradient
+                    colors={[colors.accent.primary, colors.accent.secondary]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.gradient}
+                >
+                    {/* Animated pulsing indicator */}
+                    <View style={styles.pulseContainer}>
+                        <Animated.View
+                            style={[
+                                styles.pulseOuter,
+                                {
+                                    transform: [{ scale: pulseAnim }],
+                                    opacity: pulseAnim.interpolate({
+                                        inputRange: [1, 1.3],
+                                        outputRange: [0.3, 0]
+                                    })
+                                }
+                            ]}
+                        />
+                        <View style={styles.pulseInner} />
+                    </View>
+
+                    {/* Workout info */}
+                    <View style={styles.infoContainer}>
+                        <Text style={styles.workoutName} numberOfLines={1}>
+                            {activeWorkout.routineName}
+                        </Text>
+                        <Text style={styles.liveLabel}>LIVE WORKOUT</Text>
+                    </View>
+
+                    {/* Timer */}
+                    <View style={styles.timerContainer}>
+                        <Text style={styles.timer}>{elapsedTime}</Text>
+                    </View>
+
+                    {/* Arrow */}
+                    <View style={styles.arrowContainer}>
+                        <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+                    </View>
+                </LinearGradient>
             </TouchableOpacity>
         </View>
     );
@@ -50,42 +107,80 @@ export function GlobalTimer() {
 
 const styles = StyleSheet.create({
     wrapper: {
-        paddingTop: Platform.OS === 'ios' ? 60 : 40,
-        paddingBottom: spacing.sm,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1000,
+        paddingTop: Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 24) + 4,
+        paddingHorizontal: 12,
+        paddingBottom: 8,
     },
     container: {
-        paddingHorizontal: spacing.lg,
-        paddingVertical: spacing.md,
-        marginHorizontal: spacing.xl,
-        borderRadius: borderRadius.lg,
+        borderRadius: 14,
+        overflow: 'hidden',
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+    },
+    gradient: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderWidth: 2,
-        ...shadows.md,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        gap: 10,
     },
-    iconContainer: {
-        width: 36,
-        height: 36,
-        borderRadius: borderRadius.full,
+    pulseContainer: {
+        width: 28,
+        height: 28,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: spacing.md,
     },
-    textContainer: {
+    pulseOuter: {
+        position: 'absolute',
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.5)',
+    },
+    pulseInner: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: 'white',
+    },
+    infoContainer: {
         flex: 1,
     },
-    title: {
-        fontSize: 13,
-        fontWeight: '600',
-        marginBottom: 2,
+    workoutName: {
+        color: 'white',
+        fontSize: 14,
+        fontWeight: '700',
+        marginBottom: 1,
+    },
+    liveLabel: {
+        color: 'rgba(255,255,255,0.75)',
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 0.5,
+    },
+    timerContainer: {
+        backgroundColor: 'rgba(0,0,0,0.2)',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
     },
     timer: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '800',
         fontVariant: ['tabular-nums'],
-        letterSpacing: 1,
+        letterSpacing: 0.5,
     },
-    chevronContainer: {
-        marginLeft: spacing.sm,
+    arrowContainer: {
+        width: 24,
+        alignItems: 'center',
     },
 });

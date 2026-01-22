@@ -81,6 +81,11 @@ export const useTheme = create<ThemeState>()(
             name: 'gym-app-theme-storage',
             storage: createJSONStorage(() => AsyncStorage),
             partialize: (state) => ({ mode: state.mode, themeType: state.themeType } as any),
+            onRehydrateStorage: () => (state) => {
+                if (state) {
+                    state.initTheme();
+                }
+            },
         }
     )
 );

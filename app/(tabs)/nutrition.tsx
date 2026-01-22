@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput,
 import { useNutritionStore, NutritionLog } from '../../src/store/useNutritionStore';
 import { useUserStore } from '../../src/store/useUserStore';
 import { useTheme } from '../../src/store/useTheme';
+import { useScreenPadding } from '../../src/store/useScreenPadding';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
@@ -12,6 +13,7 @@ export default function NutritionScreen() {
     const { logs, totals, loadLogs, deleteLog, updateLog, selectedDate, setDate } = useNutritionStore();
     const { user, loadUser } = useUserStore();
     const { colors } = useTheme();
+    const { contentTop } = useScreenPadding();
 
     const [editingLog, setEditingLog] = useState<NutritionLog | null>(null);
     const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -90,7 +92,7 @@ export default function NutritionScreen() {
     );
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <View style={[styles.container, { backgroundColor: colors.background.primary, paddingTop: contentTop }]}>
             <View style={styles.header}>
                 <Text style={[styles.title, { color: colors.text.primary }]}>Nutrition</Text>
                 <TouchableOpacity onPress={() => router.push('/nutrition/add')}>
@@ -264,7 +266,6 @@ export default function NutritionScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingTop: 60,
     },
     header: {
         flexDirection: 'row',

@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, StatusBar, Image } from 'react-native';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, StatusBar, Image, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { useUserStore } from '../../src/store/useUserStore';
 import { useNutritionStore } from '../../src/store/useNutritionStore';
@@ -448,6 +448,46 @@ export default function Dashboard() {
   const [showWeightLog, setShowWeightLog] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weightInput, setWeightInput] = useState('');
+  const [elapsedTime, setElapsedTime] = useState('0:00');
+
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Timer logic for active workout
+  useEffect(() => {
+    if (!activeWorkout) return;
+
+    const updateTimer = () => {
+      const elapsed = Math.floor((Date.now() - activeWorkout.startTime) / 1000);
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      setElapsedTime(`${mins}:${secs < 10 ? '0' : ''}${secs}`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeWorkout]);
+
+  // Pulse animation for live badge
+  useEffect(() => {
+    if (activeWorkout) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 0.4,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [activeWorkout]);
 
   // Pre-fill weight if it exists when date changes
   useEffect(() => {
@@ -656,24 +696,69 @@ export default function Dashboard() {
             onPress={() => router.push('/workout/active')}
           >
             <LinearGradient
-              colors={['#EF4444', '#B91C1C']}
+              colors={[colors.accent.primary, colors.accent.secondary]}
               style={styles.activeGradient}
               start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+              end={{ x: 1, y: 1 }}
             >
               <View style={styles.activeWorkoutContent}>
-                <View style={styles.activeIconCircle}>
-                  <Ionicons name="flash" size={20} color="white" />
+                <View style={[styles.activeIconCircle, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                  <Ionicons name="barbell" size={24} color="white" />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.activeTitle}>Active Workout</Text>
-                  <Text style={styles.activeRoutine}>{activeWorkout.routineName}</Text>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ color: 'white', fontSize: 24, fontWeight: '900', fontVariant: ['tabular-nums'] }}>
+                      {elapsedTime}
+                    </Text>
+                    <View style={styles.liveBadge}>
+                      <Animated.View
+                        style={[
+                          styles.liveDot,
+                          {
+                            opacity: pulseAnim || 1
+                          }
+                        ]}
+                      />
+                      <Text style={styles.liveText}>LIVE</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.activeRoutine} numberOfLines={1}>{activeWorkout.routineName}</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '500' }}>
+                    Tap to resume workout
+                  </Text>
                 </View>
-                <View style={styles.liveBadge}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveText}>LIVE</Text>
+
+                <View style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: 'white',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Ionicons name="play" size={20} color={colors.accent.primary} style={{ marginLeft: 3 }} />
                 </View>
               </View>
+
+              {/* Background abstract shapes for premium feel */}
+              <View style={{
+                position: 'absolute',
+                top: -30,
+                right: -30,
+                width: 100,
+                height: 100,
+                borderRadius: 50,
+                backgroundColor: 'rgba(255,255,255,0.1)',
+              }} />
+              <View style={{
+                position: 'absolute',
+                bottom: -20,
+                left: -20,
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                backgroundColor: 'rgba(255,255,255,0.05)',
+              }} />
             </LinearGradient>
           </TouchableOpacity>
         )}

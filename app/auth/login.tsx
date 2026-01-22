@@ -11,19 +11,31 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-// import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuthStore } from '../../src/store/useAuthStore';
 
 const { width, height } = Dimensions.get('window');
 
 import { useUserStore } from '../../src/store/useUserStore';
 
-// Configure Google Sign-In
-GoogleSignin.configure({
-    webClientId: '1082475202315-k7beecp9gfncd1tpnl264u7tt57qifbd.apps.googleusercontent.com',
-    offlineAccess: true,
-});
+// Try to import Google Sign-In (only works in development builds, not Expo Go)
+let GoogleSignin: any = null;
+let statusCodes: any = null;
+let isGoogleSignInAvailable = false;
+
+try {
+    const googleSignInModule = require('@react-native-google-signin/google-signin');
+    GoogleSignin = googleSignInModule.GoogleSignin;
+    statusCodes = googleSignInModule.statusCodes;
+    isGoogleSignInAvailable = true;
+
+    // Configure Google Sign-In
+    GoogleSignin.configure({
+        webClientId: '1082475202315-k7beecp9gfncd1tpnl264u7tt57qifbd.apps.googleusercontent.com',
+        offlineAccess: true,
+    });
+} catch (e) {
+    console.log('Google Sign-In not available (Expo Go mode)');
+}
 
 export default function LoginScreen() {
     const { login } = useAuthStore();
@@ -63,6 +75,15 @@ export default function LoginScreen() {
 
     // Native Google Sign-In Handler
     const handleGoogleSignIn = async () => {
+        // Check if Google Sign-In is available (not in Expo Go)
+        if (!isGoogleSignInAvailable || !GoogleSignin) {
+            Alert.alert(
+                'Not Available',
+                'Google Sign-In requires a development build. Please use "Continue as Guest" in Expo Go, or build the app with EAS to use Google Sign-In.'
+            );
+            return;
+        }
+
         setIsLoading(true);
         try {
             // Check if device supports Google Play Services
@@ -97,12 +118,12 @@ export default function LoginScreen() {
         } catch (error: any) {
             console.error('Google Sign-In Error:', error);
 
-            if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+            if (statusCodes && error.code === statusCodes.SIGN_IN_CANCELLED) {
                 // User cancelled the sign-in
                 console.log('Sign in cancelled');
-            } else if (error.code === statusCodes.IN_PROGRESS) {
+            } else if (statusCodes && error.code === statusCodes.IN_PROGRESS) {
                 Alert.alert('Notice', 'Sign in already in progress');
-            } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+            } else if (statusCodes && error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
                 Alert.alert('Error', 'Google Play Services not available');
             } else {
                 Alert.alert('Error', 'Google Sign-In failed. Please try again.');

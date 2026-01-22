@@ -5,6 +5,7 @@ import { useUserStore } from '../../src/store/useUserStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useProgressStore } from '../../src/store/useProgressStore';
 import { useTheme } from '../../src/store/useTheme';
+import { useScreenPadding } from '../../src/store/useScreenPadding';
 import { Button } from '../../src/components/Button';
 import { CalorieCalculator } from '../../src/components/CalorieCalculator';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,7 @@ export default function ProfileScreen() {
     const { logout } = useAuthStore();
     const { measurements, loadMeasurements, deleteMeasurement, addMeasurement } = useProgressStore();
     const { mode, setThemeMode, themeType, setThemeType, colors, initTheme } = useTheme();
+    const { contentTop } = useScreenPadding();
     const { showAlert } = useAlert();
 
     const [showCalculator, setShowCalculator] = useState(false);
@@ -159,8 +161,8 @@ export default function ProfileScreen() {
             style={[styles.container, { backgroundColor: colors.background.primary }]}
             showsVerticalScrollIndicator={false}
         >
-            {/* Minimal Status Bar Spacer */}
-            <View style={{ height: 40 }} />
+            {/* Dynamic Status Bar Spacer based on active workout */}
+            <View style={{ height: contentTop }} />
 
             {/* Premium Header Profile Card */}
             <View style={styles.profileHeaderWrapper}>

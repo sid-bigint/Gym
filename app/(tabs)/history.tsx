@@ -5,6 +5,7 @@ import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { useNutritionStore } from '../../src/store/useNutritionStore';
 import { useProgressStore } from '../../src/store/useProgressStore';
 import { useTheme } from '../../src/store/useTheme';
+import { useScreenPadding } from '../../src/store/useScreenPadding';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, borderRadius, shadows } from '../../src/constants/theme';
 import { format, subDays, startOfDay, isSameDay } from 'date-fns';
@@ -17,7 +18,8 @@ export default function ProgressScreen() {
     const { getNutritionHistory } = useNutritionStore();
     const { measurements, loadMeasurements } = useProgressStore();
     const { colors } = useTheme();
-    const styles = useMemo(() => createStyles(colors), [colors]);
+    const { contentTop } = useScreenPadding();
+    const styles = useMemo(() => createStyles(colors, contentTop), [colors, contentTop]);
 
     const [workouts, setWorkouts] = useState<any[]>([]);
     const [nutritionHistory, setNutritionHistory] = useState<any[]>([]);
@@ -446,14 +448,14 @@ export default function ProgressScreen() {
     );
 }
 
-const createStyles = (colors: any) => StyleSheet.create({
+const createStyles = (colors: any, contentTop: number) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
     },
     header: {
         paddingHorizontal: spacing.xl,
-        paddingTop: 60,
+        paddingTop: contentTop,
         paddingBottom: spacing.lg,
         backgroundColor: colors.background.primary,
     },

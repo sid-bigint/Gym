@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Button } from '../../src/components/Button';
 import { useTheme } from '../../src/store/useTheme';
+import { useScreenPadding } from '../../src/store/useScreenPadding';
 import { spacing, borderRadius, shadows } from '../../src/constants/theme';
 import { format } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +14,7 @@ import { PREDEFINED_BUNDLES } from '../../src/data/exploreBundles';
 export default function RoutinesScreen() {
     const { routines, loadRoutines, isLoading, startWorkout, activeWorkout, deleteRoutine } = useWorkoutStore();
     const { colors } = useTheme();
+    const { contentTop } = useScreenPadding();
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [selectedProgram, setSelectedProgram] = useState<{ id: string, name: string, routines: any[], bundle?: any } | null>(null);
 
@@ -189,7 +191,7 @@ export default function RoutinesScreen() {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <View style={[styles.container, { backgroundColor: colors.background.primary, paddingTop: contentTop }]}>
             <View style={styles.header}>
                 <View>
                     <Text style={[styles.title, { color: colors.text.primary }]}>Workouts</Text>
@@ -353,7 +355,6 @@ export default function RoutinesScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingTop: 60,
     },
     header: {
         flexDirection: 'row',
