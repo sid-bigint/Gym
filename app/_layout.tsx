@@ -7,11 +7,22 @@ import { useAuthStore } from "../src/store/useAuthStore";
 import { AlertProvider } from "../src/context/AlertContext";
 import { CustomAlert } from "../src/components/CustomAlert";
 
+import { useWorkoutNotification } from "../src/hooks/useWorkoutNotification";
+import { LogBox } from "react-native";
+
+// Ignore specific warnings that are irrelevant to our Local Notification implementation
+LogBox.ignoreLogs([
+  "expo-notifications: Android Push notifications",
+  "The 'expo-notifications' functionality"
+]);
+
 export default function RootLayout() {
   const loadUser = useUserStore((s) => s.loadUser);
   const loadAuthState = useAuthStore((s) => s.loadAuthState);
   const [isReady, setIsReady] = useState(false);
   const [loadingStep, setLoadingStep] = useState('Starting options...');
+
+  useWorkoutNotification();
 
   useEffect(() => {
     async function init() {

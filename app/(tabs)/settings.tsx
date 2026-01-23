@@ -183,9 +183,16 @@ export default function ProfileScreen() {
                                     {user?.picture ? (
                                         <Image source={{ uri: user.picture }} style={{ width: 68, height: 68, borderRadius: 34 }} />
                                     ) : (
-                                        <Text style={[styles.avatarTextMain, { color: colors.accent.primary }]}>
-                                            {user?.name?.charAt(0) || 'U'}
-                                        </Text>
+                                        <Image
+                                            key={user?.gender}
+                                            source={{
+                                                uri: (user?.gender?.toLowerCase() === 'female')
+                                                    ? 'https://cdn-icons-png.flaticon.com/512/6997/6997662.png'
+                                                    : 'https://cdn-icons-png.flaticon.com/512/236/236831.png'
+                                            }}
+                                            style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: '#ddd' }}
+                                            resizeMode="cover"
+                                        />
                                     )}
                                 </View>
                                 <TouchableOpacity

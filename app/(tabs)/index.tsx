@@ -652,7 +652,16 @@ export default function Dashboard() {
                   {user?.picture ? (
                     <Image source={{ uri: user.picture }} style={{ width: 46, height: 46, borderRadius: 23 }} />
                   ) : (
-                    <Ionicons name="person" size={24} color={colors.accent.primary} />
+                    <Image
+                      key={user?.gender}
+                      source={{
+                        uri: (user?.gender?.toLowerCase() === 'female')
+                          ? 'https://cdn-icons-png.flaticon.com/512/6997/6997662.png' // Female Avatar
+                          : 'https://cdn-icons-png.flaticon.com/512/236/236831.png'   // Male Avatar
+                      }}
+                      style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#ddd' }}
+                      resizeMode="cover"
+                    />
                   )}
                 </View>
               </TouchableOpacity>
