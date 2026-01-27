@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Animated, FlatList, LayoutAnimation, Platform, UIManager, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Animated, FlatList, LayoutAnimation, Platform, UIManager, ActivityIndicator, Dimensions, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../store/useTheme';
@@ -7,6 +7,7 @@ import { Exercise } from '../types';
 import { spacing, borderRadius } from '../constants/theme';
 import { Button } from './Button';
 import { useWorkoutStore } from '../store/useWorkoutStore';
+import { CreateExerciseModal } from './CreateExerciseModal';
 
 // Enable LayoutAnimation
 if (Platform.OS === 'android') {
@@ -16,12 +17,11 @@ if (Platform.OS === 'android') {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_HEIGHT = 100;
 
 const CATEGORIES = ["All", "Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Cardio/Full Body", "Mobility/Rehab"];
 const TYPES = ["All", "Gym", "Calisthenics", "Home", "Yoga", "Cardio", "Mobility", "General"];
 
-const ExerciseCard = ({ ex, isSelected, onPress, onLongPress, colors }: any) => {
+const ExerciseCard = ({ ex, isSelected, onPress, onLongPress, onDelete, colors }: any) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
     const handlePressIn = () => {
@@ -71,9 +71,20 @@ const ExerciseCard = ({ ex, isSelected, onPress, onLongPress, colors }: any) => 
 
                 {/* Text Content */}
                 <View style={styles.cardContent}>
-                    <Text style={[styles.cardTitle, isSelected && { color: colors.accent.primary }]}>
-                        {ex.name}
-                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <Text style={[styles.cardTitle, isSelected && { color: colors.accent.primary }, { flex: 1, marginRight: 8 }]}>
+                            {ex.name}
+                        </Text>
+                        {ex.isCustom && onDelete && (
+                            <TouchableOpacity
+                                onPress={() => onDelete(ex)}
+                                style={{ padding: 4, marginTop: -4 }}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <Ionicons name="trash-outline" size={18} color={colors.text.tertiary} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                     <View style={styles.cardBadges}>
                         <View style={[styles.badge, { backgroundColor: colors.background.elevated }]}>
                             <Text style={[styles.badgeText, { color: colors.text.secondary }]}>{ex.muscleGroup}</Text>
@@ -110,7 +121,7 @@ export const ExerciseSelector = ({
     buttonLabel = "Done",
     onExerciseLongPress
 }: ExerciseSelectorProps) => {
-    const { exercises, loadExercises } = useWorkoutStore();
+    const { exercises, loadExercises, deleteExercise } = useWorkoutStore();
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -120,6 +131,9 @@ export const ExerciseSelector = ({
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [selectedType, setSelectedType] = useState("All");
     const [searchQuery, setSearchQuery] = useState("");
+
+    // Create Modal State
+    const [showCreateModal, setShowCreateModal] = useState(false);
 
     // Footer Animation
     const footerAnim = useRef(new Animated.Value(150)).current;
@@ -158,6 +172,40 @@ export const ExerciseSelector = ({
         onClose();
     };
 
+    const handleCreated = (newEx: Exercise) => {
+        if (multiSelect) {
+            setSelectedIds(prev => [...prev, newEx.id]);
+        } else {
+            onSelect([newEx]);
+            onClose();
+        }
+    };
+
+    const handleDeleteStart = (ex: Exercise) => {
+        Alert.alert(
+            "Delete Exercise",
+            `Are you sure you want to delete "${ex.name}"?`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await deleteExercise(ex.id);
+                            // If selected, remove from selection
+                            if (selectedIds.includes(ex.id)) {
+                                setSelectedIds(prev => prev.filter(id => id !== ex.id));
+                            }
+                        } catch (e) {
+                            Alert.alert("Error", "Could not delete exercise. It might be in use.");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     // Derived List
     const filteredList = useMemo(() => {
         if (!exercises || exercises.length === 0) return [];
@@ -186,7 +234,9 @@ export const ExerciseSelector = ({
                     <Ionicons name="close" size={24} color={colors.text.primary} />
                 </TouchableOpacity>
                 <Text style={styles.selectionTitle}>Select Exercises</Text>
-                <View style={{ width: 24 }} />
+                <TouchableOpacity onPress={() => setShowCreateModal(true)} style={{ padding: 4 }}>
+                    <Ionicons name="add" size={24} color={colors.accent.primary} />
+                </TouchableOpacity>
             </View>
 
             {/* Search */}
@@ -258,6 +308,7 @@ export const ExerciseSelector = ({
                             isSelected={isSelected}
                             onPress={() => toggleSelection(item)}
                             onLongPress={onExerciseLongPress}
+                            onDelete={handleDeleteStart}
                             colors={colors}
                         />
                     );
@@ -270,7 +321,15 @@ export const ExerciseSelector = ({
                                 <Text style={{ color: colors.text.tertiary, marginTop: 8 }}>Loading database...</Text>
                             </>
                         ) : (
-                            <Text style={{ color: colors.text.tertiary }}>No exercises found</Text>
+                            <View style={{ alignItems: 'center', gap: 12 }}>
+                                <Text style={{ color: colors.text.tertiary }}>No exercises found</Text>
+                                <TouchableOpacity
+                                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                                    onPress={() => setShowCreateModal(true)}
+                                >
+                                    <Text style={{ color: colors.accent.primary, fontWeight: '600' }}>Create "{searchQuery}"</Text>
+                                </TouchableOpacity>
+                            </View>
                         )}
                     </View>
                 }
@@ -285,6 +344,13 @@ export const ExerciseSelector = ({
                     />
                 </Animated.View>
             )}
+
+            {/* Create Modal */}
+            <CreateExerciseModal
+                visible={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                onCreated={handleCreated}
+            />
         </View>
     );
 };
@@ -376,7 +442,6 @@ const createStyles = (colors: any) => StyleSheet.create({
         marginTop: spacing.xxl,
     },
 
-    // Card Styles
     // Card Styles
     card: {
         flexDirection: 'row',

@@ -13,7 +13,8 @@ import { format } from 'date-fns';
 import { router } from 'expo-router';
 import { spacing, borderRadius, shadows, accentColors, ThemeType } from '../../src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAlert } from '../../src/context/AlertContext';
+
+import { useAlertStore } from '../../src/store/useAlertStore';
 
 const { width } = Dimensions.get('window');
 
@@ -24,7 +25,7 @@ export default function ProfileScreen() {
     const { measurements, loadMeasurements, deleteMeasurement, addMeasurement } = useProgressStore();
     const { mode, setThemeMode, themeType, setThemeType, colors, initTheme } = useTheme();
     const { contentTop } = useScreenPadding();
-    const { showAlert } = useAlert();
+
 
     const [showCalculator, setShowCalculator] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
@@ -66,9 +67,9 @@ export default function ProfileScreen() {
             await useUserStore.getState().updateProfile({ ...user, picture: authUser.picture });
             // Reload user to update UI
             await useUserStore.getState().loadUser();
-            showAlert("Success", "Profile photo updated from Google account.");
+            useAlertStore.getState().showAlert("Success", "Profile photo updated from Google account.");
         } else {
-            showAlert("Error", "No Google profile picture found.");
+            useAlertStore.getState().showAlert("Error", "No Google profile picture found.");
         }
     };
 
@@ -101,11 +102,11 @@ export default function ProfileScreen() {
             });
         }
 
-        showAlert("Change Profile Photo", "Choose an option to update your profile picture.", options);
+        useAlertStore.getState().showAlert("Change Profile Photo", "Choose an option to update your profile picture.", options);
     };
 
     const handleLogout = async () => {
-        showAlert(
+        useAlertStore.getState().showAlert(
             "Log Out",
             "Are you sure you want to log out?",
             [
@@ -138,9 +139,9 @@ export default function ProfileScreen() {
             setEditingItem(null); // Reset edit mode
             setIsLogging(false);
 
-            showAlert("Success", editingItem ? "Weight entry updated!" : "Weight logged successfully!");
+            useAlertStore.getState().showAlert("Success", editingItem ? "Weight entry updated!" : "Weight logged successfully!");
         } catch (error) {
-            showAlert("Error", "Failed to log weight. Please try again.");
+            useAlertStore.getState().showAlert("Error", "Failed to log weight. Please try again.");
         }
     };
 
@@ -565,11 +566,11 @@ export default function ProfileScreen() {
                             // Reload user data to show updated values
                             await useUserStore.getState().loadUser();
 
-                            showAlert('Success', 'Profile updated successfully!');
+                            useAlertStore.getState().showAlert('Success', 'Profile updated successfully!');
                         }
                     } catch (error) {
                         console.error('Failed to update profile:', error);
-                        showAlert('Error', 'Failed to update profile. Please try again.');
+                        useAlertStore.getState().showAlert('Error', 'Failed to update profile. Please try again.');
                     }
                 }}
             />

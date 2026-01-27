@@ -1,16 +1,13 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as WebBrowser from 'expo-web-browser';
-
-// Complete auth session for web browser
-WebBrowser.maybeCompleteAuthSession();
+import { auth } from '../config/firebase';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 
 export interface AuthUser {
     id: string;
-    email: string;
-    name: string;
-    picture?: string;
-    provider: 'google' | 'email';
+    email: string | null;
+    name: string | null;
+    picture?: string | null;
+    isAnonymous: boolean;
 }
 
 interface AuthState {
@@ -18,54 +15,40 @@ interface AuthState {
     isLoading: boolean;
     isAuthenticated: boolean;
 
-    // Actions
-    setUser: (user: AuthUser | null) => void;
-    login: (user: AuthUser) => Promise<void>;
+    loadAuthState: () => void;
     logout: () => Promise<void>;
-    loadAuthState: () => Promise<void>;
 }
 
-const AUTH_STORAGE_KEY = '@gym_app_auth';
-
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
     user: null,
     isLoading: true,
     isAuthenticated: false,
 
-    setUser: (user) => {
-        set({ user, isAuthenticated: !!user });
-    },
-
-    login: async (user) => {
-        try {
-            await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-            set({ user, isAuthenticated: true, isLoading: false });
-        } catch (error) {
-            console.error('Failed to save auth state:', error);
-        }
+    loadAuthState: () => {
+        set({ isLoading: true });
+        // Firebase Auth Listener
+        onAuthStateChanged(auth, (firebaseUser) => {
+            if (firebaseUser) {
+                const user: AuthUser = {
+                    id: firebaseUser.uid,
+                    email: firebaseUser.email,
+                    name: firebaseUser.displayName,
+                    picture: firebaseUser.photoURL,
+                    isAnonymous: firebaseUser.isAnonymous
+                };
+                set({ user, isAuthenticated: true, isLoading: false });
+            } else {
+                set({ user: null, isAuthenticated: false, isLoading: false });
+            }
+        });
     },
 
     logout: async () => {
         try {
-            await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+            await signOut(auth);
             set({ user: null, isAuthenticated: false });
         } catch (error) {
-            console.error('Failed to clear auth state:', error);
+            console.error('Logout failed', error);
         }
-    },
-
-    loadAuthState: async () => {
-        try {
-            set({ isLoading: true });
-            const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
-            if (stored) {
-                const user = JSON.parse(stored) as AuthUser;
-                set({ user, isAuthenticated: true });
-            }
-        } catch (error) {
-            console.error('Failed to load auth state:', error);
-        } finally {
-            set({ isLoading: false });
-        }
-    },
+    }
 }));

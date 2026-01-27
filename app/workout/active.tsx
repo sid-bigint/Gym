@@ -5,8 +5,10 @@ import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { useTheme } from '../../src/store/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../src/components/Button';
+import { useAlertStore } from '../../src/store/useAlertStore';
 import { ExerciseDetailsModal } from '../../src/components/ExerciseDetailsModal';
 import { ExerciseSelector } from '../../src/components/ExerciseSelector';
+import { RestTimerOverlay } from '../../src/components/RestTimerOverlay';
 import { spacing, borderRadius } from '../../src/constants/theme';
 
 export default function ActiveWorkoutScreen() {
@@ -17,6 +19,10 @@ export default function ActiveWorkoutScreen() {
     const [showAddExerciseModal, setShowAddExerciseModal] = useState(false);
     const [notes, setNotes] = useState('');
     const [detailExercise, setDetailExercise] = useState<any>(null);
+
+    // Rest Timer State
+    const [showRestTimer, setShowRestTimer] = useState(false);
+    const [restDuration, setRestDuration] = useState(60);
 
     useEffect(() => {
         if (!activeWorkout) {
@@ -64,12 +70,12 @@ export default function ActiveWorkoutScreen() {
             }
         } catch (e) {
             console.error(e);
-            Alert.alert("Error", "Failed to save workout");
+            useAlertStore.getState().showAlert("Error", "Failed to save workout");
         }
     };
 
     const handleCancel = () => {
-        Alert.alert(
+        useAlertStore.getState().showAlert(
             "Cancel Workout",
             "Are you sure? Progress will be lost.",
             [
@@ -199,7 +205,7 @@ export default function ActiveWorkoutScreen() {
                                                 style={[styles.setNumberBtn, { flex: 0.8 }]}
                                                 onPress={() => updateActiveSet(globalIndex, 'type', getNextType(set.type))}
                                                 onLongPress={() => {
-                                                    Alert.alert('Delete Set', `Delete Set ${set.setNumber}?`, [
+                                                    useAlertStore.getState().showAlert('Delete Set', `Delete Set ${set.setNumber}?`, [
                                                         { text: 'Cancel', style: 'cancel' },
                                                         { text: 'Delete', style: 'destructive', onPress: () => removeActiveSet(globalIndex) }
                                                     ]);
@@ -236,7 +242,14 @@ export default function ActiveWorkoutScreen() {
                                                     styles.finishSetButton,
                                                     set.completed ? { backgroundColor: colors.status.completed, borderColor: colors.status.completed } : { backgroundColor: colors.background.elevated, borderColor: colors.border.primary }
                                                 ]}
-                                                onPress={() => toggleActiveSet(globalIndex)}
+                                                onPress={() => {
+                                                    // Trigger Rest Timer if marking as complete
+                                                    if (!set.completed) {
+                                                        setRestDuration(60);
+                                                        setShowRestTimer(true);
+                                                    }
+                                                    toggleActiveSet(globalIndex);
+                                                }}
                                             >
                                                 {set.completed ? (
                                                     <Ionicons name="checkmark" size={20} color={colors.text.inverse} />
@@ -260,6 +273,13 @@ export default function ActiveWorkoutScreen() {
                     <Text style={[styles.addNewExerciseText, { color: colors.text.inverse }]}>Add Exercise</Text>
                 </TouchableOpacity>
             </ScrollView>
+
+            <RestTimerOverlay
+                visible={showRestTimer}
+                duration={restDuration}
+                onClose={() => setShowRestTimer(false)}
+                onAddSeconds={(s) => setRestDuration(prev => prev + s)}
+            />
 
             <ExerciseDetailsModal
                 visible={!!detailExercise}

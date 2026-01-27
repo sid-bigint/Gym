@@ -9,6 +9,7 @@ import { Exercise } from '../../src/types';
 import { spacing, borderRadius, shadows } from '../../src/constants/theme';
 import { ExerciseSelector } from '../../src/components/ExerciseSelector';
 import { ExerciseDetailsModal } from '../../src/components/ExerciseDetailsModal';
+import { useAlertStore } from '../../src/store/useAlertStore';
 
 export default function CreateRoutineScreen() {
     const { id } = useLocalSearchParams();
@@ -50,13 +51,13 @@ export default function CreateRoutineScreen() {
     };
 
     const handleSave = async () => {
-        if (!name.trim()) return Alert.alert("Required", "Please enter a routine name");
-        if (selectedExercises.length === 0) return Alert.alert("Required", "Please add at least one exercise");
+        if (!name.trim()) return useAlertStore.getState().showAlert("Required", "Please enter a routine name");
+        if (selectedExercises.length === 0) return useAlertStore.getState().showAlert("Required", "Please add at least one exercise");
 
         // Validate Inputs
         for (const ex of selectedExercises) {
-            if (isNaN(ex.sets) || ex.sets < 1) return Alert.alert("Invalid Input", `Invalid sets for ${ex.exercise.name}`);
-            if (isNaN(ex.reps) || ex.reps < 1) return Alert.alert("Invalid Input", `Invalid reps for ${ex.exercise.name}`);
+            if (isNaN(ex.sets) || ex.sets < 1) return useAlertStore.getState().showAlert("Invalid Input", `Invalid sets for ${ex.exercise.name}`);
+            if (isNaN(ex.reps) || ex.reps < 1) return useAlertStore.getState().showAlert("Invalid Input", `Invalid reps for ${ex.exercise.name}`);
         }
 
         const payload = selectedExercises.map(e => ({

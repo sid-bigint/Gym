@@ -1,6 +1,8 @@
+
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, ImageBackground } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ScrollView, Modal, ImageBackground } from 'react-native';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
+import { useAlertStore } from '../../src/store/useAlertStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Button } from '../../src/components/Button';
@@ -16,7 +18,43 @@ export default function RoutinesScreen() {
     const { colors } = useTheme();
     const { contentTop } = useScreenPadding();
     const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [deleteProgramId, setDeleteProgramId] = useState<string | null>(null);
     const [selectedProgram, setSelectedProgram] = useState<{ id: string, name: string, routines: any[], bundle?: any } | null>(null);
+    const [selectedRoutineIds, setSelectedRoutineIds] = useState<Set<number>>(new Set());
+
+    const isSelectionMode = selectedRoutineIds.size > 0;
+
+    const toggleSelection = (id: number) => {
+        const newSet = new Set(selectedRoutineIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        setSelectedRoutineIds(newSet);
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedRoutineIds.size === 0) return;
+
+        useAlertStore.getState().showAlert(
+            "Delete Workouts",
+            `Are you sure you want to delete ${selectedRoutineIds.size} workout(s)?`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        for (const id of Array.from(selectedRoutineIds)) {
+                            await deleteRoutine(id);
+                        }
+                        setSelectedRoutineIds(new Set());
+                    }
+                }
+            ]
+        );
+    };
 
     // Group routines by program
     const displayedItems = React.useMemo(() => {
@@ -35,22 +73,94 @@ export default function RoutinesScreen() {
         const result: any[] = [];
 
         // Add Program Groups
+        const usedImages = new Set<string>();
+
+        // Add Program Groups
         Object.keys(groups).forEach(pid => {
-            // Import PREDEFINED_BUNDLES dynamically or require it on top. 
-            // Since we can't easily add top-level imports in a replace block if not careful, 
-            // ensure we rely on the file having it or we add it. 
-            // Wait, I need to add the import to 'PREDEFINED_BUNDLES' at the top of the file too.
-            // For now, I'll access it if I imported it. I'll add the import in a separate edit or assume it's there? 
-            // No, I must add it. I will do a separate edit for imports first or combine.
-            // I'll assume I'll add the import in this same file replacement or previous.
-            // Actually, I can use require inside useMemo if needed, but better to import.
             const bundle = PREDEFINED_BUNDLES.find((b: any) => b.id === pid);
+            let name = 'Unknown Program';
+            let programBundle = bundle;
+
+            // Handle AI Generated Programs (New & Legacy)
+            if (pid.startsWith('ai|') || pid.startsWith('ai-')) {
+                // Try NEW format: ai|Name|Timestamp
+                if (pid.startsWith('ai|')) {
+                    const parts = pid.split('|');
+                    if (parts.length >= 2) {
+                        name = parts[1];
+                    } else {
+                        name = 'AI Workout Plan';
+                    }
+                }
+                // Handle LEGACY format: ai-Timestamp
+                else {
+                    name = 'AI Generated Plan';
+                }
+
+                // Create a synthetic bundle for UI if not predefined
+                if (!programBundle) {
+                    // Generate a consistent hue based on the ID char codes
+                    const charSum = pid.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                    const hue = charSum % 360;
+
+                    // Collect ALL available images from this program's exercises
+                    let selectedImage = null;
+                    const allImages: string[] = [];
+
+                    try {
+                        const programRoutines = groups[pid] || [];
+                        programRoutines.forEach(routine => {
+                            if (routine.exercises) {
+                                routine.exercises.forEach((re: any) => {
+                                    if (re.exercise?.images?.length > 0) {
+                                        // Add all images found for variation
+                                        re.exercise.images.forEach((img: string) => {
+                                            if (typeof img === 'string' && img.length > 0) {
+                                                allImages.push(img);
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        });
+
+                        // Select an image if available
+                        if (allImages.length > 0) {
+                            // Try to find one we haven't used yet in this list view
+                            const unusedImages = allImages.filter(img => !usedImages.has(img));
+                            const pool = unusedImages.length > 0 ? unusedImages : allImages;
+
+                            // Pick deterministically based on pid so it doesn't flicker on re-renders,
+                            // but effectively "random" relative to the list content
+                            const index = charSum % pool.length;
+                            selectedImage = pool[index];
+
+                            // Mark as used
+                            usedImages.add(selectedImage);
+                        }
+                    } catch (e) { }
+
+                    programBundle = {
+                        id: pid,
+                        name: name,
+                        description: 'Custom AI Plan',
+                        gradient: [
+                            `hsl(${hue}, 60%, 40%)`,  // Darker, richer start
+                            `hsl(${(hue + 45) % 360}, 65%, 30%)` // Darker, richer end
+                        ],
+                        image: selectedImage
+                    } as any;
+                }
+            } else {
+                name = bundle ? bundle.name : 'Unknown Program';
+            }
+
             result.push({
                 type: 'program',
                 id: pid,
-                name: bundle ? bundle.name : 'Unknown Program',
+                name: name,
                 routines: groups[pid],
-                bundle: bundle
+                bundle: programBundle
             });
         });
 
@@ -64,15 +174,17 @@ export default function RoutinesScreen() {
 
     const handleStartWorkout = async (routineId: number | null) => {
         if (activeWorkout) {
-            Alert.alert(
-                "Workout in Progress",
-                "You already have an active workout. Finish it first or cancel to start a new one.",
-                [
-                    { text: "OK", style: "cancel" },
-                    { text: "Go to Active", onPress: () => router.push('/workout/active') }
-                ]
-            );
-            return;
+            if (activeWorkout) {
+                useAlertStore.getState().showAlert(
+                    "Workout in Progress",
+                    "You already have an active workout. Finish it first or cancel to start a new one.",
+                    [
+                        { text: "OK", style: "cancel" },
+                        { text: "Go to Active", onPress: () => router.push('/workout/active') }
+                    ]
+                );
+                return;
+            }
         }
 
         try {
@@ -81,8 +193,23 @@ export default function RoutinesScreen() {
             setSelectedProgram(null);
             router.push('/workout/active');
         } catch (e) {
-            Alert.alert("Error", "Failed to start workout");
+            useAlertStore.getState().showAlert("Error", "Failed to start workout");
         }
+    };
+
+    const handleConfirmDeleteProgram = async () => {
+        if (!deleteProgramId) return;
+
+        // Find all routines in this program
+        const programRoutines = routines.filter(r => r.programId === deleteProgramId);
+
+        // Delete all
+        for (const r of programRoutines) {
+            await deleteRoutine(r.id);
+        }
+
+        setDeleteProgramId(null);
+        setSelectedProgram(null);
     };
 
     const confirmDelete = async () => {
@@ -97,47 +224,76 @@ export default function RoutinesScreen() {
     };
 
     // Card Renderer for Standalone Routine
-    const renderRoutineData = (item: any, styleOverride?: any) => (
-        <View style={[styles.card, { backgroundColor: colors.background.card, borderColor: colors.border.primary }, styleOverride]}>
-            <View style={styles.cardContent}>
-                <View style={styles.cardHeaderRow}>
-                    <View style={[styles.miniIcon, { backgroundColor: 'rgba(52, 199, 89, 0.1)' }]}>
-                        <Ionicons name="barbell" size={14} color={colors.accent.primary} />
+    const renderRoutineData = (item: any, styleOverride?: any, isSelectable: boolean = false) => {
+        const isSelected = selectedRoutineIds.has(item.id);
+
+        return (
+            <TouchableOpacity
+                activeOpacity={0.9}
+                onLongPress={() => {
+                    if (isSelectable) {
+                        toggleSelection(item.id);
+                    }
+                }}
+                onPress={() => {
+                    if (isSelectionMode && isSelectable) {
+                        toggleSelection(item.id);
+                    }
+                }}
+                style={[
+                    styles.card,
+                    {
+                        backgroundColor: colors.background.card,
+                        borderColor: isSelected ? colors.status.error : colors.border.primary,
+                        borderWidth: isSelected ? 2 : 1
+                    },
+                    styleOverride
+                ]}
+            >
+                <View style={[styles.cardContent, { opacity: (isSelectionMode && !isSelected) ? 0.6 : 1 }]}>
+                    <View style={styles.cardHeaderRow}>
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                            <Text style={[styles.cardTitle, { color: colors.text.primary }]}>{item.name}</Text>
+                            <Text style={[styles.cardSubtitle, { color: colors.text.tertiary }]} numberOfLines={1}>
+                                {item.exercises?.length > 0
+                                    ? item.exercises.map((e: any) => e.exercise?.name).join(', ')
+                                    : 'No exercises'}
+                            </Text>
+                        </View>
+                        {isSelected && (
+                            <View style={{ backgroundColor: colors.status.error + '20', borderRadius: 12, padding: 4 }}>
+                                <Ionicons name="checkmark-circle" size={24} color={colors.status.error} />
+                            </View>
+                        )}
                     </View>
-                    <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={[styles.cardTitle, { color: colors.text.primary }]}>{item.name}</Text>
-                        <Text style={[styles.cardSubtitle, { color: colors.text.secondary }]}>
-                            {item.exercises?.length || 0} Exercises
-                        </Text>
+
+                    <View style={[styles.actionRow, { opacity: isSelectionMode ? 0.3 : 1 }]} pointerEvents={isSelectionMode ? "none" : "auto"}>
+                        <TouchableOpacity
+                            style={[styles.iconButton, { backgroundColor: colors.background.elevated, marginRight: 8 }]}
+                            onPress={() => router.push({ pathname: '/programs/create', params: { id: item.id } })}
+                        >
+                            <Ionicons name="pencil" size={18} color={colors.text.primary} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.iconButton, { backgroundColor: 'rgba(255, 59, 48, 0.1)', marginRight: 'auto' }]}
+                            onPress={() => setDeleteId(item.id)}
+                        >
+                            <Ionicons name="trash" size={18} color={colors.status.error} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.startBtn, { backgroundColor: colors.accent.primary }]}
+                            onPress={() => handleStartWorkout(item.id)}
+                        >
+                            <Text style={[styles.startBtnText, { color: colors.text.inverse }]}>Start</Text>
+                            <Ionicons name="play" size={16} color={colors.text.inverse} style={{ marginLeft: 4 }} />
+                        </TouchableOpacity>
                     </View>
                 </View>
-
-                <View style={styles.actionRow}>
-                    <TouchableOpacity
-                        style={[styles.iconButton, { backgroundColor: colors.background.elevated, marginRight: 8 }]}
-                        onPress={() => router.push({ pathname: '/programs/create', params: { id: item.id } })}
-                    >
-                        <Ionicons name="pencil" size={18} color={colors.text.primary} />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.iconButton, { backgroundColor: 'rgba(255, 59, 48, 0.1)', marginRight: 'auto' }]}
-                        onPress={() => setDeleteId(item.id)}
-                    >
-                        <Ionicons name="trash" size={18} color={colors.status.error} />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.startBtn, { backgroundColor: colors.accent.primary }]}
-                        onPress={() => handleStartWorkout(item.id)}
-                    >
-                        <Text style={[styles.startBtnText, { color: colors.text.inverse }]}>Start</Text>
-                        <Ionicons name="play" size={16} color={colors.text.inverse} style={{ marginLeft: 4 }} />
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </View>
-    );
+            </TouchableOpacity>
+        );
+    };
 
     // Card Renderer for Program Group
     const renderProgramCard = (item: any) => (
@@ -166,9 +322,19 @@ export default function RoutinesScreen() {
             )}
 
             <View style={[styles.cardContent, { justifyContent: 'flex-end', height: '100%' }]}>
-                <View style={[styles.officialBadge, { alignSelf: 'flex-start', marginBottom: 'auto' }]}>
-                    <Ionicons name="albums" size={12} color="#fff" />
-                    <Text style={styles.officialText}>PROGRAM</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'auto' }}>
+                    <View style={styles.officialBadge}>
+                        <Ionicons name="albums" size={12} color="#fff" />
+                        <Text style={styles.officialText}>PROGRAM</Text>
+                    </View>
+
+                    {/* Program Delete Button */}
+                    <TouchableOpacity
+                        style={[styles.programDeleteBtn, { backgroundColor: 'rgba(0,0,0,0.4)' }]}
+                        onPress={() => setDeleteProgramId(item.id)}
+                    >
+                        <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+                    </TouchableOpacity>
                 </View>
 
                 <Text style={[styles.cardTitle, { color: '#fff', fontSize: 22 }]}>{item.name}</Text>
@@ -190,6 +356,12 @@ export default function RoutinesScreen() {
         return renderRoutineData(item.data);
     };
 
+    // Safe derived routines for the modal to ensure UI updates on delete
+    const modalRoutines = React.useMemo(() => {
+        if (!selectedProgram) return [];
+        return routines.filter(r => r.programId === selectedProgram.id);
+    }, [routines, selectedProgram]);
+
     return (
         <View style={[styles.container, { backgroundColor: colors.background.primary, paddingTop: contentTop }]}>
             <View style={styles.header}>
@@ -206,8 +378,21 @@ export default function RoutinesScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+
                 {/* Quick Actions */}
                 <View style={styles.quickActions}>
+                    <TouchableOpacity
+                        style={[styles.actionCard, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
+                        onPress={() => router.push('/programs/generate')}
+                    >
+                        <View style={[styles.actionIcon, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+                            <Ionicons name="sparkles" size={24} color="#8B5CF6" />
+                        </View>
+                        <Text style={[styles.actionTitle, { color: colors.text.primary }]}>AI Generate</Text>
+                        <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Smart plans</Text>
+                    </TouchableOpacity>
+
                     <TouchableOpacity
                         style={[styles.actionCard, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
                         onPress={() => router.push('/programs/explore')}
@@ -218,18 +403,22 @@ export default function RoutinesScreen() {
                         <Text style={[styles.actionTitle, { color: colors.text.primary }]}>Explore</Text>
                         <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Find plans</Text>
                     </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.actionCard, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
-                        onPress={() => router.push('/programs/create')}
-                    >
-                        <View style={[styles.actionIcon, { backgroundColor: 'rgba(0, 122, 255, 0.1)' }]}>
-                            <Ionicons name="create" size={24} color="#007AFF" />
-                        </View>
-                        <Text style={[styles.actionTitle, { color: colors.text.primary }]}>Create New</Text>
-                        <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Custom</Text>
-                    </TouchableOpacity>
                 </View>
+
+                {/* Create New Button */}
+                <TouchableOpacity
+                    style={[styles.createBanner, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
+                    onPress={() => router.push('/programs/create')}
+                >
+                    <View style={[styles.actionIcon, { backgroundColor: 'rgba(0, 122, 255, 0.1)', marginBottom: 0 }]}>
+                        <Ionicons name="create" size={24} color="#007AFF" />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 16 }}>
+                        <Text style={[styles.actionTitle, { color: colors.text.primary, marginBottom: 2 }]}>Create Custom Routine</Text>
+                        <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Build your own workout</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={colors.text.disabled} />
+                </TouchableOpacity>
 
                 {/* Quick Start Feature */}
                 <TouchableOpacity
@@ -243,9 +432,9 @@ export default function RoutinesScreen() {
                 >
                     <LinearGradient
                         colors={[colors.accent.primary + '20', 'transparent']}
+                        style={StyleSheet.absoluteFill}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
-                        style={StyleSheet.absoluteFill}
                     />
                     <View style={[styles.actionIcon, { backgroundColor: colors.accent.primary + '20', marginBottom: 0 }]}>
                         <Ionicons name="flash" size={24} color={colors.accent.primary} />
@@ -280,38 +469,60 @@ export default function RoutinesScreen() {
                         />
                     )
                 }
-            </ScrollView >
+            </ScrollView>
 
             {/* Program Details Modal */}
             <Modal
                 visible={!!selectedProgram}
                 animationType="slide"
                 presentationStyle="pageSheet"
-                onRequestClose={() => setSelectedProgram(null)}
+                onRequestClose={() => {
+                    if (isSelectionMode) {
+                        setSelectedRoutineIds(new Set());
+                    } else {
+                        setSelectedProgram(null);
+                    }
+                }}
             >
                 <View style={[styles.programModalContainer, { backgroundColor: colors.background.primary }]}>
                     {/* Modal Header */}
                     <View style={[styles.modalHeader, { backgroundColor: colors.background.elevated }]}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={[styles.modalTitle, { color: colors.text.primary }]}>
-                                {selectedProgram?.name}
-                            </Text>
-                            <Text style={[styles.modalSubtitle, { color: colors.text.tertiary }]}>
-                                {selectedProgram?.routines.length} Workouts
-                            </Text>
-                        </View>
-                        <TouchableOpacity
-                            style={[styles.closeButton, { backgroundColor: colors.background.card }]}
-                            onPress={() => setSelectedProgram(null)}
-                        >
-                            <Ionicons name="close" size={24} color={colors.text.primary} />
-                        </TouchableOpacity>
+                        {isSelectionMode ? (
+                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <TouchableOpacity onPress={() => setSelectedRoutineIds(new Set())}>
+                                    <Text style={{ color: colors.text.secondary, fontSize: 16 }}>Cancel</Text>
+                                </TouchableOpacity>
+                                <Text style={[styles.modalTitle, { color: colors.text.primary, fontSize: 18 }]}>
+                                    {selectedRoutineIds.size} Selected
+                                </Text>
+                                <TouchableOpacity onPress={handleBulkDelete}>
+                                    <Ionicons name="trash" size={24} color={colors.status.error} />
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.modalTitle, { color: colors.text.primary }]}>
+                                        {selectedProgram?.name}
+                                    </Text>
+                                    <Text style={[styles.modalSubtitle, { color: colors.text.tertiary }]}>
+                                        {modalRoutines.length} Workouts
+                                    </Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={[styles.closeButton, { backgroundColor: colors.background.card }]}
+                                    onPress={() => setSelectedProgram(null)}
+                                >
+                                    <Ionicons name="close" size={24} color={colors.text.primary} />
+                                </TouchableOpacity>
+                            </>
+                        )}
                     </View>
 
                     <ScrollView contentContainerStyle={{ padding: 20 }}>
-                        {selectedProgram?.routines.map((routine, index) => (
+                        {modalRoutines.map((routine, index) => (
                             <View key={routine.id} style={{ marginBottom: 16 }}>
-                                {renderRoutineData(routine)}
+                                {renderRoutineData(routine, undefined, true)}
                             </View>
                         ))}
                     </ScrollView>
@@ -348,6 +559,37 @@ export default function RoutinesScreen() {
                     </View>
                 </View>
             </Modal >
+
+            {/* Delete Program Confirmation Modal */}
+            <Modal
+                visible={!!deleteProgramId}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setDeleteProgramId(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.confirmModal, { backgroundColor: colors.background.elevated }]}>
+                        <Text style={[styles.confirmTitle, { color: colors.text.primary }]}>Delete Program?</Text>
+                        <Text style={[styles.confirmText, { color: colors.text.secondary }]}>
+                            Are you sure you want to delete this entire program? All workouts within it will be removed.
+                        </Text>
+                        <View style={styles.confirmButtons}>
+                            <TouchableOpacity
+                                style={[styles.confirmButton, { backgroundColor: colors.background.card }]}
+                                onPress={() => setDeleteProgramId(null)}
+                            >
+                                <Text style={[styles.confirmButtonText, { color: colors.text.primary }]}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.confirmButton, { backgroundColor: colors.accent.warning }]}
+                                onPress={handleConfirmDeleteProgram}
+                            >
+                                <Text style={[styles.confirmButtonText, { color: colors.text.inverse }]}>Delete Program</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View >
     );
 }
@@ -420,6 +662,15 @@ const styles = StyleSheet.create({
         borderRadius: borderRadius.lg,
         borderWidth: 1,
         marginBottom: spacing.xxl,
+        overflow: 'hidden',
+    },
+    createBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: spacing.lg,
+        borderRadius: borderRadius.lg,
+        borderWidth: 1,
+        marginBottom: spacing.lg,
         overflow: 'hidden',
     },
     sectionTitle: {
@@ -592,6 +843,14 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#fff',
         letterSpacing: 0.5
+    },
+    programDeleteBtn: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 8
     },
     programModalContainer: {
         flex: 1,

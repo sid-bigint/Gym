@@ -1,11 +1,11 @@
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { View, ActivityIndicator, Text, Alert } from "react-native";
+import { View, ActivityIndicator, Text } from "react-native";
 import { initDatabase } from "../src/db/database";
 import { useUserStore } from "../src/store/useUserStore";
 import { useAuthStore } from "../src/store/useAuthStore";
-import { AlertProvider } from "../src/context/AlertContext";
-import { CustomAlert } from "../src/components/CustomAlert";
+import { GlobalAlert } from "../src/components/GlobalAlert";
+import { useAlertStore } from "../src/store/useAlertStore";
 
 import { useWorkoutNotification } from "../src/hooks/useWorkoutNotification";
 import { LogBox } from "react-native";
@@ -46,7 +46,7 @@ export default function RootLayout() {
         console.log('=== App Initialization Completed ===');
       } catch (e) {
         console.error("=== Initialization failed ===", e);
-        Alert.alert('Initialization Error', 'Failed to start the app. Please restart.');
+        useAlertStore.getState().showAlert('Initialization Error', 'Failed to start the app. Please restart.');
       } finally {
         setIsReady(true);
       }
@@ -64,7 +64,7 @@ export default function RootLayout() {
   }
 
   return (
-    <AlertProvider>
+    <>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="auth/login" />
@@ -72,8 +72,8 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="programs" />
       </Stack>
-      <CustomAlert />
-    </AlertProvider>
+      <GlobalAlert />
+    </>
   );
 }
 

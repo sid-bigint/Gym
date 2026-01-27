@@ -6,7 +6,7 @@ import { Button } from '../../src/components/Button';
 import { useNutritionStore } from '../../src/store/useNutritionStore';
 import { useUserStore } from '../../src/store/useUserStore';
 import { useTheme } from '../../src/store/useTheme';
-import { useAlert } from '../../src/context/AlertContext';
+import { useAlertStore } from '../../src/store/useAlertStore';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, borderRadius, shadows } from '../../src/constants/theme';
 import foodDatabase from '../../src/data/foodDatabase.json';
@@ -46,7 +46,6 @@ export default function AddFoodScreen() {
     const { addLog } = useNutritionStore();
     const { user } = useUserStore();
     const { colors } = useTheme();
-    const { showAlert } = useAlert();
 
     const [mealType, setMealType] = useState<MealType>('Breakfast');
     const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
@@ -106,7 +105,7 @@ export default function AddFoodScreen() {
             const name = newMealTypeName.trim();
             // Prevent duplicates
             if (customMealTypes.includes(name) || ['Breakfast', 'Lunch', 'Dinner', 'Snack'].includes(name)) {
-                showAlert('Error', 'Meal type already exists');
+                useAlertStore.getState().showAlert('Error', 'Meal type already exists');
                 return;
             }
             setCustomMealTypes([...customMealTypes, name]);
@@ -175,12 +174,12 @@ export default function AddFoodScreen() {
 
     const handleAddCustomFood = async () => {
         if (!customFoodName || !customCalories || !customProtein || !customCarbs || !customFats) {
-            showAlert('Required', 'Please fill all fields');
+            useAlertStore.getState().showAlert('Required', 'Please fill all fields');
             return;
         }
 
         if (!user?.id) {
-            showAlert('Error', 'User not found');
+            useAlertStore.getState().showAlert('Error', 'User not found');
             return;
         }
 
@@ -204,13 +203,13 @@ export default function AddFoodScreen() {
 
         // Reload custom foods
         await loadCustomFoods();
-        showAlert('Success', 'Custom food added!');
+        useAlertStore.getState().showAlert('Success', 'Custom food added!');
     };
 
     const addFoodItem = () => {
         const food = [...foodDatabase.foods, ...customFoods].find(f => f.id === selectedFood || `custom-${f.id}` === selectedFood);
         if (!food || !grams) {
-            showAlert('Required', 'Please enter a value');
+            useAlertStore.getState().showAlert('Required', 'Please enter a value');
             return;
         }
 
@@ -280,7 +279,7 @@ export default function AddFoodScreen() {
 
     const handleSave = async () => {
         if (foodItems.length === 0) {
-            showAlert('Required', 'Please add at least one food item');
+            useAlertStore.getState().showAlert('Required', 'Please add at least one food item');
             return;
         }
 

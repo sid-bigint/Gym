@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, ScrollView, Dimensions, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { useNutritionStore } from '../../src/store/useNutritionStore';
@@ -10,11 +10,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, borderRadius, shadows } from '../../src/constants/theme';
 import { format, subDays, startOfDay, isSameDay } from 'date-fns';
 import { LineChart } from 'react-native-chart-kit';
+import { useAlertStore } from '../../src/store/useAlertStore';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function ProgressScreen() {
-    const { getWorkoutHistory } = useWorkoutStore();
+    const { getWorkoutHistory, deleteWorkoutLog } = useWorkoutStore();
     const { getNutritionHistory } = useNutritionStore();
     const { measurements, loadMeasurements } = useProgressStore();
     const { colors } = useTheme();
@@ -150,6 +151,28 @@ export default function ProgressScreen() {
         };
     }, [workouts, nutritionHistory, measurements]);
 
+    const handleDeleteWorkout = (id: number) => {
+        useAlertStore.getState().showAlert(
+            "Delete Workout",
+            "This action cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await deleteWorkoutLog(id);
+                            loadHistory();
+                        } catch (e) {
+                            useAlertStore.getState().showAlert("Error", "Failed to delete workout");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const renderWorkoutItem = ({ item }: { item: any }) => {
         const date = new Date(item.date);
 
@@ -159,11 +182,20 @@ export default function ProgressScreen() {
                 onPress={() => router.push({ pathname: '/workout/summary', params: { id: item.id } })}
             >
                 <View style={styles.cardHeader}>
-                    <View>
+                    <View style={{ flex: 1 }}>
                         <Text style={styles.workoutName}>{item.routineName || 'Quick Workout'}</Text>
                         <Text style={styles.workoutDate}>{format(date, 'MMM d, yyyy • h:mm a')}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <TouchableOpacity
+                            onPress={() => handleDeleteWorkout(item.id)}
+                            style={{ padding: 8 }}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <Ionicons name="trash-outline" size={18} color={'#ff4444'} />
+                        </TouchableOpacity>
+                        <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
+                    </View>
                 </View>
 
                 <View style={styles.statsRow}>

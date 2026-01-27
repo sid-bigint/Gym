@@ -16,8 +16,10 @@ interface WorkoutState {
     createRoutine: (name: string, exercises: { exerciseId: number; sets: number; reps: number }[], programId?: string) => Promise<void>;
     updateRoutine: (id: number, name: string, exercises: { exerciseId: number; sets: number; reps: number }[]) => Promise<void>;
     deleteRoutine: (id: number) => Promise<void>;
+    deleteExercise: (id: number) => Promise<void>;
 
     saveWorkoutLog: (routineId: number | null, routineName: string, duration: number, notes: string, sets: any[]) => Promise<number>;
+    deleteWorkoutLog: (id: number) => Promise<void>;
     getLastWorkoutLog: (routineId: number) => Promise<WorkoutLog | null>;
 
     // Active Workout Actions
@@ -275,58 +277,71 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
         }
     },
 
+    deleteExercise: async (id) => {
+        try {
+            const db = await getDatabase();
+            const safeId = Number(id);
+            await db.runAsync('DELETE FROM exercises WHERE id = ? AND is_custom = 1', [safeId]);
+            await get().loadExercises();
+        } catch (e) {
+            console.error("Failed to delete exercise", e);
+            throw e;
+        }
+    },
+
+    deleteWorkoutLog: async (id: number) => {
+        try {
+            const db = await getDatabase();
+            // Delete sets first
+            await db.runAsync('DELETE FROM workout_sets_v2 WHERE session_id = ?', [id]);
+            // Delete session
+            await db.runAsync('DELETE FROM workout_sessions WHERE id = ?', [id]);
+            // Refresh history
+            await get().getWorkoutHistory(); // This returns data, doesn't set state directly unless we call loadHistory
+            // But history screen calls loadHistory. 
+            // Better to trigger a refresh or let the UI handle it. 
+            // Actually, best to just return void and let UI reload.
+        } catch (e) {
+            console.error("Failed to delete workout log", e);
+            throw e;
+        }
+    },
+
     saveWorkoutLog: async (routineId: number | null, routineName: string, duration: number, notes: string, sets: any[]) => {
         try {
             const db = await getDatabase();
-            let workoutId = 0;
+            let sessionId = 0;
 
-            // Temporarily disable FK constraints to avoid issues with stale IDs
+            // Temporarily disable FK constraints to avoid issues
             await db.execAsync('PRAGMA foreign_keys = OFF;');
 
             try {
-                // Sanitize inputs
-                let safeRoutineId: number | null = null;
-                if (routineId !== undefined && routineId !== null) {
-                    const rid = Number(routineId);
-                    if (!isNaN(rid) && rid > 0) {
-                        // Verify routine exists
-                        const routineExists = await db.getFirstAsync<{ count: number }>(
-                            'SELECT COUNT(*) as count FROM routines WHERE id = ?',
-                            [rid]
-                        );
-                        if (routineExists && routineExists.count > 0) {
-                            safeRoutineId = rid;
-                        }
-                    }
-                }
-
-                const safeDuration = Math.floor(Number(duration) / 60) || 0;
+                const safeDuration = Number(duration) || 0; // In Seconds
                 const safeNotes = notes ? String(notes) : '';
                 const safeDate = new Date().toISOString();
-                const safeRoutineName = routineName?.trim() || 'Quick Workout';
+                const safeName = routineName?.trim() || 'Quick Workout';
 
                 const { useUserStore } = require('./useUserStore');
                 const userStore = useUserStore.getState();
                 const userId = userStore.user?.id;
 
-                console.log("Saving workout:", { safeRoutineName, safeRoutineId, safeDuration, setsCount: sets.length, userId });
+                console.log("Saving workout session (Phase 1):", { safeName, safeDuration, setsCount: sets.length, userId });
 
-                // Insert into workouts table
+                // Insert into workout_sessions
                 const result = await db.runAsync(
-                    'INSERT INTO workouts (routine_id, routine_name, duration_minutes, notes, date, user_id) VALUES (?, ?, ?, ?, ?, ?)',
-                    [safeRoutineId, safeRoutineName, safeDuration, safeNotes, safeDate, userId || null]
+                    'INSERT INTO workout_sessions (name, duration_seconds, notes, date, user_id, status) VALUES (?, ?, ?, ?, ?, ?)',
+                    [safeName, safeDuration, safeNotes, safeDate, userId || null, 'COMPLETED']
                 );
-                workoutId = result.lastInsertRowId;
-                console.log("Workout saved, workoutId:", workoutId);
+                sessionId = result.lastInsertRowId;
+                console.log("Session saved, sessionId:", sessionId);
 
-                // Insert sets into workout_sets table
+                // Insert sets into workout_sets_v2
                 for (let i = 0; i < sets.length; i++) {
                     const setData = sets[i];
                     const safeExerciseId = Number(setData.exerciseId);
                     const safeWeight = isNaN(Number(setData.weight)) ? 0 : Number(setData.weight);
                     const safeReps = isNaN(Number(setData.reps)) ? 0 : Number(setData.reps);
-                    const exerciseName = setData.exerciseName || '';
-                    const setType = setData.type || 'Normal';
+                    const safeRpe = setData.rpe ? Number(setData.rpe) : null;
 
                     // Skip invalid exercise IDs
                     if (!safeExerciseId || isNaN(safeExerciseId) || safeExerciseId <= 0) {
@@ -334,23 +349,21 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                         continue;
                     }
 
-                    console.log(`Inserting set ${i + 1}: exercise=${safeExerciseId}, weight=${safeWeight}, reps=${safeReps}, type=${setType}`);
-
                     await db.runAsync(
-                        `INSERT INTO workout_sets (workout_id, exercise_id, exercise_name, set_number, weight, reps, completed, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                        [workoutId, safeExerciseId, exerciseName, i + 1, safeWeight, safeReps, 1, setType]
+                        `INSERT INTO workout_sets_v2 (session_id, exercise_id, set_number, weight, reps, rpe) VALUES (?, ?, ?, ?, ?, ?)`,
+                        [sessionId, safeExerciseId, i + 1, safeWeight, safeReps, safeRpe]
                     );
                 }
 
-                console.log("Workout log saved successfully");
+                console.log("Workout session saved successfully");
 
             } finally {
                 // Re-enable FK constraints
                 await db.execAsync('PRAGMA foreign_keys = ON;');
             }
-            return workoutId;
+            return sessionId;
         } catch (e) {
-            console.error("Failed to save workout log", e);
+            console.error("Failed to save workout session", e);
             throw e;
         }
     },
@@ -358,42 +371,40 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     getLastWorkoutLog: async (routineId: number) => {
         try {
             const db = await getDatabase();
+            // Note: With the new schema, we don't strictly track 'routineId' in sessions.
+            // We'll try to find the last session with the SAME NAME as the routine.
 
-            const safeRoutineId = Number(routineId);
-            if (isNaN(safeRoutineId)) return null;
+            const routines = await get().routines;
+            const routine = routines.find(r => r.id === routineId);
+            if (!routine) return null;
 
-            // Query workouts table (not workout_logs)
-            // We can relax user_id check here if we assume routine_id is already validated,
-            // but safer to include it if possible, though routine_id implies ownership usually.
-            const logs = await db.getAllAsync<any>(
-                'SELECT * FROM workouts WHERE routine_id = ? ORDER BY date DESC LIMIT 1',
-                [safeRoutineId]
+            const sessions = await db.getAllAsync<any>(
+                'SELECT * FROM workout_sessions WHERE name = ? ORDER BY date DESC LIMIT 1',
+                [routine.name]
             );
 
-            const log = logs.length > 0 ? logs[0] : null;
+            const session = sessions.length > 0 ? sessions[0] : null;
+            if (!session) return null;
 
-            if (!log) return null;
-
-            const safeLogId = Number(log.id);
-            // Query workout_sets with workout_id (not workout_log_id)
+            const safeSessionId = Number(session.id);
             const sets = await db.getAllAsync<any>(
-                'SELECT * FROM workout_sets WHERE workout_id = ? ORDER BY id ASC',
-                [safeLogId]
+                'SELECT * FROM workout_sets_v2 WHERE session_id = ? ORDER BY id ASC',
+                [safeSessionId]
             );
 
             return {
-                id: log.id,
-                routineId: log.routine_id,
-                date: log.date,
-                durationSeconds: (log.duration_minutes || 0) * 60,
-                notes: log.notes,
+                id: session.id,
+                routineId: routineId, // derived from args
+                date: session.date,
+                durationSeconds: session.duration_seconds,
+                notes: session.notes,
                 sets: sets.map(s => ({
                     id: s.id,
                     exerciseId: s.exercise_id,
                     weight: s.weight,
                     reps: s.reps,
                     setNumber: s.set_number,
-                    type: s.type || 'Normal'
+                    type: 'Normal' // v2 table doesn't have type yet, defaulting
                 }))
             } as WorkoutLog;
         } catch (e) {
@@ -593,26 +604,30 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             if (!userId) return [];
 
             const db = await getDatabase();
-            const logs = await db.getAllAsync<any>(
-                'SELECT * FROM workouts WHERE user_id = ? ORDER BY date DESC LIMIT ?',
+            // Query workout_sessions
+            const sessions = await db.getAllAsync<any>(
+                'SELECT * FROM workout_sessions WHERE user_id = ? ORDER BY date DESC LIMIT ?',
                 [userId, limit]
             );
 
-            // Enrich with summary data
-            const enrichedLogs = await Promise.all(logs.map(async (log) => {
+            // Enrich with summary data from workout_sets_v2
+            const enrichedLogs = await Promise.all(sessions.map(async (session) => {
                 const sets = await db.getAllAsync<any>(
-                    'SELECT * FROM workout_sets WHERE workout_id = ?',
-                    [log.id]
+                    `SELECT ws.*, e.name as exercise_name 
+                     FROM workout_sets_v2 ws
+                     LEFT JOIN exercises e ON ws.exercise_id = e.id
+                     WHERE ws.session_id = ?`,
+                    [session.id]
                 );
 
                 const volume = sets.reduce((acc, s) => acc + (s.weight * s.reps), 0);
-                const exercises = [...new Set(sets.map(s => s.exercise_name))];
+                const exercises = [...new Set(sets.map(s => s.exercise_name || 'Unknown'))];
 
                 return {
-                    id: log.id,
-                    date: log.date,
-                    duration: log.duration_minutes,
-                    routineName: log.routine_name,
+                    id: session.id,
+                    date: session.date,
+                    duration: Math.floor(session.duration_seconds / 60), // Convert back to minutes for UI if needed
+                    routineName: session.name,
                     volume,
                     exercises,
                     setsCount: sets.length
@@ -635,11 +650,11 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
         try {
             const db = await getDatabase();
             const sets = await db.getAllAsync<any>(
-                `SELECT ws.*, w.date 
-                 FROM workout_sets ws
-                 JOIN workouts w ON ws.workout_id = w.id
+                `SELECT ws.*, s.date, s.name as session_name
+                 FROM workout_sets_v2 ws
+                 JOIN workout_sessions s ON ws.session_id = s.id
                  WHERE ws.exercise_id = ? 
-                 ORDER BY w.date ASC`,
+                 ORDER BY s.date ASC`,
                 [exerciseId]
             );
             return sets;

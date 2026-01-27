@@ -1,6 +1,5 @@
 import * as SQLite from 'expo-sqlite';
 import exerciseSource from '../data/exerciseData.json';
-
 import { PREDEFINED_BUNDLES } from '../data/exploreBundles';
 
 // V8: NPE Check and Strict Sanitization
@@ -90,6 +89,24 @@ export async function initDatabase() {
       }
     }
 
+    // Migration: Update exercises table for Phase 1
+    try {
+      const exTableInfo = await db.getAllAsync<any>("PRAGMA table_info(exercises)");
+      const hasVideoUrl = exTableInfo.some(col => col.name === 'video_url');
+      const hasUserIdEx = exTableInfo.some(col => col.name === 'user_id');
+
+      if (!hasVideoUrl) {
+        console.log("Migrating exercises table: Adding video_url column");
+        await db.execAsync("ALTER TABLE exercises ADD COLUMN video_url TEXT");
+      }
+      if (!hasUserIdEx) {
+        console.log("Migrating exercises table: Adding user_id column");
+        await db.execAsync("ALTER TABLE exercises ADD COLUMN user_id INTEGER");
+      }
+    } catch (e) {
+      console.warn("Exercises migration failed:", e);
+    }
+
 
     // Create all tables
     await db.execAsync(`
@@ -111,7 +128,7 @@ export async function initDatabase() {
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
 
-            -- Exercises table
+            -- Exercises table (Updated for Phase 1)
             CREATE TABLE IF NOT EXISTS exercises (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -119,7 +136,9 @@ export async function initDatabase() {
                 type TEXT,
                 is_custom BOOLEAN DEFAULT 0,
                 instructions TEXT,
-                images TEXT
+                images TEXT,
+                video_url TEXT,
+                user_id INTEGER
             );
 
             -- Routines table
@@ -143,7 +162,7 @@ export async function initDatabase() {
                 order_index INTEGER
             );
 
-            -- Workouts (completed workout sessions)
+            -- Workouts (Legacy/Existing)
             CREATE TABLE IF NOT EXISTS workouts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 routine_id INTEGER,
@@ -154,7 +173,7 @@ export async function initDatabase() {
                 user_id TEXT
             );
 
-            -- Workout sets (individual sets within a workout)
+            -- Workout Sets (Legacy/Existing)
             CREATE TABLE IF NOT EXISTS workout_sets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 workout_id INTEGER NOT NULL,
@@ -166,6 +185,32 @@ export async function initDatabase() {
                 rest_seconds INTEGER,
                 completed BOOLEAN DEFAULT 0,
                 type TEXT DEFAULT 'Normal'
+            );
+
+            -- PHASE 1: New Workout Tables
+            
+            -- Workout Sessions
+            CREATE TABLE IF NOT EXISTS workout_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                name TEXT,
+                date TEXT NOT NULL,
+                duration_seconds INTEGER,
+                notes TEXT,
+                status TEXT DEFAULT 'COMPLETED',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+
+            -- Workout Sets V2 (Linked to exercises table)
+            CREATE TABLE IF NOT EXISTS workout_sets_v2 (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL,
+                exercise_id INTEGER NOT NULL,
+                set_number INTEGER NOT NULL,
+                weight REAL NOT NULL,
+                reps INTEGER NOT NULL,
+                rpe REAL,
+                timestamp TEXT DEFAULT CURRENT_TIMESTAMP
             );
 
             -- Nutrition logs
@@ -210,6 +255,15 @@ export async function initDatabase() {
                 body_fat_percentage REAL,
                 date TEXT NOT NULL,
                 user_id TEXT
+            );
+
+            -- Offline Sync Queue
+            CREATE TABLE IF NOT EXISTS pending_syncs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                action TEXT,
+                payload TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                status TEXT DEFAULT 'PENDING'
             );
         `);
 

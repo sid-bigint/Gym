@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { getDatabase } from '../db/database';
-import { UserProfile, ActivityLevel, FitnessGoal } from '../types';
+import { UserProfile } from '../types';
+import { UserRepository } from '../repositories/UserRepository';
+import { CloudRepository } from '../repositories/CloudRepository';
 
 interface UserState {
     user: UserProfile | null;
@@ -23,30 +24,30 @@ export const useUserStore = create<UserState>((set, get) => ({
     loadUser: async () => {
         set({ isLoading: true });
         try {
-            const db = await getDatabase();
-            const result = await db.getFirstAsync<any>('SELECT * FROM users LIMIT 1');
+            // Use Repository to fetch user
+            const dbUser = await UserRepository.getCurrentUser();
 
-            if (result) {
+            if (dbUser) {
                 set({
                     user: {
-                        id: result.id,
-                        name: result.name,
-                        gender: result.gender as any,
-                        age: result.age,
-                        height: result.height,
-                        weight: result.weight,
-                        activityLevel: result.activity_level as any,
-                        goal: result.goal as any,
-                        calorieGoal: result.target_calories,
-                        targetProtein: result.target_protein,
-                        targetCarbs: result.target_carbs,
-                        targetFats: result.target_fats,
-                        picture: result.picture // Load picture
+                        id: dbUser.id,
+                        name: dbUser.name ?? 'User',
+                        gender: (dbUser.gender as any) ?? 'male',
+                        age: dbUser.age ?? 25,
+                        height: dbUser.height ?? 175,
+                        weight: dbUser.weight ?? 70,
+                        activityLevel: (dbUser.activityLevel as any) ?? 'moderate',
+                        goal: (dbUser.goal as any) ?? 'maintain',
+                        calorieGoal: dbUser.targetCalories ?? 2500,
+                        targetProtein: dbUser.targetProtein ?? 150,
+                        targetCarbs: dbUser.targetCarbs ?? 300,
+                        targetFats: dbUser.targetFats ?? 80,
+                        picture: dbUser.picture
                     }
                 });
             } else {
-                // Create default user if not exists
-                const defaultUser: UserProfile = {
+                // ... (default user creation code remains same but we might want to check cloud here in future steps)
+                const defaultUser = {
                     name: 'User',
                     gender: 'male',
                     age: 25,
@@ -54,42 +55,28 @@ export const useUserStore = create<UserState>((set, get) => ({
                     weight: 70,
                     activityLevel: 'moderate',
                     goal: 'maintain',
-                    calorieGoal: 2500,
+                    targetCalories: 2500,
                     targetProtein: 150,
                     targetCarbs: 300,
                     targetFats: 80,
                     picture: null
                 };
-
-                await db.runAsync(
-                    `INSERT INTO users (
-                name, gender, age, height, weight, activity_level, goal, 
-                target_calories, target_protein, target_carbs, target_fats, picture
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [
-                        defaultUser.name, defaultUser.gender, defaultUser.age, defaultUser.height, defaultUser.weight,
-                        defaultUser.activityLevel, defaultUser.goal, defaultUser.calorieGoal,
-                        defaultUser.targetProtein, defaultUser.targetCarbs, defaultUser.targetFats,
-                        defaultUser.picture || null
-                    ]
-                );
-                // Reload to get ID
-                const newUser = await db.getFirstAsync<any>('SELECT * FROM users LIMIT 1');
+                const newUser = await UserRepository.createUser(defaultUser);
                 if (newUser) {
                     set({
                         user: {
                             id: newUser.id,
-                            name: newUser.name,
-                            gender: newUser.gender as any,
-                            age: newUser.age,
-                            height: newUser.height,
-                            weight: newUser.weight,
-                            activityLevel: newUser.activity_level as any,
-                            goal: newUser.goal as any,
-                            calorieGoal: newUser.target_calories,
-                            targetProtein: newUser.target_protein,
-                            targetCarbs: newUser.target_carbs,
-                            targetFats: newUser.target_fats,
+                            name: newUser.name ?? 'User',
+                            gender: (newUser.gender as any) ?? 'male',
+                            age: newUser.age ?? 25,
+                            height: newUser.height ?? 175,
+                            weight: newUser.weight ?? 70,
+                            activityLevel: (newUser.activityLevel as any) ?? 'moderate',
+                            goal: (newUser.goal as any) ?? 'maintain',
+                            calorieGoal: newUser.targetCalories ?? 2500,
+                            targetProtein: newUser.targetProtein ?? 150,
+                            targetCarbs: newUser.targetCarbs ?? 300,
+                            targetFats: newUser.targetFats ?? 80,
                             picture: newUser.picture
                         }
                     });
@@ -105,38 +92,34 @@ export const useUserStore = create<UserState>((set, get) => ({
     updateProfile: async (updates) => {
         try {
             const { user } = get();
-            if (!user) return;
+            if (!user || !user.id) return;
 
             const updatedUser = { ...user, ...updates };
 
-            const db = await getDatabase();
+            // 1. Local SQLite Update (Single Source of Truth)
+            // We safely cast to Number in case the UI sent strings
+            await UserRepository.updateUser(user.id, {
+                name: updatedUser.name,
+                gender: updatedUser.gender,
+                age: Number(updatedUser.age),
+                height: Number(updatedUser.height),
+                weight: Number(updatedUser.weight),
+                activityLevel: updatedUser.activityLevel,
+                goal: updatedUser.goal,
+                targetCalories: Number(updatedUser.calorieGoal),
+                targetProtein: Number(updatedUser.targetProtein),
+                targetCarbs: Number(updatedUser.targetCarbs),
+                targetFats: Number(updatedUser.targetFats),
+                picture: updatedUser.picture
+            });
 
-            // Ensure inputs are not undefined
-            const safeParams = [
-                updatedUser.name || '',
-                updatedUser.gender || 'male',
-                Number(updatedUser.age) || 0,
-                Number(updatedUser.height) || 0,
-                Number(updatedUser.weight) || 0,
-                updatedUser.activityLevel || 'moderate',
-                updatedUser.goal || 'maintain',
-                Number(updatedUser.calorieGoal) || 0,
-                Number(updatedUser.targetProtein) || 0,
-                Number(updatedUser.targetCarbs) || 0,
-                Number(updatedUser.targetFats) || 0,
-                updatedUser.picture || null,
-                updatedUser.id || 0
-            ];
+            // 2. Cloud Sync (Background Backup)
+            // Fire and forget - don't block the UI
+            CloudRepository.syncUserToCloud(updatedUser).catch(err => {
+                console.warn('Background Cloud Sync failed', err);
+            });
 
-            await db.runAsync(
-                `UPDATE users SET 
-                name = ?, gender = ?, age = ?, height = ?, weight = ?, activity_level = ?, goal = ?, 
-                target_calories = ?, target_protein = ?, target_carbs = ?, target_fats = ?, picture = ?
-            WHERE id = ?`,
-                safeParams
-            );
-
-            // Sync weight to progress history if changed
+            // 3. Side Effects (Progress Store)
             if (updatedUser.weight && user.weight !== updatedUser.weight) {
                 const { useProgressStore } = require('./useProgressStore');
                 await useProgressStore.getState().addMeasurement(
