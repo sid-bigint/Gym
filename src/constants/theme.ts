@@ -49,6 +49,7 @@ export const getThemeColors = (mode: 'light' | 'dark', type: ThemeType = 'purple
                 active: accent.primary,
                 inactive: '#9CA3AF',
                 completed: '#10B981',
+                info: '#3B82F6',
                 error: '#EF4444',
             },
             nutrition: {
@@ -91,6 +92,7 @@ export const getThemeColors = (mode: 'light' | 'dark', type: ThemeType = 'purple
             active: accent.secondary,
             inactive: '#6B7280',
             completed: '#10B981',
+            info: '#60A5FA',
             error: '#EF4444',
         },
         nutrition: {

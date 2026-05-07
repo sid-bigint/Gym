@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 
 export default function WorkoutSummaryScreen() {
     const { id } = useLocalSearchParams();
-    const { getWorkoutHistory, getExerciseHistory } = useWorkoutStore();
+    const { getWorkoutHistory, getExerciseHistory, streak } = useWorkoutStore();
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -186,6 +186,22 @@ export default function WorkoutSummaryScreen() {
                     </View>
                 </View>
 
+                <View style={[styles.streakHighlight, { backgroundColor: 'rgba(249, 115, 22, 0.12)', borderColor: 'rgba(249, 115, 22, 0.35)' }]}>
+                    <View style={styles.streakHighlightIcon}>
+                        <Ionicons name="flame" size={22} color="#FB923C" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.streakHighlightValue, { color: colors.text.primary }]}>
+                            {streak.current} day streak
+                        </Text>
+                        <Text style={[styles.streakHighlightText, { color: colors.text.secondary }]}>
+                            {streak.current > 0
+                                ? `Best streak ${streak.longest} days. Keep showing up tomorrow to grow it.`
+                                : 'Today started your next wave of consistency.'}
+                        </Text>
+                    </View>
+                </View>
+
                 <Text style={styles.sectionTitle}>Exercise Summary</Text>
 
                 {exerciseStats.map((ex, idx) => (
@@ -288,6 +304,32 @@ const createStyles = (colors: any) => StyleSheet.create({
         fontWeight: '700',
         color: colors.text.primary,
         marginBottom: 16,
+    },
+    streakHighlight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        borderRadius: borderRadius.lg,
+        padding: 16,
+        borderWidth: 1,
+        marginBottom: 24,
+    },
+    streakHighlightIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(251, 146, 60, 0.14)',
+    },
+    streakHighlightValue: {
+        fontSize: 20,
+        fontWeight: '800',
+        marginBottom: 2,
+    },
+    streakHighlightText: {
+        fontSize: 13,
+        lineHeight: 18,
     },
     exerciseCard: {
         backgroundColor: colors.background.card,

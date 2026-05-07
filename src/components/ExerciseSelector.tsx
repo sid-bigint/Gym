@@ -327,7 +327,9 @@ export const ExerciseSelector = ({
                                     style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
                                     onPress={() => setShowCreateModal(true)}
                                 >
-                                    <Text style={{ color: colors.accent.primary, fontWeight: '600' }}>Create "{searchQuery}"</Text>
+                                    <Text style={{ color: colors.accent.primary, fontWeight: '600' }}>
+                                        {searchQuery ? `Create "${searchQuery}"` : 'Create exercise'}
+                                    </Text>
                                 </TouchableOpacity>
                             </View>
                         )}

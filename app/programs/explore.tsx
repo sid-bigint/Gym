@@ -367,9 +367,9 @@ export default function ExploreRoutinesScreen() {
                                 {(() => {
                                     // Determine colors safely
                                     const hasImage = !!(selectedBundle as any).image;
-                                    const gradientColors = hasImage
+                                    const gradientColors = (hasImage
                                         ? ['transparent', 'rgba(0,0,0,0.9)']
-                                        : (selectedBundle.gradient as string[]); // Cast to string[] assuming data is correct
+                                        : selectedBundle.gradient) as unknown as readonly [string, string, ...string[]];
 
                                     return (
                                         <LinearGradient

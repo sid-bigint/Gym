@@ -367,7 +367,7 @@ export default function RoutinesScreen() {
             <View style={styles.header}>
                 <View>
                     <Text style={[styles.title, { color: colors.text.primary }]}>Workouts</Text>
-                    <Text style={[styles.subtitle, { color: colors.text.secondary }]}>Let's get moving</Text>
+                    <Text style={[styles.subtitle, { color: colors.text.secondary }]}>{"Let's get moving"}</Text>
                 </View>
                 <TouchableOpacity
                     style={[styles.addButton, { backgroundColor: colors.accent.secondary }]}

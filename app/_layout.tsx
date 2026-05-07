@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { View, ActivityIndicator, Text } from "react-native";
+import { View, ActivityIndicator, Text , LogBox } from "react-native";
 import { initDatabase } from "../src/db/database";
 import { useUserStore } from "../src/store/useUserStore";
 import { useAuthStore } from "../src/store/useAuthStore";
@@ -8,7 +8,7 @@ import { GlobalAlert } from "../src/components/GlobalAlert";
 import { useAlertStore } from "../src/store/useAlertStore";
 
 import { useWorkoutNotification } from "../src/hooks/useWorkoutNotification";
-import { LogBox } from "react-native";
+
 
 // Ignore specific warnings that are irrelevant to our Local Notification implementation
 LogBox.ignoreLogs([

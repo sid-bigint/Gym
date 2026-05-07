@@ -178,7 +178,7 @@ export default function OnboardingScreen() {
         <View style={styles.stepContent}>
             <View style={styles.header}>
                 <Text style={styles.title}>Welcome!</Text>
-                <Text style={styles.subtitle}>Let's tailor your experience.</Text>
+                <Text style={styles.subtitle}>{"Let's tailor your experience."}</Text>
             </View>
 
             <View style={styles.formGroup}>

@@ -913,7 +913,7 @@ export default function AddFoodScreen() {
                             Delete {deleteModal?.type === 'mealType' ? 'Meal Type' : 'Food'}
                         </Text>
                         <Text style={[styles.confirmText, { color: colors.text.secondary }]}>
-                            Are you sure you want to delete "{deleteModal?.name}"?
+                            {`Are you sure you want to delete "${deleteModal?.name}"?`}
                         </Text>
                         <View style={styles.confirmButtons}>
                             <TouchableOpacity

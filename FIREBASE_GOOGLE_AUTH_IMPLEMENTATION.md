@@ -1,7 +1,7 @@
 # Firebase Google Authentication Implementation Guide
 
 ## Overview
-This guide will walk you through implementing Google Sign-In using Firebase Authentication in your Expo React Native app.
+This guide describes Google Sign-In using Firebase Authentication in an Expo React Native app, with native `@react-native-google-signin/google-signin` as the primary Android app approach.
 
 ---
 
@@ -48,11 +48,8 @@ This guide will walk you through implementing Google Sign-In using Firebase Auth
 
 ### Step 1: Install Required Packages
 ```bash
-# Install Firebase and Google Sign-In packages
-npx expo install @react-native-firebase/app @react-native-firebase/auth @react-native-google-signin/google-signin
-
-# OR if using Expo managed workflow, use expo-auth-session approach:
-npx expo install expo-auth-session expo-crypto expo-web-browser
+# Expo Go-compatible approach used by this project:
+npx expo install expo-crypto expo-web-browser
 ```
 
 ### Step 2: Configure app.json
@@ -65,14 +62,7 @@ Add the following to your `app.json`:
       "googleServicesFile": "./android/app/google-services.json"
     },
     "plugins": [
-      "@react-native-firebase/app",
-      "@react-native-firebase/auth",
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosUrlScheme": "com.googleusercontent.apps.YOUR_IOS_CLIENT_ID"
-        }
-      ]
+      "expo-web-browser"
     ]
   }
 }

@@ -22,7 +22,7 @@ export default function ActiveWorkoutScreen() {
     const [routine, setRoutine] = useState<Routine | null>(null);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [activeSets, setActiveSets] = useState<ActiveSet[]>([]);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
         // Determine routine
@@ -109,6 +109,7 @@ export default function ActiveWorkoutScreen() {
                             const completedSets = activeSets.filter(s => s.completed);
                             await saveWorkoutLog(
                                 routine ? routine.id : null,
+                                routine?.name || 'Quick Workout',
                                 elapsedSeconds,
                                 "Good workout!", // Notes
                                 completedSets.map(s => ({

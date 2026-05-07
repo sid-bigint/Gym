@@ -1,16 +1,17 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, StatusBar, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, StatusBar, Image, Animated , Modal, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useUserStore } from '../../src/store/useUserStore';
 import { useNutritionStore } from '../../src/store/useNutritionStore';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { useProgressStore } from '../../src/store/useProgressStore';
+import { useHealthConnectStore } from '../../src/store/useHealthConnectStore';
 import { useTheme } from '../../src/store/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, borderRadius, shadows } from '../../src/constants/theme';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, startOfMonth, endOfMonth, isSameMonth, addMonths, subMonths, isAfter, startOfDay } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Modal, TextInput } from 'react-native';
+
 
 const { width } = Dimensions.get('window');
 
@@ -73,40 +74,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: 'bold',
-  },
-  weekContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-  },
-  dayColumn: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  dayLabel: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  dayDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-  },
-  dayDotCompleted: {
-    backgroundColor: 'white',
-    borderColor: 'white',
-  },
-  dayDotEmpty: {
-    backgroundColor: 'transparent',
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  dayDotToday: {
-    borderColor: 'white',
-    borderWidth: 3,
   },
   scrollView: {
     flex: 1,
@@ -441,8 +408,17 @@ const styles = StyleSheet.create({
 export default function Dashboard() {
   const { user, loadUser } = useUserStore();
   const { totals, loadLogs: loadNutrition } = useNutritionStore();
-  const { activeWorkout, history, loadRoutines: loadWorkouts, loadHistory } = useWorkoutStore();
+  const { activeWorkout, history, streak, loadRoutines: loadWorkouts, loadHistory, loadStreak } = useWorkoutStore();
   const { measurements, loadMeasurements, addMeasurement } = useProgressStore();
+  const {
+    todaySteps,
+    isAvailable: isHealthConnectAvailable,
+    hasStepPermission,
+    isLoading: isHealthConnectLoading,
+    bootstrap: bootstrapHealthConnect,
+    connectAndSync,
+    openHealthConnectApp,
+  } = useHealthConnectStore();
   const { colors, mode } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [showWeightLog, setShowWeightLog] = useState(false);
@@ -503,8 +479,13 @@ export default function Dashboard() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    bootstrapHealthConnect();
+  }, []);
+
   const loadData = async () => {
-    await Promise.all([loadUser(), loadNutrition(), loadWorkouts(), loadHistory(10), loadMeasurements()]);
+    await loadUser();
+    await Promise.all([loadNutrition(), loadWorkouts(), loadHistory(10), loadMeasurements(), loadStreak()]);
   };
 
   const onRefresh = async () => {
@@ -534,8 +515,10 @@ export default function Dashboard() {
     return eachDayOfInterval({ start, end });
   }, []);
 
+  const activeDaySet = useMemo(() => new Set(streak.activeDays), [streak.activeDays]);
+
   const getWorkoutOnDay = (day: Date) => {
-    return history.find(h => isSameDay(new Date(h.date), day));
+    return activeDaySet.has(format(day, 'yyyy-MM-dd'));
   };
 
   const latestWeight = useMemo(() => {
@@ -668,26 +651,27 @@ export default function Dashboard() {
             </View>
           </View>
 
-          {/* Weekly Streak/Activity */}
-          <View style={styles.weekContainer}>
-            {weekDays.map((day, idx) => {
-              const workout = getWorkoutOnDay(day);
-              const isToday = isSameDay(day, new Date());
-              return (
-                <View key={idx} style={styles.dayColumn}>
-                  <Text style={[styles.dayLabel, { opacity: isToday ? 1 : 0.6 }]}>
-                    {format(day, 'EE').charAt(0)}
-                  </Text>
-                  <View style={[
-                    styles.dayDot,
-                    workout ? styles.dayDotCompleted : styles.dayDotEmpty,
-                    isToday && styles.dayDotToday
-                  ]}>
-                    {workout && <Ionicons name="checkmark" size={12} color="white" />}
-                  </View>
-                </View>
-              );
-            })}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 5,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: 'rgba(255,255,255,0.14)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.18)'
+            }}>
+              <Ionicons name="flame" size={18} color="#FDE68A" />
+              <Text style={{ color: 'white', fontSize: 13, fontWeight: '800' }}>
+                {streak.current} day streak
+              </Text>
+            </View>
+            <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.55)' }} />
+            <Text style={{ color: 'rgba(255,255,255,0.74)', fontSize: 12, fontWeight: '600' }}>
+              Best {streak.longest}
+            </Text>
           </View>
         </LinearGradient>
       </View>
@@ -850,14 +834,30 @@ export default function Dashboard() {
         <View style={styles.actionGrid}>
           <TouchableOpacity
             style={[styles.heroActionBtn, { backgroundColor: colors.background.card }]}
-            onPress={() => { }}
+            onPress={() => {
+              if (isHealthConnectAvailable && hasStepPermission) {
+                bootstrapHealthConnect();
+                return;
+              }
+              if (!isHealthConnectAvailable) {
+                openHealthConnectApp();
+                return;
+              }
+              connectAndSync();
+            }}
           >
-            <View style={[styles.actionIconContainer, { backgroundColor: 'rgba(56, 189, 248, 0.1)' }]}>
-              <Ionicons name="water" size={24} color="#0EA5E9" />
+            <View style={[styles.actionIconContainer, { backgroundColor: 'rgba(34, 197, 94, 0.12)' }]}>
+              <Ionicons name="footsteps" size={24} color="#22C55E" />
             </View>
             <View>
-              <Text style={[styles.actionBtnLabel, { color: colors.text.primary, fontSize: 14 }]}>Water Intake</Text>
-              <Text style={{ color: colors.text.tertiary, fontSize: 12, fontWeight: '600' }}>2.5 / 3.0 L</Text>
+              <Text style={[styles.actionBtnLabel, { color: colors.text.primary, fontSize: 14 }]}>Health Steps</Text>
+              <Text style={{ color: colors.text.tertiary, fontSize: 12, fontWeight: '600' }}>
+                {isHealthConnectLoading
+                  ? 'Syncing...'
+                  : isHealthConnectAvailable && hasStepPermission
+                    ? `${todaySteps.toLocaleString()} today`
+                    : 'Tap to connect'}
+              </Text>
             </View>
           </TouchableOpacity>
 

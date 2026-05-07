@@ -75,7 +75,6 @@ export default function ProgramDetailsScreen() {
                 headerTitle: '',
                 headerTransparent: true,
                 headerTintColor: 'white',
-                headerBackTitleVisible: false,
             }} />
 
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>

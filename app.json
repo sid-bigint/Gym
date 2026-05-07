@@ -29,6 +29,8 @@
     },
     "plugins": [
       "expo-router",
+      "@react-native-google-signin/google-signin",
+      "expo-health-connect",
       [
         "expo-splash-screen",
         {
@@ -47,12 +49,12 @@
         "expo-build-properties",
         {
           "android": {
+            "minSdkVersion": 26,
             "compileSdkVersion": 35,
             "targetSdkVersion": 35
           }
         }
-      ],
-      "@react-native-google-signin/google-signin"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

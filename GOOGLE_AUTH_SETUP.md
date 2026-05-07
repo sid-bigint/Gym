@@ -1,6 +1,11 @@
 # Google Authentication Setup Guide
 
-This project is pre-configured to use **Google Sign-In** via `expo-auth-session`. Follow these steps to generate the necessary credentials and enable authentication.
+This project is pre-configured to use native **Google Sign-In** via `@react-native-google-signin/google-signin` and Firebase Authentication.
+
+Important:
+- Google login requires an installed development or production app build.
+- Google login will not work inside Expo Go.
+- Production builds do not require a local Metro server after install.
 
 ## Prerequisites
 
@@ -22,22 +27,20 @@ This project is pre-configured to use **Google Sign-In** via `expo-auth-session`
 
 You need to create separate Client IDs for each platform you intend to support.
 
-### 2.1 Web Client ID (Required for Expo Go & Web)
+### 2.1 Web Client ID
 
 1.  Go to **APIs & Services > Credentials**.
 2.  Click **+ CREATE CREDENTIALS** > **OAuth client ID**.
 3.  Select **Web application**.
 4.  Name it "Web Client".
 5.  **Authorized JavaScript origins**:
-    -   `https://auth.expo.io` (Recommended for Expo Go proxy)
     -   `http://localhost:8081` (For web development)
 6.  **Authorized redirect URIs**:
-    -   `https://auth.expo.io/@your-username/ToDo` (Replace `@your-username` with your Expo username and `ToDo` with the `slug` from `app.json`)
     -   `http://localhost:8081`
 7.  Click **Create**.
 8.  **Copy the Client ID** (ending in `.apps.googleusercontent.com`).
 
-### 2.2 Android Client ID
+### 2.2 Android Client ID (Required for Android / Expo Go)
 
 1.  Click **+ CREATE CREDENTIALS** > **OAuth client ID**.
 2.  Select **Android**.
@@ -45,7 +48,7 @@ You need to create separate Client IDs for each platform you intend to support.
 4.  **Package name**: Use the package name from `app.json` (`android.package`).
     -   Current: `com.gymnative.app`
 5.  **SHA-1 Certificate Fingerprint**:
-    -   **For Development (Expo Go)**: You don't strictly need this if using the Web Client ID proxy, but for a standalone build, run `cd android && ./gradlew signingReport` to get your debug key SHA-1.
+    -   **For Development**: Register the SHA-1 used by your current Android app/Firebase project.
     -   **For Production**: Get the SHA-1 from your keystore or Play Console.
 6.  Click **Create**.
 7.  **Copy the Client ID**.
@@ -62,7 +65,7 @@ You need to create separate Client IDs for each platform you intend to support.
 ## Step 3: Configure the Application
 
 1.  Open the file `src/services/authService.ts`.
-2.  Replace the placeholder strings with your new Client IDs:
+2.  Replace the placeholder strings with your active client IDs:
 
 ```typescript
 // src/services/authService.ts
@@ -70,19 +73,19 @@ You need to create separate Client IDs for each platform you intend to support.
 // Replace these values:
 const GOOGLE_CLIENT_ID_WEB = 'YOUR_NEW_WEB_CLIENT_ID.apps.googleusercontent.com';
 const GOOGLE_CLIENT_ID_ANDROID = 'YOUR_NEW_ANDROID_CLIENT_ID.apps.googleusercontent.com';
-const GOOGLE_CLIENT_ID_IOS = 'YOUR_NEW_IOS_CLIENT_ID.apps.googleusercontent.com';
 ```
 
 ## Step 4: Testing
 
 1.  Restart your Expo server (`npx expo start -c`).
-2.  **Android/iOS**: Tap "Sign in with Google". It should open a browser modal (using `expo-web-browser`) to authenticate.
+2.  **Android native build**: Tap "Sign in with Google" inside the installed development or production app build.
 3.  **Web**: It will use the popup flow.
 
 ## Troubleshooting
 
--   **Error 400: redirect_uri_mismatch**:
-    -   Ensure `https://auth.expo.io/@your-username/ToDo` is added to **Authorized redirect URIs** in the Web Client ID settings.
-    -   Ensure your `scheme` in `app.json` matches what the auth session expects.
+-   **Developer Error / OAuth Error**:
+    -   Ensure the Android OAuth client uses package `com.gymnative.app`.
+    -   Ensure the SHA-1 fingerprint registered in Firebase/Google Cloud matches the app you are testing.
+    -   Ensure the client IDs in `src/services/authService.ts` match the same Firebase project.
 -   **No modal opens**:
-    -   Ensure `WebBrowser.maybeCompleteAuthSession()` is called (it is already in `authService.ts`).
+    -   Ensure the app was rebuilt after adding the native Google Sign-In package and plugin.

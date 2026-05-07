@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useUserStore } from '../../src/store/useUserStore';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useProgressStore } from '../../src/store/useProgressStore';
+import { useHealthConnectStore } from '../../src/store/useHealthConnectStore';
 import { useTheme } from '../../src/store/useTheme';
 import { useScreenPadding } from '../../src/store/useScreenPadding';
 import { Button } from '../../src/components/Button';
@@ -23,6 +24,18 @@ export default function ProfileScreen() {
     const { user: authUser } = useAuthStore();
     const { logout } = useAuthStore();
     const { measurements, loadMeasurements, deleteMeasurement, addMeasurement } = useProgressStore();
+    const {
+        todaySteps,
+        isAvailable: isHealthConnectAvailable,
+        hasStepPermission,
+        isLoading: isHealthConnectLoading,
+        lastSyncedAt,
+        error: healthConnectError,
+        bootstrap: bootstrapHealthConnect,
+        connectAndSync,
+        openPermissionsScreen,
+        openHealthConnectApp,
+    } = useHealthConnectStore();
     const { mode, setThemeMode, themeType, setThemeType, colors, initTheme } = useTheme();
     const { contentTop } = useScreenPadding();
 
@@ -37,6 +50,7 @@ export default function ProfileScreen() {
     useEffect(() => {
         initTheme();
         loadMeasurements();
+        bootstrapHealthConnect();
     }, []);
 
     const pickImage = async () => {
@@ -294,6 +308,69 @@ export default function ProfileScreen() {
 
                 {/* Section: Preferences & Tools */}
                 <Text style={[styles.sectionTitleNew, { color: colors.text.primary, marginTop: 24, marginBottom: 14 }]}>Preferences & Tools</Text>
+
+                <View style={[styles.menuItemNew, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
+                    <View style={[styles.menuIconCircle, { backgroundColor: '#22C55E15' }]}>
+                        <Ionicons name="footsteps" size={20} color="#22C55E" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.menuItemTitle, { color: colors.text.primary }]}>Health Connect</Text>
+                        <Text style={[styles.menuItemSub, { color: colors.text.tertiary }]}>
+                            {isHealthConnectLoading
+                                ? 'Checking Health Connect...'
+                                : isHealthConnectAvailable && hasStepPermission
+                                    ? `${todaySteps.toLocaleString()} steps today`
+                                    : isHealthConnectAvailable
+                                        ? 'Connect step data from Health Connect'
+                                        : 'Install or enable Health Connect on this Android device'}
+                        </Text>
+                        {!!lastSyncedAt && isHealthConnectAvailable && hasStepPermission && (
+                            <Text style={{ color: colors.text.disabled, fontSize: 11, marginTop: 6 }}>
+                                Last synced {format(new Date(lastSyncedAt), 'h:mm a')}
+                            </Text>
+                        )}
+                        {!!healthConnectError && !isHealthConnectLoading && (
+                            <Text style={{ color: '#F97316', fontSize: 11, marginTop: 6 }}>
+                                {healthConnectError}
+                            </Text>
+                        )}
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => {
+                            if (isHealthConnectAvailable && hasStepPermission) {
+                                openPermissionsScreen();
+                            } else if (isHealthConnectAvailable) {
+                                connectAndSync();
+                            } else {
+                                openHealthConnectApp();
+                            }
+                        }}
+                        style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 10,
+                            borderRadius: 12,
+                            backgroundColor: isHealthConnectAvailable && hasStepPermission
+                                ? colors.accent.primary + '15'
+                                : '#22C55E15',
+                            borderWidth: 1,
+                            borderColor: isHealthConnectAvailable && hasStepPermission
+                                ? colors.accent.primary + '30'
+                                : '#22C55E30'
+                        }}
+                    >
+                        <Text style={{
+                            color: isHealthConnectAvailable && hasStepPermission ? colors.accent.primary : '#22C55E',
+                            fontSize: 12,
+                            fontWeight: '700'
+                        }}>
+                            {isHealthConnectAvailable && hasStepPermission
+                                ? 'Manage'
+                                : isHealthConnectAvailable
+                                    ? 'Connect'
+                                    : 'Install'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
 
                 <TouchableOpacity
                     style={[styles.menuItemNew, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}

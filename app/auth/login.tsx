@@ -6,7 +6,6 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Dimensions,
-    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -14,34 +13,17 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import { useUserStore } from '../../src/store/useUserStore';
 import { useAlertStore } from '../../src/store/useAlertStore';
 import { LinearGradient } from 'expo-linear-gradient';
-import { auth } from '../../src/config/firebase';
-import { signInAnonymously, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { configureGoogleSignIn, isGoogleAuthAvailable, signInWithGoogleNative } from '../../src/services/authService';
 
 const { width, height } = Dimensions.get('window');
-
-// Try to import Google Sign-In
-let GoogleSignin: any = null;
-let statusCodes: any = null;
-let isGoogleSignInAvailable = false;
-
-try {
-    const googleSignInModule = require('@react-native-google-signin/google-signin');
-    GoogleSignin = googleSignInModule.GoogleSignin;
-    statusCodes = googleSignInModule.statusCodes;
-    isGoogleSignInAvailable = true;
-
-    GoogleSignin.configure({
-        webClientId: '1082475202315-k7beecp9gfncd1tpnl264u7tt57qifbd.apps.googleusercontent.com',
-        offlineAccess: true,
-    });
-} catch (e) {
-    console.log('Google Sign-In not available (Expo Go mode)');
-}
 
 export default function LoginScreen() {
     const { user, isAuthenticated } = useAuthStore();
     const { updateProfile, tempProfileData, setTempProfileData } = useUserStore();
-    const [isLoading, setIsLoading] = useState(false);
+    const signInAsGuest = useAuthStore((s) => s.signInAsGuest);
+    const [isGuestLoading, setIsGuestLoading] = useState(false);
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+    const [isGoogleReady, setIsGoogleReady] = useState(isGoogleAuthAvailable());
 
     // Watch for authentication state changes to navigate
     useEffect(() => {
@@ -49,6 +31,21 @@ export default function LoginScreen() {
             handlePostLoginNavigation();
         }
     }, [isAuthenticated, user]);
+
+    useEffect(() => {
+        if (!isGoogleAuthAvailable()) {
+            setIsGoogleReady(false);
+            return;
+        }
+
+        try {
+            configureGoogleSignIn();
+            setIsGoogleReady(true);
+        } catch (error) {
+            console.error('Google Sign-In Setup Error:', error);
+            setIsGoogleReady(false);
+        }
+    }, []);
 
     const handlePostLoginNavigation = async () => {
         // If we have onboarding data waiting, apply it to the new account
@@ -73,54 +70,37 @@ export default function LoginScreen() {
     };
 
     const handleGoogleSignIn = async () => {
-        if (!isGoogleSignInAvailable || !GoogleSignin) {
-            useAlertStore.getState().showAlert(
-                'Not Available',
-                'Google Sign-In requires a development build. Please use "Continue as Guest" in Expo Go, or build the app with EAS to use Google Sign-In.'
-            );
+        if (!isGoogleReady) {
+            useAlertStore.getState().showAlert('Build Required', 'Google login requires the installed development or production app build, not Expo Go.');
             return;
         }
 
-        setIsLoading(true);
+        setIsGoogleLoading(true);
         try {
-            await GoogleSignin.hasPlayServices();
-            const userInfo = await GoogleSignin.signIn();
-
-            // Get the ID token
-            const { idToken } = userInfo.data || userInfo; // Adjust based on library version of Google Signin
-
-            if (idToken) {
-                // Create a Google credential with the token
-                const googleCredential = GoogleAuthProvider.credential(idToken);
-                // Sign-in the user with the credential
-                await signInWithCredential(auth, googleCredential);
-                // useEffect will handle navigation
-            } else {
-                throw new Error('No ID token present!');
-            }
-
-        } catch (error: any) {
+            await signInWithGoogleNative();
+        } catch (error) {
             console.error('Google Sign-In Error:', error);
-            if (error.code === statusCodes?.SIGN_IN_CANCELLED) {
-                // User cancelled
-            } else {
-                useAlertStore.getState().showAlert('Error', 'Google Login Failed. Please try again.');
-            }
-            setIsLoading(false); // Only reset if failed. Success will unmount/navigate.
+            const message = error instanceof Error ? error.message : 'Google Login Failed. Please try again.';
+            useAlertStore.getState().showAlert('Error', message);
+        } finally {
+            setIsGoogleLoading(false);
         }
     };
 
     const handleGuestLogin = async () => {
-        setIsLoading(true);
+        setIsGuestLoading(true);
         try {
-            await signInAnonymously(auth);
+            await signInAsGuest();
             // useEffect will handle navigation
         } catch (error) {
             console.error('Guest login failed', error);
             useAlertStore.getState().showAlert('Error', 'Could not sign in as guest.');
-            setIsLoading(false);
+        } finally {
+            setIsGuestLoading(false);
         }
     };
+
+    const isLoading = isGuestLoading || isGoogleLoading;
 
     return (
         <View style={styles.container}>
@@ -146,9 +126,9 @@ export default function LoginScreen() {
                     <TouchableOpacity
                         style={[styles.button, styles.googleBtn]}
                         onPress={handleGoogleSignIn}
-                        disabled={isLoading}
+                        disabled={isLoading || !isGoogleReady}
                     >
-                        {isLoading ? (
+                        {isGoogleLoading ? (
                             <ActivityIndicator color="#000" />
                         ) : (
                             <>
@@ -169,8 +149,14 @@ export default function LoginScreen() {
                         onPress={handleGuestLogin}
                         disabled={isLoading}
                     >
-                        <Text style={styles.guestText}>Continue as Guest</Text>
-                        <Ionicons name="arrow-forward" size={18} color="#fff" />
+                        {isGuestLoading ? (
+                            <ActivityIndicator color="#fff" />
+                        ) : (
+                            <>
+                                <Text style={styles.guestText}>Continue as Guest</Text>
+                                <Ionicons name="arrow-forward" size={18} color="#fff" />
+                            </>
+                        )}
                     </TouchableOpacity>
                 </View>
 

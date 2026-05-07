@@ -63,6 +63,16 @@ export interface WorkoutLog {
     sets: WorkoutSet[];
 }
 
+export interface WorkoutStreak {
+    current: number;
+    longest: number;
+    workoutsThisWeek: number;
+    workoutsThisMonth: number;
+    lastWorkoutDate: string | null;
+    activeDays: string[];
+    todayCompleted: boolean;
+}
+
 export interface WorkoutSet {
     id: number;
     exerciseId: number;

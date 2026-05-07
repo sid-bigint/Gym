@@ -1,10 +1,10 @@
 import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 import { getDatabase, Database } from 'firebase/database';
-import { initializeAuth, getAuth, Auth } from 'firebase/auth';
-// @ts-ignore
-import { getReactNativePersistence } from 'firebase/auth';
+import { initializeAuth, getAuth, Auth, Persistence } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAnalytics, isSupported, Analytics } from "firebase/analytics";
+
+type ReactNativePersistenceFactory = (storage: typeof AsyncStorage) => Persistence;
 
 const firebaseConfig = {
     apiKey: "AIzaSyDCEWAnFKmJ-p7iLn3nyUjnHDZcKwV4qa4",
@@ -26,10 +26,18 @@ let analytics: Analytics | undefined;
 if (getApps().length === 0) {
     app = initializeApp(firebaseConfig);
 
-    // Initialize Auth with persistence for React Native
-    auth = initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage)
-    });
+    // Prefer React Native persistence when the installed Firebase bundle exposes it.
+    const authModule = require('firebase/auth') as {
+        getReactNativePersistence?: ReactNativePersistenceFactory;
+    };
+
+    if (authModule.getReactNativePersistence) {
+        auth = initializeAuth(app, {
+            persistence: authModule.getReactNativePersistence(AsyncStorage)
+        });
+    } else {
+        auth = getAuth(app);
+    }
 
     // Initialize Realtime Database
     rtdb = getDatabase(app);

@@ -1,11 +1,91 @@
 import { create } from 'zustand';
-import { Routine, RoutineExercise, Exercise, WorkoutLog, WorkoutSet, ActiveWorkoutSession, ActiveSet } from '../types';
 import { getDatabase } from '../db/database';
+import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek, subDays } from 'date-fns';
+import { ActiveSet, ActiveWorkoutSession, Exercise, Routine, WorkoutLog, WorkoutSet, WorkoutStreak } from '../types';
+
+const DEFAULT_STREAK: WorkoutStreak = {
+    current: 0,
+    longest: 0,
+    workoutsThisWeek: 0,
+    workoutsThisMonth: 0,
+    lastWorkoutDate: null,
+    activeDays: [],
+    todayCompleted: false,
+};
+
+function toDayKey(dateInput: string | Date) {
+    return format(new Date(dateInput), 'yyyy-MM-dd');
+}
+
+function differenceInCalendarDaysSafe(later: Date, earlier: Date) {
+    const safeLater = new Date(later.getFullYear(), later.getMonth(), later.getDate());
+    const safeEarlier = new Date(earlier.getFullYear(), earlier.getMonth(), earlier.getDate());
+    return Math.round((safeLater.getTime() - safeEarlier.getTime()) / 86400000);
+}
+
+function buildStreakStats(dates: string[]): WorkoutStreak {
+    if (dates.length === 0) {
+        return DEFAULT_STREAK;
+    }
+
+    const uniqueDays = Array.from(new Set(dates.map(toDayKey))).sort((a, b) => b.localeCompare(a));
+    const today = new Date();
+    const todayKey = toDayKey(today);
+    const yesterday = subDays(today, 1);
+    const yesterdayKey = toDayKey(yesterday);
+    const parsedDays = uniqueDays.map((day) => new Date(`${day}T00:00:00`));
+    const lastWorkoutDate = uniqueDays[0];
+    const todayCompleted = uniqueDays.includes(todayKey);
+
+    let current = 0;
+    if (lastWorkoutDate === todayKey || lastWorkoutDate === yesterdayKey) {
+        current = 1;
+        for (let i = 1; i < uniqueDays.length; i++) {
+            const previous = new Date(`${uniqueDays[i - 1]}T00:00:00`);
+            const next = new Date(`${uniqueDays[i]}T00:00:00`);
+            if (differenceInCalendarDaysSafe(previous, next) === 1) {
+                current += 1;
+            } else {
+                break;
+            }
+        }
+    }
+
+    let longest = uniqueDays.length > 0 ? 1 : 0;
+    let running = uniqueDays.length > 0 ? 1 : 0;
+    for (let i = 1; i < uniqueDays.length; i++) {
+        const previous = new Date(`${uniqueDays[i - 1]}T00:00:00`);
+        const next = new Date(`${uniqueDays[i]}T00:00:00`);
+        if (differenceInCalendarDaysSafe(previous, next) === 1) {
+            running += 1;
+        } else {
+            longest = Math.max(longest, running);
+            running = 1;
+        }
+    }
+    longest = Math.max(longest, running);
+
+    const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+    const monthStart = startOfMonth(today);
+    const monthEnd = endOfMonth(today);
+
+    return {
+        current,
+        longest,
+        workoutsThisWeek: parsedDays.filter((day) => day >= weekStart && day <= weekEnd).length,
+        workoutsThisMonth: parsedDays.filter((day) => day >= monthStart && day <= monthEnd).length,
+        lastWorkoutDate,
+        activeDays: uniqueDays,
+        todayCompleted,
+    };
+}
 
 interface WorkoutState {
     routines: Routine[];
     exercises: Exercise[];
     history: WorkoutLog[];
+    streak: WorkoutStreak;
     isLoading: boolean;
     activeWorkout: ActiveWorkoutSession | null;
 
@@ -32,12 +112,14 @@ interface WorkoutState {
     cancelActiveWorkout: () => void;
     getWorkoutHistory: (limit?: number) => Promise<any[]>;
     getExerciseHistory: (exerciseId: number) => Promise<any[]>;
+    loadStreak: () => Promise<void>;
 }
 
 export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     routines: [],
     exercises: [],
     history: [],
+    streak: DEFAULT_STREAK,
     isLoading: false,
     activeWorkout: null,
 
@@ -116,8 +198,10 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             const db = await getDatabase();
             const routines = await db.getAllAsync<Routine>('SELECT * FROM routines WHERE user_id = ? OR program_id IS NOT NULL', [userId]);
 
-            // Load exercises for each routine
-            const routinesWithExercises = await Promise.all(routines.map(async (routine) => {
+            // Load exercises sequentially. Android expo-sqlite can release prepared
+            // statement handles too early when several queries run in parallel.
+            const routinesWithExercises: Routine[] = [];
+            for (const routine of routines) {
                 const routineExercises = await db.getAllAsync<any>(
                     `SELECT re.*, e.name, e.muscle_group, e.type, e.instructions, e.images
            FROM routine_exercises re 
@@ -127,7 +211,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                     [routine.id]
                 );
 
-                return {
+                const routineWithExercises = {
                     ...routine,
                     exercises: routineExercises.map(re => {
                         let instructions: string[] = [];
@@ -154,7 +238,8 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                         };
                     })
                 };
-            }));
+                routinesWithExercises.push(routineWithExercises);
+            }
 
             set({
                 routines: routinesWithExercises.map(r => ({
@@ -296,11 +381,8 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             await db.runAsync('DELETE FROM workout_sets_v2 WHERE session_id = ?', [id]);
             // Delete session
             await db.runAsync('DELETE FROM workout_sessions WHERE id = ?', [id]);
-            // Refresh history
-            await get().getWorkoutHistory(); // This returns data, doesn't set state directly unless we call loadHistory
-            // But history screen calls loadHistory. 
-            // Better to trigger a refresh or let the UI handle it. 
-            // Actually, best to just return void and let UI reload.
+            await get().loadHistory(10);
+            await get().loadStreak();
         } catch (e) {
             console.error("Failed to delete workout log", e);
             throw e;
@@ -356,6 +438,9 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                 }
 
                 console.log("Workout session saved successfully");
+                const refreshedHistory = await get().getWorkoutHistory(10);
+                await get().loadStreak();
+                set({ history: refreshedHistory });
 
             } finally {
                 // Re-enable FK constraints
@@ -611,7 +696,8 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             );
 
             // Enrich with summary data from workout_sets_v2
-            const enrichedLogs = await Promise.all(sessions.map(async (session) => {
+            const enrichedLogs: any[] = [];
+            for (const session of sessions) {
                 const sets = await db.getAllAsync<any>(
                     `SELECT ws.*, e.name as exercise_name 
                      FROM workout_sets_v2 ws
@@ -623,7 +709,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                 const volume = sets.reduce((acc, s) => acc + (s.weight * s.reps), 0);
                 const exercises = [...new Set(sets.map(s => s.exercise_name || 'Unknown'))];
 
-                return {
+                const enrichedLog = {
                     id: session.id,
                     date: session.date,
                     duration: Math.floor(session.duration_seconds / 60), // Convert back to minutes for UI if needed
@@ -632,7 +718,8 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                     exercises,
                     setsCount: sets.length
                 };
-            }));
+                enrichedLogs.push(enrichedLog);
+            }
 
             return enrichedLogs;
         } catch (e) {
@@ -644,6 +731,31 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     loadHistory: async (limit = 10) => {
         const history = await get().getWorkoutHistory(limit);
         set({ history });
+    },
+
+    loadStreak: async () => {
+        try {
+            const { useUserStore } = require('./useUserStore');
+            const userStore = useUserStore.getState();
+            const userId = userStore.user?.id;
+
+            if (!userId) {
+                set({ streak: DEFAULT_STREAK });
+                return;
+            }
+
+            const db = await getDatabase();
+            const sessions = await db.getAllAsync<{ date: string }>(
+                'SELECT date FROM workout_sessions WHERE user_id = ? AND status = ? ORDER BY date DESC',
+                [userId, 'COMPLETED']
+            );
+
+            const streak = buildStreakStats(sessions.map((session) => session.date));
+            set({ streak });
+        } catch (e) {
+            console.error("Failed to load streak", e);
+            set({ streak: DEFAULT_STREAK });
+        }
     },
 
     getExerciseHistory: async (exerciseId: number) => {
