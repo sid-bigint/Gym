@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { useTheme } from '../store/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from './Button';
-import { spacing, borderRadius, shadows } from '../constants/theme';
+import { spacing, borderRadius } from '../constants/theme';
 import { useWorkoutStore } from '../store/useWorkoutStore';
+import { KeyboardAwareScreen } from './KeyboardAwareScreen';
 
 interface CreateExerciseModalProps {
     visible: boolean;
@@ -42,7 +43,7 @@ export const CreateExerciseModal = ({ visible, onClose, onCreated }: CreateExerc
             setName(''); // Reset
             onCreated(newEx);
             onClose();
-        } catch (e) {
+        } catch {
             Alert.alert("Error", "Failed to create exercise");
         } finally {
             setIsLoading(false);
@@ -56,9 +57,18 @@ export const CreateExerciseModal = ({ visible, onClose, onCreated }: CreateExerc
             presentationStyle="pageSheet"
             onRequestClose={onClose}
         >
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            <KeyboardAwareScreen
                 style={[styles.container, { backgroundColor: colors.background.primary }]}
+                contentContainerStyle={styles.content}
+                footer={
+                    <View style={[styles.footer, { borderTopColor: colors.border.primary, backgroundColor: colors.background.primary }]}>
+                        <Button
+                            title={isLoading ? "Creating..." : "Create Exercise"}
+                            onPress={handleCreate}
+                            disabled={isLoading}
+                        />
+                    </View>
+                }
             >
                 <View style={[styles.header, { borderBottomColor: colors.border.secondary }]}>
                     <Text style={[styles.title, { color: colors.text.primary }]}>Create Exercise</Text>
@@ -67,82 +77,69 @@ export const CreateExerciseModal = ({ visible, onClose, onCreated }: CreateExerc
                     </TouchableOpacity>
                 </View>
 
-                <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-
-                    {/* Name Input */}
-                    <View style={styles.formGroup}>
-                        <Text style={[styles.label, { color: colors.text.secondary }]}>Exercise Name</Text>
-                        <TextInput
-                            style={[styles.input, {
-                                backgroundColor: colors.background.elevated,
-                                color: colors.text.primary,
-                                borderColor: colors.border.primary
-                            }]}
-                            placeholder="e.g. Incline Bench Press"
-                            placeholderTextColor={colors.text.disabled}
-                            value={name}
-                            onChangeText={setName}
-                            autoFocus
-                        />
-                    </View>
-
-                    {/* Muscle Group Selector */}
-                    <View style={styles.formGroup}>
-                        <Text style={[styles.label, { color: colors.text.secondary }]}>Muscle Group</Text>
-                        <View style={styles.chipContainer}>
-                            {MUSCLE_GROUPS.map(mg => (
-                                <TouchableOpacity
-                                    key={mg}
-                                    style={[
-                                        styles.chip,
-                                        { borderColor: colors.border.primary },
-                                        muscleGroup === mg && { backgroundColor: colors.accent.primary, borderColor: colors.accent.primary }
-                                    ]}
-                                    onPress={() => setMuscleGroup(mg)}
-                                >
-                                    <Text style={[
-                                        styles.chipText,
-                                        { color: muscleGroup === mg ? 'white' : colors.text.primary }
-                                    ]}>{mg}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-
-                    {/* Type Selector */}
-                    <View style={styles.formGroup}>
-                        <Text style={[styles.label, { color: colors.text.secondary }]}>Exercise Type</Text>
-                        <View style={styles.chipContainer}>
-                            {EXERCISE_TYPES.map(t => (
-                                <TouchableOpacity
-                                    key={t}
-                                    style={[
-                                        styles.chip,
-                                        { borderColor: colors.border.primary },
-                                        type === t && { backgroundColor: colors.accent.secondary, borderColor: colors.accent.secondary }
-                                    ]}
-                                    onPress={() => setType(t)}
-                                >
-                                    <Text style={[
-                                        styles.chipText,
-                                        { color: type === t ? 'white' : colors.text.primary }
-                                    ]}>{t}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-
-                </ScrollView>
-
-                <View style={[styles.footer, { borderTopColor: colors.border.primary, backgroundColor: colors.background.primary }]}>
-                    <Button
-                        title={isLoading ? "Creating..." : "Create Exercise"}
-                        onPress={handleCreate}
-                        disabled={isLoading}
+                {/* Name Input */}
+                <View style={styles.formGroup}>
+                    <Text style={[styles.label, { color: colors.text.secondary }]}>Exercise Name</Text>
+                    <TextInput
+                        style={[styles.input, {
+                            backgroundColor: colors.background.elevated,
+                            color: colors.text.primary,
+                            borderColor: colors.border.primary
+                        }]}
+                        placeholder="e.g. Incline Bench Press"
+                        placeholderTextColor={colors.text.disabled}
+                        value={name}
+                        onChangeText={setName}
+                        autoFocus
                     />
                 </View>
 
-            </KeyboardAvoidingView>
+                {/* Muscle Group Selector */}
+                <View style={styles.formGroup}>
+                    <Text style={[styles.label, { color: colors.text.secondary }]}>Muscle Group</Text>
+                    <View style={styles.chipContainer}>
+                        {MUSCLE_GROUPS.map(mg => (
+                            <TouchableOpacity
+                                key={mg}
+                                style={[
+                                    styles.chip,
+                                    { borderColor: colors.border.primary },
+                                    muscleGroup === mg && { backgroundColor: colors.accent.primary, borderColor: colors.accent.primary }
+                                ]}
+                                onPress={() => setMuscleGroup(mg)}
+                            >
+                                <Text style={[
+                                    styles.chipText,
+                                    { color: muscleGroup === mg ? 'white' : colors.text.primary }
+                                ]}>{mg}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+
+                {/* Type Selector */}
+                <View style={styles.formGroup}>
+                    <Text style={[styles.label, { color: colors.text.secondary }]}>Exercise Type</Text>
+                    <View style={styles.chipContainer}>
+                        {EXERCISE_TYPES.map(t => (
+                            <TouchableOpacity
+                                key={t}
+                                style={[
+                                    styles.chip,
+                                    { borderColor: colors.border.primary },
+                                    type === t && { backgroundColor: colors.accent.secondary, borderColor: colors.accent.secondary }
+                                ]}
+                                onPress={() => setType(t)}
+                            >
+                                <Text style={[
+                                    styles.chipText,
+                                    { color: type === t ? 'white' : colors.text.primary }
+                                ]}>{t}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+            </KeyboardAwareScreen>
         </Modal>
     );
 };

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { getDatabase } from '../db/database';
 import { format } from 'date-fns';
+import { CloudSyncService } from '../services/cloudSyncService';
 
 export interface Measurement {
     id: number;
@@ -104,6 +105,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
             }
 
             await get().loadMeasurements();
+            CloudSyncService.scheduleBackup('measurement-saved');
         } catch (e) {
             console.error("Failed to add/update measurement", e);
             throw e;
@@ -115,6 +117,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
             const db = await getDatabase();
             await db.runAsync('DELETE FROM progress_measurements WHERE id = ?', [id]);
             await get().loadMeasurements();
+            CloudSyncService.scheduleBackup('measurement-deleted');
         } catch (e) {
             console.error("Failed to delete measurement", e);
         }

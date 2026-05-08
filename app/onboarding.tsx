@@ -397,6 +397,7 @@ export default function OnboardingScreen() {
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
                 >
                     {step === 1 && renderIntro()}
                     {step === 2 && renderStats()}

@@ -1,15 +1,16 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Modal, Platform } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Button } from '../../src/components/Button';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { useTheme } from '../../src/store/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { Exercise } from '../../src/types';
-import { spacing, borderRadius, shadows } from '../../src/constants/theme';
+import { spacing, borderRadius } from '../../src/constants/theme';
 import { ExerciseSelector } from '../../src/components/ExerciseSelector';
 import { ExerciseDetailsModal } from '../../src/components/ExerciseDetailsModal';
 import { useAlertStore } from '../../src/store/useAlertStore';
+import { KeyboardAwareScreen } from '../../src/components/KeyboardAwareScreen';
 
 export default function CreateRoutineScreen() {
     const { id } = useLocalSearchParams();
@@ -20,7 +21,7 @@ export default function CreateRoutineScreen() {
     const styles = useMemo(() => createStyles(colors), [colors]);
 
     const [name, setName] = useState('');
-    const [selectedExercises, setSelectedExercises] = useState<{ exercise: Exercise, sets: number, reps: number }[]>([]);
+    const [selectedExercises, setSelectedExercises] = useState<{ exercise: Exercise, sets: string, reps: string }[]>([]);
     const [showExerciseSelector, setShowExerciseSelector] = useState(false);
     const [detailExercise, setDetailExercise] = useState<any>(null);
 
@@ -34,8 +35,8 @@ export default function CreateRoutineScreen() {
                 if (routine.exercises) {
                     setSelectedExercises(routine.exercises.map(re => ({
                         exercise: re.exercise,
-                        sets: re.sets || 3,
-                        reps: re.reps || 10
+                        sets: String(re.sets || 3),
+                        reps: String(re.reps || 10)
                     })));
                 }
             }
@@ -56,14 +57,16 @@ export default function CreateRoutineScreen() {
 
         // Validate Inputs
         for (const ex of selectedExercises) {
-            if (isNaN(ex.sets) || ex.sets < 1) return useAlertStore.getState().showAlert("Invalid Input", `Invalid sets for ${ex.exercise.name}`);
-            if (isNaN(ex.reps) || ex.reps < 1) return useAlertStore.getState().showAlert("Invalid Input", `Invalid reps for ${ex.exercise.name}`);
+            const sets = Number(ex.sets);
+            const reps = Number(ex.reps);
+            if (!Number.isFinite(sets) || sets < 1) return useAlertStore.getState().showAlert("Invalid Input", `Invalid sets for ${ex.exercise.name}`);
+            if (!Number.isFinite(reps) || reps < 1) return useAlertStore.getState().showAlert("Invalid Input", `Invalid reps for ${ex.exercise.name}`);
         }
 
         const payload = selectedExercises.map(e => ({
             exerciseId: e.exercise.id,
-            sets: e.sets,
-            reps: e.reps
+            sets: Number(e.sets),
+            reps: Number(e.reps)
         }));
 
         if (isEditing) {
@@ -81,8 +84,8 @@ export default function CreateRoutineScreen() {
 
         const prepared = toAdd.map(ex => ({
             exercise: ex,
-            sets: 3,
-            reps: 10
+            sets: '3',
+            reps: '10'
         }));
 
         setSelectedExercises(prev => [...prev, ...prepared]);
@@ -93,7 +96,18 @@ export default function CreateRoutineScreen() {
         <View style={styles.container}>
             <Stack.Screen options={{ headerShown: false }} />
 
-            <ScrollView contentContainerStyle={styles.mainContent}>
+            <KeyboardAwareScreen
+                style={styles.container}
+                contentContainerStyle={styles.mainContent}
+                footer={
+                    <View style={styles.footer}>
+                        <Button
+                            title={isEditing ? "Update Routine" : "Save Routine"}
+                            onPress={handleSave}
+                        />
+                    </View>
+                }
+            >
                 <View style={styles.header}>
                     <TouchableOpacity style={styles.navBack} onPress={handleBack}>
                         <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
@@ -133,13 +147,11 @@ export default function CreateRoutineScreen() {
                                         <TextInput
                                             style={styles.configInput}
                                             keyboardType="numeric"
-                                            value={String(item.sets)}
+                                            value={item.sets}
+                                            placeholder="3"
+                                            placeholderTextColor={colors.text.disabled}
                                             onChangeText={(v) => {
-                                                const val = parseInt(v);
-                                                // Allow typing, validate on save. Just store safe value or keep if NaN during type
-                                                if (!isNaN(val)) {
-                                                    setSelectedExercises(prev => prev.map((e, index) => index === idx ? { ...e, sets: val } : e));
-                                                }
+                                                setSelectedExercises(prev => prev.map((e, index) => index === idx ? { ...e, sets: v.replace(/[^0-9]/g, '') } : e));
                                             }}
                                         />
                                     </View>
@@ -148,12 +160,11 @@ export default function CreateRoutineScreen() {
                                         <TextInput
                                             style={styles.configInput}
                                             keyboardType="numeric"
-                                            value={String(item.reps)}
+                                            value={item.reps}
+                                            placeholder="10"
+                                            placeholderTextColor={colors.text.disabled}
                                             onChangeText={(v) => {
-                                                const val = parseInt(v);
-                                                if (!isNaN(val)) {
-                                                    setSelectedExercises(prev => prev.map((e, index) => index === idx ? { ...e, reps: val } : e));
-                                                }
+                                                setSelectedExercises(prev => prev.map((e, index) => index === idx ? { ...e, reps: v.replace(/[^0-9]/g, '') } : e));
                                             }}
                                         />
                                     </View>
@@ -172,14 +183,7 @@ export default function CreateRoutineScreen() {
                         </TouchableOpacity>
                     )}
                 </View>
-            </ScrollView>
-
-            <View style={styles.footer}>
-                <Button
-                    title={isEditing ? "Update Routine" : "Save Routine"}
-                    onPress={handleSave}
-                />
-            </View>
+            </KeyboardAwareScreen>
 
             {/* Exercise Selector Modal */}
             <Modal
@@ -193,6 +197,7 @@ export default function CreateRoutineScreen() {
                         onClose={() => setShowExerciseSelector(false)}
                         onSelect={handleAddExercises}
                         multiSelect={true}
+                        initialSelected={selectedExercises.map(item => item.exercise.id)}
                         buttonLabel="Add Selected"
                         onExerciseLongPress={setDetailExercise}
                     />
@@ -328,10 +333,6 @@ const createStyles = (colors: any) => StyleSheet.create({
         fontWeight: '500',
     },
     footer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
         padding: spacing.xl,
         backgroundColor: colors.background.primary,
         borderTopWidth: 1,

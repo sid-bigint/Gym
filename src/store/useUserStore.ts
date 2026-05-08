@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { UserProfile } from '../types';
 import { UserRepository } from '../repositories/UserRepository';
 import { CloudRepository } from '../repositories/CloudRepository';
+import { CloudSyncService } from '../services/cloudSyncService';
 
 interface UserState {
     user: UserProfile | null;
@@ -118,6 +119,7 @@ export const useUserStore = create<UserState>((set, get) => ({
             CloudRepository.syncUserToCloud(updatedUser).catch(err => {
                 console.warn('Background Cloud Sync failed', err);
             });
+            CloudSyncService.scheduleBackup('profile-updated');
 
             // 3. Side Effects (Progress Store)
             if (updatedUser.weight && user.weight !== updatedUser.weight) {

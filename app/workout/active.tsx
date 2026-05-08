@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Modal, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Modal, Image } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { useTheme } from '../../src/store/useTheme';
 import { Ionicons } from '@expo/vector-icons';
-import { Button } from '../../src/components/Button';
 import { useAlertStore } from '../../src/store/useAlertStore';
 import { ExerciseDetailsModal } from '../../src/components/ExerciseDetailsModal';
 import { ExerciseSelector } from '../../src/components/ExerciseSelector';
 import { RestTimerOverlay } from '../../src/components/RestTimerOverlay';
 import { spacing, borderRadius } from '../../src/constants/theme';
+import { KeyboardAwareScreen } from '../../src/components/KeyboardAwareScreen';
+import { KeyboardAwareModal } from '../../src/components/KeyboardAwareModal';
 
 export default function ActiveWorkoutScreen() {
     const { activeWorkout, updateActiveSet, toggleActiveSet, finishActiveWorkout, cancelActiveWorkout, addActiveSet, removeActiveSet, exercises } = useWorkoutStore();
@@ -140,7 +141,7 @@ export default function ActiveWorkoutScreen() {
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
+            <KeyboardAwareScreen contentContainerStyle={styles.content}>
                 {uniqueExerciseIds.map((exId) => {
                     const sets = activeWorkout.activeSets.filter(s => s.exerciseId === exId);
                     const exerciseName = sets[0]?.exerciseName || 'Unknown Exercise';
@@ -272,7 +273,7 @@ export default function ActiveWorkoutScreen() {
                     <Ionicons name="add" size={24} color={colors.text.inverse} />
                     <Text style={[styles.addNewExerciseText, { color: colors.text.inverse }]}>Add Exercise</Text>
                 </TouchableOpacity>
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             <RestTimerOverlay
                 visible={showRestTimer}
@@ -317,10 +318,7 @@ export default function ActiveWorkoutScreen() {
                 transparent={true}
                 onRequestClose={() => setShowFinishModal(false)}
             >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={styles.modalOverlay}
-                >
+                <KeyboardAwareModal overlayStyle={styles.modalOverlay}>
                     <View style={[styles.confirmModal, { backgroundColor: colors.background.elevated }]}>
                         <Text style={[styles.confirmTitle, { color: colors.text.primary }]}>Finish Workout</Text>
                         <Text style={[styles.confirmText, { color: colors.text.secondary }]}>
@@ -359,7 +357,7 @@ export default function ActiveWorkoutScreen() {
                             </TouchableOpacity>
                         </View>
                     </View>
-                </KeyboardAvoidingView>
+                </KeyboardAwareModal>
             </Modal>
         </View >
     );

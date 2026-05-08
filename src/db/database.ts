@@ -239,6 +239,19 @@ export async function initDatabase() {
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
 
+            -- Saved meals (reusable grouped meal templates)
+            CREATE TABLE IF NOT EXISTS saved_meals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                name TEXT NOT NULL,
+                items_json TEXT NOT NULL,
+                calories INTEGER DEFAULT 0,
+                protein REAL DEFAULT 0,
+                carbs REAL DEFAULT 0,
+                fats REAL DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+
             -- User settings
             CREATE TABLE IF NOT EXISTS user_settings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

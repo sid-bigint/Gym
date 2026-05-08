@@ -1,11 +1,13 @@
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-import { View, ActivityIndicator, Text , LogBox } from "react-native";
-import { initDatabase } from "../src/db/database";
-import { useUserStore } from "../src/store/useUserStore";
-import { useAuthStore } from "../src/store/useAuthStore";
+import { LogBox } from "react-native";
 import { GlobalAlert } from "../src/components/GlobalAlert";
+import { initDatabase } from "../src/db/database";
 import { useAlertStore } from "../src/store/useAlertStore";
+import { useAuthStore } from "../src/store/useAuthStore";
+import { useUserStore } from "../src/store/useUserStore";
+import { CloudSyncService } from "../src/services/cloudSyncService";
 
 import { useWorkoutNotification } from "../src/hooks/useWorkoutNotification";
 
@@ -16,11 +18,12 @@ LogBox.ignoreLogs([
   "The 'expo-notifications' functionality"
 ]);
 
+SplashScreen.preventAutoHideAsync().catch(() => { });
+
 export default function RootLayout() {
   const loadUser = useUserStore((s) => s.loadUser);
   const loadAuthState = useAuthStore((s) => s.loadAuthState);
   const [isReady, setIsReady] = useState(false);
-  const [loadingStep, setLoadingStep] = useState('Starting app...');
 
   useWorkoutNotification();
 
@@ -29,17 +32,14 @@ export default function RootLayout() {
       try {
         console.log('=== App Initialization Started ===');
 
-        setLoadingStep('Loading settings...');
         await loadAuthState();
         console.log('Auth state loaded');
 
-        setLoadingStep('Initializing database...');
-        // Add a small timeout to allow UI to render the text
-        await new Promise(r => setTimeout(r, 100));
         await initDatabase();
         console.log('Database initialized');
 
-        setLoadingStep('Loading user profile...');
+        await CloudSyncService.restoreFromCloudIfLocalEmpty();
+
         await loadUser();
         console.log('User loaded');
 
@@ -49,18 +49,14 @@ export default function RootLayout() {
         useAlertStore.getState().showAlert('Initialization Error', 'Failed to start the app. Please restart.');
       } finally {
         setIsReady(true);
+        await SplashScreen.hideAsync().catch(() => { });
       }
     }
     init();
   }, []);
 
   if (!isReady) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#0A0A0F', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
-        <Text style={{ color: '#fff', marginTop: 16, fontSize: 16 }}>{loadingStep}</Text>
-      </View>
-    );
+    return null;
   }
 
   return (

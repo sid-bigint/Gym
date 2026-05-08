@@ -1,4 +1,5 @@
 import { getDatabase } from '../db/database';
+import { CloudSyncService } from './cloudSyncService';
 
 export interface CustomFood {
     id?: number;
@@ -18,6 +19,7 @@ export async function addCustomFood(food: Omit<CustomFood, 'id'>): Promise<numbe
             'INSERT INTO custom_foods (user_id, name, category, calories, protein, carbs, fats) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [food.userId, food.name, food.category, food.calories, food.protein, food.carbs, food.fats]
         );
+        CloudSyncService.scheduleBackup('custom-food-created');
         return result.lastInsertRowId;
     } catch (error) {
         console.error('Failed to add custom food:', error);
@@ -52,6 +54,7 @@ export async function deleteCustomFood(id: number): Promise<void> {
     try {
         const db = await getDatabase();
         await db.runAsync('DELETE FROM custom_foods WHERE id = ?', [id]);
+        CloudSyncService.scheduleBackup('custom-food-deleted');
     } catch (error) {
         console.error('Failed to delete custom food:', error);
     }
@@ -94,6 +97,7 @@ export async function updateCustomFood(id: number, food: Partial<CustomFood>): P
                 `UPDATE custom_foods SET ${updates.join(', ')} WHERE id = ?`,
                 values
             );
+            CloudSyncService.scheduleBackup('custom-food-updated');
         }
     } catch (error) {
         console.error('Failed to update custom food:', error);

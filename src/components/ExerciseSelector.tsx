@@ -1,5 +1,18 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Animated, FlatList, LayoutAnimation, Platform, UIManager, ActivityIndicator, Dimensions, Alert } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Animated,
+    FlatList,
+    LayoutAnimation,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+    ScrollView,
+} from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../store/useTheme';
@@ -8,110 +21,21 @@ import { spacing, borderRadius } from '../constants/theme';
 import { Button } from './Button';
 import { useWorkoutStore } from '../store/useWorkoutStore';
 import { CreateExerciseModal } from './CreateExerciseModal';
-
-// Enable LayoutAnimation
-if (Platform.OS === 'android') {
-    if (UIManager.setLayoutAnimationEnabledExperimental) {
-        UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
-}
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { ExerciseDetailsModal } from './ExerciseDetailsModal';
 
 const CATEGORIES = ["All", "Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Cardio/Full Body", "Mobility/Rehab"];
 const TYPES = ["All", "Gym", "Calisthenics", "Home", "Yoga", "Cardio", "Mobility", "General"];
 
-const ExerciseCard = ({ ex, isSelected, onPress, onLongPress, onDelete, colors }: any) => {
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-
-    const handlePressIn = () => {
-        Animated.spring(scaleAnim, { toValue: 0.96, useNativeDriver: true }).start();
-    };
-
-    const handlePressOut = () => {
-        Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
-    };
-
-    const styles = useMemo(() => createStyles(colors), [colors]);
-
-    return (
-        <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
-            <TouchableOpacity
-                style={[
-                    styles.card,
-                    isSelected && styles.cardSelected,
-                    { borderColor: isSelected ? colors.accent.primary : colors.border.primary }
-                ]}
-                onPress={() => onPress(ex)}
-                onLongPress={() => onLongPress && onLongPress(ex)}
-                onPressIn={handlePressIn}
-                onPressOut={handlePressOut}
-                activeOpacity={1}
-                delayLongPress={300}
-            >
-                {/* Image Section */}
-                <View style={styles.cardImageContainer}>
-                    {ex.images && ex.images.length > 0 ? (
-                        <Image
-                            source={{ uri: ex.images[0] }}
-                            style={styles.cardImage}
-                            contentFit="cover"
-                            transition={200}
-                        />
-                    ) : (
-                        <View style={[styles.placeholderImage, { backgroundColor: colors.background.elevated }]}>
-                            <Text style={{ fontSize: 24 }}>{ex.type === 'Yoga' ? '🧘‍♂️' : ex.type === 'Cardio' ? '❤️' : '💪'}</Text>
-                        </View>
-                    )}
-                    {/* Info Hint Overlay */}
-                    <View style={styles.infoHint}>
-                        <Ionicons name="information-circle" size={14} color="white" />
-                    </View>
-                </View>
-
-                {/* Text Content */}
-                <View style={styles.cardContent}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <Text style={[styles.cardTitle, isSelected && { color: colors.accent.primary }, { flex: 1, marginRight: 8 }]}>
-                            {ex.name}
-                        </Text>
-                        {ex.isCustom && onDelete && (
-                            <TouchableOpacity
-                                onPress={() => onDelete(ex)}
-                                style={{ padding: 4, marginTop: -4 }}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            >
-                                <Ionicons name="trash-outline" size={18} color={colors.text.tertiary} />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                    <View style={styles.cardBadges}>
-                        <View style={[styles.badge, { backgroundColor: colors.background.elevated }]}>
-                            <Text style={[styles.badgeText, { color: colors.text.secondary }]}>{ex.muscleGroup}</Text>
-                        </View>
-                        <View style={[styles.badge, { backgroundColor: colors.background.elevated }]}>
-                            <Text style={[styles.badgeText, { color: colors.text.tertiary }]}>{ex.type}</Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* Selection Checkbox */}
-                <View style={[styles.checkbox, isSelected && { backgroundColor: colors.accent.primary, borderColor: colors.accent.primary }]}>
-                    {isSelected && <Ionicons name="checkmark" size={16} color={colors.text.inverse} />}
-                </View>
-            </TouchableOpacity>
-        </Animated.View>
-    );
-};
-
 interface ExerciseSelectorProps {
     onClose: () => void;
     onSelect: (exercises: Exercise[]) => void;
-    initialSelected?: number[]; // IDs of initially selected exercises
+    initialSelected?: number[];
     multiSelect?: boolean;
     buttonLabel?: string;
     onExerciseLongPress?: (ex: Exercise) => void;
 }
+
+const getTerms = (value: string) => value.toLowerCase().trim().split(/\s+/).filter(Boolean);
 
 export const ExerciseSelector = ({
     onClose,
@@ -119,62 +43,99 @@ export const ExerciseSelector = ({
     initialSelected = [],
     multiSelect = true,
     buttonLabel = "Done",
-    onExerciseLongPress
+    onExerciseLongPress,
 }: ExerciseSelectorProps) => {
     const { exercises, loadExercises, deleteExercise } = useWorkoutStore();
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
     const [selectedIds, setSelectedIds] = useState<number[]>(initialSelected);
-
-    // Filtering
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [selectedType, setSelectedType] = useState("All");
     const [searchQuery, setSearchQuery] = useState("");
-
-    // Create Modal State
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [detailExercise, setDetailExercise] = useState<Exercise | null>(null);
 
-    // Footer Animation
-    const footerAnim = useRef(new Animated.Value(150)).current;
+    const footerAnim = useRef(new Animated.Value(multiSelect && initialSelected.length === 0 ? 150 : 0)).current;
+    const initialSelectedKey = initialSelected.join(',');
 
     useEffect(() => {
         loadExercises();
-    }, []);
+    }, [loadExercises]);
 
     useEffect(() => {
-        if (selectedIds.length > 0) {
-            Animated.spring(footerAnim, { toValue: 0, useNativeDriver: true, friction: 8 }).start();
-        } else {
-            if (multiSelect) {
-                Animated.timing(footerAnim, { toValue: 150, duration: 200, useNativeDriver: true }).start();
-            }
-        }
-    }, [selectedIds.length]);
+        setSelectedIds(initialSelected);
+    }, [initialSelectedKey, initialSelected]);
+
+    useEffect(() => {
+        if (!multiSelect) return;
+        Animated.spring(footerAnim, {
+            toValue: selectedIds.length > 0 ? 0 : 150,
+            useNativeDriver: true,
+            friction: 8,
+        }).start();
+    }, [footerAnim, selectedIds.length, multiSelect]);
+
+    const selectedExercises = useMemo(
+        () => exercises.filter(ex => selectedIds.includes(ex.id)),
+        [exercises, selectedIds]
+    );
+
+    const filteredList = useMemo(() => {
+        const terms = getTerms(searchQuery);
+
+        return exercises.filter(ex => {
+            const searchable = [
+                ex.name,
+                ex.muscleGroup,
+                ex.type,
+                ...(ex.instructions || []),
+            ].join(' ').toLowerCase();
+
+            const matchesSearch = terms.length === 0 || terms.every(term => searchable.includes(term));
+            const matchesCategory = selectedCategory === "All" || ex.muscleGroup === selectedCategory;
+            const matchesType = selectedType === "All" || ex.type === selectedType;
+
+            return matchesSearch && matchesCategory && matchesType;
+        });
+    }, [exercises, searchQuery, selectedCategory, selectedType]);
+
+    const hasFilters = selectedCategory !== "All" || selectedType !== "All" || searchQuery.length > 0;
+
+    const resetFilters = () => {
+        setSearchQuery('');
+        setSelectedCategory('All');
+        setSelectedType('All');
+    };
 
     const toggleSelection = (ex: Exercise) => {
-        if (multiSelect) {
-            if (selectedIds.includes(ex.id)) {
-                setSelectedIds(prev => prev.filter(id => id !== ex.id));
-            } else {
-                setSelectedIds(prev => [...prev, ex.id]);
-            }
-        } else {
-            // Single select mode - return immediately
+        if (!multiSelect) {
             onSelect([ex]);
             onClose();
+            return;
         }
+
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setSelectedIds(prev => prev.includes(ex.id) ? prev.filter(id => id !== ex.id) : [...prev, ex.id]);
     };
 
     const handleDone = () => {
-        const selected = exercises.filter(e => selectedIds.includes(e.id));
-        onSelect(selected);
+        onSelect(selectedExercises);
         onClose();
+    };
+
+    const handleDetails = (ex: Exercise) => {
+        if (onExerciseLongPress) {
+            onExerciseLongPress(ex);
+        } else {
+            setDetailExercise(ex);
+        }
     };
 
     const handleCreated = (newEx: Exercise) => {
         if (multiSelect) {
-            setSelectedIds(prev => [...prev, newEx.id]);
+            setSelectedIds(prev => prev.includes(newEx.id) ? prev : [...prev, newEx.id]);
+            setShowCreateModal(false);
         } else {
             onSelect([newEx]);
             onClose();
@@ -193,97 +154,140 @@ export const ExerciseSelector = ({
                     onPress: async () => {
                         try {
                             await deleteExercise(ex.id);
-                            // If selected, remove from selection
-                            if (selectedIds.includes(ex.id)) {
-                                setSelectedIds(prev => prev.filter(id => id !== ex.id));
-                            }
-                        } catch (e) {
-                            Alert.alert("Error", "Could not delete exercise. It might be in use.");
-                        }
+                            setSelectedIds(prev => prev.filter(id => id !== ex.id));
+                    } catch {
+                        Alert.alert("Error", "Could not delete exercise. It might be in use.");
                     }
-                }
+                    },
+                },
             ]
         );
     };
 
-    // Derived List
-    const filteredList = useMemo(() => {
-        if (!exercises || exercises.length === 0) return [];
+    const renderExercise = ({ item }: { item: Exercise }) => {
+        const isSelected = selectedIds.includes(item.id);
 
-        const searchTerms = searchQuery.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
+        return (
+            <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => toggleSelection(item)}
+                onLongPress={() => handleDetails(item)}
+                delayLongPress={300}
+                style={[
+                    styles.exerciseRow,
+                    {
+                        backgroundColor: isSelected ? colors.background.elevated : colors.background.primary,
+                        borderColor: isSelected ? colors.accent.primary : colors.border.primary,
+                    },
+                ]}
+            >
+                <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => handleDetails(item)}
+                    style={styles.thumbWrap}
+                >
+                    {item.images?.length ? (
+                        <Image source={{ uri: item.images[0] }} style={styles.thumbnail} contentFit="cover" transition={120} />
+                    ) : (
+                        <View style={[styles.thumbnail, styles.placeholder, { backgroundColor: colors.background.elevated }]}>
+                            <Ionicons name="barbell-outline" size={22} color={colors.text.tertiary} />
+                        </View>
+                    )}
+                </TouchableOpacity>
 
-        return exercises.filter(ex => {
-            // Multi-word substring match (matches if ALL terms are found in either name or category)
-            const matchesSearch = searchTerms.length === 0 || searchTerms.every(term =>
-                ex.name.toLowerCase().includes(term) ||
-                ex.muscleGroup.toLowerCase().includes(term)
-            );
+                <View style={styles.exerciseInfo}>
+                    <Text style={[styles.exerciseName, { color: isSelected ? colors.accent.primary : colors.text.primary }]} numberOfLines={1}>
+                        {item.name}
+                    </Text>
+                    <View style={styles.metaRow}>
+                        <Text style={[styles.metaText, { color: colors.text.tertiary }]} numberOfLines={1}>{item.muscleGroup}</Text>
+                        <View style={[styles.dot, { backgroundColor: colors.text.disabled }]} />
+                        <Text style={[styles.metaText, { color: colors.text.tertiary }]} numberOfLines={1}>{item.type}</Text>
+                    </View>
+                </View>
 
-            const matchesCategory = selectedCategory === "All" || ex.muscleGroup === selectedCategory;
-            const matchesType = selectedType === "All" || ex.type === selectedType;
+                {item.isCustom && (
+                    <TouchableOpacity
+                        onPress={() => handleDeleteStart(item)}
+                        style={styles.iconButton}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Ionicons name="trash-outline" size={18} color={colors.text.tertiary} />
+                    </TouchableOpacity>
+                )}
 
-            return matchesSearch && matchesCategory && matchesType;
-        });
-    }, [exercises, selectedCategory, selectedType, searchQuery]);
+                <View style={[styles.checkbox, isSelected && { backgroundColor: colors.accent.primary, borderColor: colors.accent.primary }]}>
+                    {isSelected ? (
+                        <Ionicons name="checkmark" size={16} color={colors.text.inverse} />
+                    ) : (
+                        <Ionicons name="add" size={16} color={colors.text.tertiary} />
+                    )}
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <View style={styles.selectionView}>
-            {/* Header */}
             <View style={styles.selectionHeader}>
                 <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                     <Ionicons name="close" size={24} color={colors.text.primary} />
                 </TouchableOpacity>
-                <Text style={styles.selectionTitle}>Select Exercises</Text>
-                <TouchableOpacity onPress={() => setShowCreateModal(true)} style={{ padding: 4 }}>
+                <View style={styles.headerCenter}>
+                    <Text style={styles.selectionTitle}>Select Exercises</Text>
+                    <Text style={[styles.selectionSubtitle, { color: colors.text.tertiary }]}>
+                        {filteredList.length} shown{selectedIds.length > 0 ? ` • ${selectedIds.length} selected` : ''}
+                    </Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowCreateModal(true)} style={styles.headerAction}>
                     <Ionicons name="add" size={24} color={colors.accent.primary} />
                 </TouchableOpacity>
             </View>
 
-            {/* Search */}
-            <View style={styles.searchBar}>
-                <Ionicons name="search" size={20} color={colors.text.tertiary} />
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search name, muscle, etc..."
-                    placeholderTextColor={colors.text.disabled}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                />
-                {searchQuery.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearchQuery('')}>
-                        <Ionicons name="close-circle" size={18} color={colors.text.disabled} />
-                    </TouchableOpacity>
-                )}
-            </View>
+            <View style={[styles.searchShell, { backgroundColor: colors.background.secondary }]}>
+                <View style={styles.searchBar}>
+                    <Ionicons name="search" size={20} color={colors.text.tertiary} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search name, muscle, type..."
+                        placeholderTextColor={colors.text.disabled}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        autoCorrect={false}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                            <Ionicons name="close-circle" size={18} color={colors.text.disabled} />
+                        </TouchableOpacity>
+                    )}
+                </View>
 
-            {/* Controls */}
-            <View style={styles.filtersContainer}>
-                {/* Category Chips */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
                     {CATEGORIES.map(cat => (
                         <TouchableOpacity
                             key={cat}
                             style={[
                                 styles.categoryChip,
-                                selectedCategory === cat && { backgroundColor: colors.accent.primary, borderColor: colors.accent.primary }
+                                { backgroundColor: colors.background.primary, borderColor: colors.border.primary },
+                                selectedCategory === cat && { backgroundColor: colors.accent.primary, borderColor: colors.accent.primary },
                             ]}
                             onPress={() => setSelectedCategory(cat)}
                         >
-                            <Text style={[styles.categoryChipText, { color: selectedCategory === cat ? 'white' : colors.text.secondary }]}>
+                            <Text style={[styles.categoryChipText, { color: selectedCategory === cat ? colors.text.inverse : colors.text.secondary }]}>
                                 {cat}
                             </Text>
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
 
-                {/* Types Chips */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeScroll}>
                     {TYPES.map(type => (
                         <TouchableOpacity
                             key={type}
                             style={[
                                 styles.typeChip,
-                                selectedType === type && { backgroundColor: colors.accent.secondary + '20', borderColor: colors.accent.secondary }
+                                { borderColor: colors.border.primary },
+                                selectedType === type && { backgroundColor: colors.accent.secondary + '20', borderColor: colors.accent.secondary },
                             ]}
                             onPress={() => setSelectedType(type)}
                         >
@@ -292,27 +296,21 @@ export const ExerciseSelector = ({
                             </Text>
                         </TouchableOpacity>
                     ))}
+                    {hasFilters && (
+                        <TouchableOpacity style={styles.clearFilters} onPress={resetFilters}>
+                            <Ionicons name="refresh" size={14} color={colors.accent.primary} />
+                            <Text style={[styles.clearFiltersText, { color: colors.accent.primary }]}>Clear</Text>
+                        </TouchableOpacity>
+                    )}
                 </ScrollView>
             </View>
 
-            {/* List */}
             <FlatList
                 data={filteredList}
                 keyExtractor={(item) => item.id.toString()}
+                keyboardShouldPersistTaps="handled"
                 contentContainerStyle={styles.listContent}
-                renderItem={({ item }) => {
-                    const isSelected = selectedIds.includes(item.id);
-                    return (
-                        <ExerciseCard
-                            ex={item}
-                            isSelected={isSelected}
-                            onPress={() => toggleSelection(item)}
-                            onLongPress={onExerciseLongPress}
-                            onDelete={handleDeleteStart}
-                            colors={colors}
-                        />
-                    );
-                }}
+                renderItem={renderExercise}
                 ListEmptyComponent={
                     <View style={styles.emptyState}>
                         {exercises.length === 0 ? (
@@ -321,44 +319,70 @@ export const ExerciseSelector = ({
                                 <Text style={{ color: colors.text.tertiary, marginTop: 8 }}>Loading database...</Text>
                             </>
                         ) : (
-                            <View style={{ alignItems: 'center', gap: 12 }}>
-                                <Text style={{ color: colors.text.tertiary }}>No exercises found</Text>
-                                <TouchableOpacity
-                                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                                    onPress={() => setShowCreateModal(true)}
-                                >
-                                    <Text style={{ color: colors.accent.primary, fontWeight: '600' }}>
+                            <>
+                                <Ionicons name="search-outline" size={40} color={colors.text.disabled} />
+                                <Text style={{ color: colors.text.tertiary, marginTop: 12 }}>No exercises found</Text>
+                                <TouchableOpacity style={styles.createInline} onPress={() => setShowCreateModal(true)}>
+                                    <Ionicons name="add-circle" size={18} color={colors.accent.primary} />
+                                    <Text style={{ color: colors.accent.primary, fontWeight: '700' }}>
                                         {searchQuery ? `Create "${searchQuery}"` : 'Create exercise'}
                                     </Text>
                                 </TouchableOpacity>
-                            </View>
+                            </>
                         )}
                     </View>
                 }
             />
 
-            {/* Footer Button for MultiSelect */}
             {multiSelect && (
-                <Animated.View style={[styles.stickyFooter, { transform: [{ translateY: footerAnim }] }]}>
+                <Animated.View
+                    style={[
+                        styles.stickyFooter,
+                        {
+                            backgroundColor: colors.background.primary,
+                            borderTopColor: colors.border.primary,
+                            transform: [{ translateY: footerAnim }],
+                        },
+                    ]}
+                >
+                    {selectedExercises.length > 0 && (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectedTray}>
+                            {selectedExercises.map(ex => (
+                                <TouchableOpacity
+                                    key={ex.id}
+                                    style={[styles.selectedPill, { backgroundColor: colors.background.elevated }]}
+                                    onPress={() => toggleSelection(ex)}
+                                >
+                                    <Text style={[styles.selectedPillText, { color: colors.text.primary }]} numberOfLines={1}>{ex.name}</Text>
+                                    <Ionicons name="close" size={14} color={colors.text.tertiary} />
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    )}
                     <Button
-                        title={selectedIds.length > 0 ? `Add ${selectedIds.length} Exercises` : buttonLabel}
+                        title={selectedIds.length > 0 ? `${buttonLabel} (${selectedIds.length})` : buttonLabel}
                         onPress={handleDone}
+                        disabled={selectedIds.length === 0}
                     />
                 </Animated.View>
             )}
 
-            {/* Create Modal */}
             <CreateExerciseModal
                 visible={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
                 onCreated={handleCreated}
+            />
+
+            <ExerciseDetailsModal
+                visible={!!detailExercise}
+                exercise={detailExercise}
+                onClose={() => setDetailExercise(null)}
             />
         </View>
     );
 };
 
 const createStyles = (colors: any) => StyleSheet.create({
-    // Selection View
     selectionView: {
         flex: 1,
         backgroundColor: colors.background.secondary,
@@ -367,26 +391,51 @@ const createStyles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: spacing.lg,
-        paddingTop: spacing.xl,
+        paddingHorizontal: spacing.lg,
+        paddingTop: Platform.OS === 'ios' ? spacing.xxl : spacing.xl,
+        paddingBottom: spacing.md,
         backgroundColor: colors.background.primary,
     },
     closeButton: {
-        padding: 4,
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerAction: {
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerCenter: {
+        flex: 1,
+        alignItems: 'center',
     },
     selectionTitle: {
         fontSize: 18,
-        fontWeight: '700',
+        fontWeight: '800',
         color: colors.text.primary,
+    },
+    selectionSubtitle: {
+        fontSize: 12,
+        marginTop: 2,
+    },
+    searchShell: {
+        paddingBottom: spacing.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border.primary,
     },
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: colors.background.primary,
-        margin: spacing.lg,
-        borderRadius: borderRadius.lg,
+        marginHorizontal: spacing.lg,
+        marginTop: spacing.md,
+        marginBottom: spacing.sm,
+        borderRadius: borderRadius.md,
         paddingHorizontal: spacing.md,
-        height: 44,
+        height: 46,
         borderWidth: 1,
         borderColor: colors.border.primary,
     },
@@ -395,24 +444,18 @@ const createStyles = (colors: any) => StyleSheet.create({
         marginLeft: spacing.sm,
         fontSize: 16,
         color: colors.text.primary,
+        height: '100%',
     },
-    filtersContainer: {
-        backgroundColor: colors.background.primary,
-        paddingBottom: spacing.sm,
-        zIndex: 10,
-    },
-    categoryScroll: {
+    chipScroll: {
         paddingHorizontal: spacing.lg,
-        paddingBottom: 12,
+        paddingBottom: spacing.sm,
         gap: 8,
     },
     categoryChip: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 14,
         paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: colors.background.elevated,
+        borderRadius: 18,
         borderWidth: 1,
-        borderColor: colors.border.primary,
     },
     categoryChipText: {
         fontSize: 13,
@@ -420,126 +463,137 @@ const createStyles = (colors: any) => StyleSheet.create({
     },
     typeScroll: {
         paddingHorizontal: spacing.lg,
-        paddingBottom: 12,
         gap: 8,
+        alignItems: 'center',
     },
     typeChip: {
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 14,
-        backgroundColor: 'transparent',
         borderWidth: 1,
-        borderColor: 'transparent',
     },
     typeChipText: {
         fontSize: 12,
-        fontWeight: '600',
+        fontWeight: '700',
+    },
+    clearFilters: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+    },
+    clearFiltersText: {
+        fontSize: 12,
+        fontWeight: '800',
     },
     listContent: {
         padding: spacing.lg,
-        paddingBottom: 100,
+        paddingBottom: 180,
+    },
+    exerciseRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: borderRadius.md,
+        borderWidth: 1,
+        padding: spacing.sm,
+        marginBottom: spacing.sm,
+        minHeight: 76,
+    },
+    thumbWrap: {
+        marginRight: spacing.md,
+    },
+    thumbnail: {
+        width: 56,
+        height: 56,
+        borderRadius: borderRadius.sm,
+    },
+    placeholder: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    exerciseInfo: {
+        flex: 1,
+        minWidth: 0,
+    },
+    exerciseName: {
+        fontSize: 15,
+        fontWeight: '800',
+        marginBottom: 6,
+    },
+    metaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    metaText: {
+        fontSize: 12,
+        fontWeight: '600',
+        maxWidth: 120,
+    },
+    dot: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+        marginHorizontal: 8,
+    },
+    iconButton: {
+        width: 34,
+        height: 34,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    checkbox: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        borderWidth: 2,
+        borderColor: colors.border.secondary,
+        marginLeft: spacing.sm,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     emptyState: {
         alignItems: 'center',
-        marginTop: spacing.xxl,
-    },
-
-    // Card Styles
-    card: {
-        flexDirection: 'row',
-        backgroundColor: colors.background.primary,
-        borderRadius: borderRadius.lg,
-        marginBottom: spacing.md,
-        padding: spacing.sm,
-        alignItems: 'center',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 2,
-        borderWidth: 1,
-        minHeight: 110,
-    },
-    cardSelected: {
-        backgroundColor: colors.background.elevated,
-    },
-    cardImageContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: borderRadius.md,
-        overflow: 'hidden',
-        position: 'relative',
-        marginRight: spacing.md,
-    },
-    cardImage: {
-        width: '100%',
-        height: '100%',
-    },
-    placeholderImage: {
-        width: '100%',
-        height: '100%',
-        alignItems: 'center',
         justifyContent: 'center',
+        paddingTop: spacing.xxxl,
     },
-    infoHint: {
-        position: 'absolute',
-        bottom: 2,
-        right: 2,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        borderRadius: 4,
-        padding: 2,
-    },
-    cardContent: {
-        flex: 1,
-        paddingVertical: spacing.xs,
-        justifyContent: 'center',
-    },
-    cardTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: colors.text.primary,
-        marginBottom: 4,
-        lineHeight: 20,
-    },
-    cardBadges: {
+    createInline: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
+        alignItems: 'center',
         gap: 6,
+        marginTop: spacing.md,
     },
-    badge: {
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
-    },
-    badgeText: {
-        fontSize: 10,
-        fontWeight: '600',
-    },
-    checkbox: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: colors.border.secondary,
-        marginRight: spacing.sm,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-
-    // Sticky Footer
     stickyFooter: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        padding: spacing.xl,
-        paddingBottom: spacing.xxl,
-        backgroundColor: colors.background.primary,
+        paddingHorizontal: spacing.xl,
+        paddingTop: spacing.md,
+        paddingBottom: Platform.OS === 'ios' ? spacing.xxl : spacing.xl,
         borderTopWidth: 1,
-        borderTopColor: colors.border.primary,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+        elevation: 5,
+    },
+    selectedTray: {
+        gap: 8,
+        paddingBottom: spacing.md,
+    },
+    selectedPill: {
+        maxWidth: 170,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        borderRadius: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+    },
+    selectedPillText: {
+        maxWidth: 130,
+        fontSize: 12,
+        fontWeight: '700',
     },
 });

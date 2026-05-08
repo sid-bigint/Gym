@@ -86,7 +86,7 @@ export default function NotesScreen() {
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <View style={[styles.composer, { backgroundColor: colors.background.card }]}>
                     <View style={styles.segment}>
                         {(['note', 'task'] as const).map((itemType) => (

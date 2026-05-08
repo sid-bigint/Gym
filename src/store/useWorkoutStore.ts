@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getDatabase } from '../db/database';
+import { CloudSyncService } from '../services/cloudSyncService';
 import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek, subDays } from 'date-fns';
 import { ActiveSet, ActiveWorkoutSession, Exercise, Routine, WorkoutLog, WorkoutSet, WorkoutStreak } from '../types';
 
@@ -162,9 +163,12 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             const instructionsJson = exercise.instructions ? JSON.stringify(exercise.instructions) : null;
             const imagesJson = exercise.images ? JSON.stringify(exercise.images) : null;
 
+            const { useUserStore } = require('./useUserStore');
+            const userId = useUserStore.getState().user?.id || null;
+
             const result = await db.runAsync(
-                'INSERT INTO exercises (name, muscle_group, type, instructions, images) VALUES (?, ?, ?, ?, ?)',
-                [exercise.name, exercise.muscleGroup, exercise.type || 'General', instructionsJson, imagesJson]
+                'INSERT INTO exercises (name, muscle_group, type, is_custom, instructions, images, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [exercise.name, exercise.muscleGroup, exercise.type || 'General', 1, instructionsJson, imagesJson, userId]
             );
             const newEx: Exercise = {
                 id: result.lastInsertRowId,
@@ -176,6 +180,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                 images: exercise.images || []
             };
             set(state => ({ exercises: [...state.exercises, newEx] }));
+            CloudSyncService.scheduleBackup('exercise-created');
             return newEx;
         } catch (e) {
             console.error("Failed to add exercise", e);
@@ -299,6 +304,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                 );
             }
             await get().loadRoutines();
+            CloudSyncService.scheduleBackup('routine-created');
         } catch (e) {
             console.error("Failed to create routine", e);
         }
@@ -336,6 +342,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                 );
             }
             await get().loadRoutines();
+            CloudSyncService.scheduleBackup('routine-updated');
         } catch (e) {
             console.error("Failed to update routine", e);
         }
@@ -356,6 +363,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             await db.runAsync('DELETE FROM routines WHERE id = ?', [safeId]);
 
             await get().loadRoutines();
+            CloudSyncService.scheduleBackup('routine-deleted');
         } catch (e) {
             console.error("Failed to delete routine", e);
             throw e;
@@ -368,6 +376,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             const safeId = Number(id);
             await db.runAsync('DELETE FROM exercises WHERE id = ? AND is_custom = 1', [safeId]);
             await get().loadExercises();
+            CloudSyncService.scheduleBackup('exercise-deleted');
         } catch (e) {
             console.error("Failed to delete exercise", e);
             throw e;
@@ -383,6 +392,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             await db.runAsync('DELETE FROM workout_sessions WHERE id = ?', [id]);
             await get().loadHistory(10);
             await get().loadStreak();
+            CloudSyncService.scheduleBackup('workout-deleted');
         } catch (e) {
             console.error("Failed to delete workout log", e);
             throw e;
@@ -441,6 +451,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                 const refreshedHistory = await get().getWorkoutHistory(10);
                 await get().loadStreak();
                 set({ history: refreshedHistory });
+                CloudSyncService.scheduleBackup('workout-saved');
 
             } finally {
                 // Re-enable FK constraints
@@ -708,6 +719,25 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
 
                 const volume = sets.reduce((acc, s) => acc + (s.weight * s.reps), 0);
                 const exercises = [...new Set(sets.map(s => s.exercise_name || 'Unknown'))];
+                const exerciseSummaries = exercises.map(name => {
+                    const exerciseSets = sets.filter(s => (s.exercise_name || 'Unknown') === name);
+                    const bestSet = exerciseSets.reduce((best, current) => {
+                        const bestScore = Number(best.weight || 0) * Number(best.reps || 0);
+                        const currentScore = Number(current.weight || 0) * Number(current.reps || 0);
+                        if (Number(current.weight || 0) > Number(best.weight || 0)) return current;
+                        if (Number(current.weight || 0) === Number(best.weight || 0) && currentScore > bestScore) return current;
+                        return best;
+                    }, exerciseSets[0]);
+
+                    return {
+                        name,
+                        sets: exerciseSets.length,
+                        volume: exerciseSets.reduce((acc, s) => acc + (Number(s.weight || 0) * Number(s.reps || 0)), 0),
+                        bestWeight: Number(bestSet?.weight || 0),
+                        bestReps: Number(bestSet?.reps || 0),
+                        bestEstimatedOneRepMax: Math.round(Number(bestSet?.weight || 0) * (1 + Number(bestSet?.reps || 0) / 30) * 10) / 10,
+                    };
+                });
 
                 const enrichedLog = {
                     id: session.id,
@@ -716,7 +746,18 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                     routineName: session.name,
                     volume,
                     exercises,
-                    setsCount: sets.length
+                    setsCount: sets.length,
+                    exerciseSummaries,
+                    sets: sets.map(s => ({
+                        id: s.id,
+                        exerciseId: s.exercise_id,
+                        exerciseName: s.exercise_name || 'Unknown',
+                        setNumber: s.set_number,
+                        weight: Number(s.weight || 0),
+                        reps: Number(s.reps || 0),
+                        volume: Number(s.weight || 0) * Number(s.reps || 0),
+                        estimatedOneRepMax: Math.round(Number(s.weight || 0) * (1 + Number(s.reps || 0) / 30) * 10) / 10,
+                    }))
                 };
                 enrichedLogs.push(enrichedLog);
             }

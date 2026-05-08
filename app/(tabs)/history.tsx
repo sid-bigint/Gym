@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, ScrollView, Dimensions, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, ScrollView, Dimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { useNutritionStore } from '../../src/store/useNutritionStore';
@@ -8,7 +8,7 @@ import { useTheme } from '../../src/store/useTheme';
 import { useScreenPadding } from '../../src/store/useScreenPadding';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, borderRadius, shadows } from '../../src/constants/theme';
-import { format, subDays, startOfDay, isSameDay } from 'date-fns';
+import { format, subDays, isSameDay } from 'date-fns';
 import { LineChart } from 'react-native-chart-kit';
 import { useAlertStore } from '../../src/store/useAlertStore';
 
@@ -128,6 +128,9 @@ export default function ProgressScreen() {
     const stats = useMemo(() => {
         const totalVolume = workouts.reduce((acc, w) => acc + (w.volume || 0), 0);
         const totalDuration = workouts.reduce((acc, w) => acc + (w.duration || 0), 0);
+        const totalSets = workouts.reduce((acc, w) => acc + (w.setsCount || 0), 0);
+        const exerciseNames = new Set<string>();
+        workouts.forEach(w => w.exercises?.forEach((name: string) => exerciseNames.add(name)));
 
         const avgCalories = nutritionHistory.length > 0
             ? (nutritionHistory.reduce((acc, n) => acc + (n.calories || 0), 0) / nutritionHistory.length).toFixed(0)
@@ -144,12 +147,101 @@ export default function ProgressScreen() {
             totalWorkouts: workouts.length,
             avgDuration: workouts.length > 0 ? (totalDuration / workouts.length).toFixed(0) : '0',
             totalVolume: (totalVolume / 1000).toFixed(1),
+            totalSets,
+            uniqueExercises: exerciseNames.size,
             avgCalories,
             avgProtein,
             currentWeight,
             weightChange: weightChange.toFixed(1)
         };
     }, [workouts, nutritionHistory, measurements]);
+
+    const trainingAnalytics = useMemo(() => {
+        const chronological = [...workouts].reverse();
+        const bestByExercise = new Map<string, any>();
+        let bestSessionVolume = 0;
+        let bestSession: any = null;
+        const prEvents: any[] = [];
+        const workoutPrMap: Record<number, any[]> = {};
+
+        chronological.forEach(workout => {
+            if ((workout.volume || 0) > bestSessionVolume) {
+                if (bestSessionVolume > 0) {
+                    const event = {
+                        workoutId: workout.id,
+                        type: 'Session Volume PR',
+                        label: `${((workout.volume || 0) / 1000).toFixed(1)}k kg`,
+                        icon: 'trophy-outline',
+                    };
+                    prEvents.push(event);
+                    workoutPrMap[workout.id] = [...(workoutPrMap[workout.id] || []), event];
+                }
+                bestSessionVolume = workout.volume || 0;
+                bestSession = workout;
+            }
+
+            (workout.exerciseSummaries || []).forEach((summary: any) => {
+                const previous = bestByExercise.get(summary.name);
+                const events: any[] = [];
+
+                if (previous) {
+                    if (summary.bestWeight > previous.bestWeight) {
+                        events.push({
+                            workoutId: workout.id,
+                            type: 'Weight PR',
+                            exercise: summary.name,
+                            label: `${summary.bestWeight}kg x ${summary.bestReps}`,
+                            icon: 'barbell-outline',
+                        });
+                    }
+                    if (summary.bestEstimatedOneRepMax > previous.bestEstimatedOneRepMax) {
+                        events.push({
+                            workoutId: workout.id,
+                            type: 'Estimated 1RM PR',
+                            exercise: summary.name,
+                            label: `${summary.bestEstimatedOneRepMax}kg`,
+                            icon: 'flash-outline',
+                        });
+                    }
+                    if (summary.volume > previous.volume) {
+                        events.push({
+                            workoutId: workout.id,
+                            type: 'Volume PR',
+                            exercise: summary.name,
+                            label: `${Math.round(summary.volume)}kg`,
+                            icon: 'stats-chart-outline',
+                        });
+                    }
+                }
+
+                const nextBest = {
+                    bestWeight: Math.max(previous?.bestWeight || 0, summary.bestWeight || 0),
+                    bestEstimatedOneRepMax: Math.max(previous?.bestEstimatedOneRepMax || 0, summary.bestEstimatedOneRepMax || 0),
+                    volume: Math.max(previous?.volume || 0, summary.volume || 0),
+                    sets: Math.max(previous?.sets || 0, summary.sets || 0),
+                };
+                bestByExercise.set(summary.name, nextBest);
+
+                if (events.length > 0) {
+                    prEvents.push(...events);
+                    workoutPrMap[workout.id] = [...(workoutPrMap[workout.id] || []), ...events];
+                }
+            });
+        });
+
+        const topExercises = Array.from(bestByExercise.entries())
+            .map(([name, best]) => ({ name, ...best }))
+            .sort((a, b) => (b.volume || 0) - (a.volume || 0))
+            .slice(0, 6);
+
+        return {
+            bestSession,
+            bestSessionVolume,
+            topExercises,
+            recentPrs: prEvents.slice(-8).reverse(),
+            workoutPrMap,
+        };
+    }, [workouts]);
 
     const handleDeleteWorkout = (id: number) => {
         useAlertStore.getState().showAlert(
@@ -164,7 +256,7 @@ export default function ProgressScreen() {
                         try {
                             await deleteWorkoutLog(id);
                             loadHistory();
-                        } catch (e) {
+                        } catch {
                             useAlertStore.getState().showAlert("Error", "Failed to delete workout");
                         }
                     }
@@ -175,6 +267,10 @@ export default function ProgressScreen() {
 
     const renderWorkoutItem = ({ item }: { item: any }) => {
         const date = new Date(item.date);
+        const workoutPrs = trainingAnalytics.workoutPrMap[item.id] || [];
+        const topExerciseSummaries = [...(item.exerciseSummaries || [])]
+            .sort((a: any, b: any) => (b.volume || 0) - (a.volume || 0))
+            .slice(0, 3);
 
         return (
             <TouchableOpacity
@@ -209,9 +305,35 @@ export default function ProgressScreen() {
                     </View>
                     <View style={styles.statItem}>
                         <Ionicons name="list-outline" size={14} color={colors.accent.primary} />
-                        <Text style={styles.statText}>{item.exercises?.length || 0} exercises</Text>
+                        <Text style={styles.statText}>{item.setsCount || 0} sets</Text>
                     </View>
                 </View>
+
+                {workoutPrs.length > 0 && (
+                    <View style={styles.prStrip}>
+                        {workoutPrs.slice(0, 2).map((pr: any, index: number) => (
+                            <View key={`${pr.type}-${index}`} style={styles.prPill}>
+                                <Ionicons name={pr.icon as any} size={12} color={colors.accent.warning} />
+                                <Text style={styles.prPillText} numberOfLines={1}>
+                                    {pr.exercise ? `${pr.exercise}: ` : ''}{pr.type}
+                                </Text>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                {topExerciseSummaries.length > 0 && (
+                    <View style={styles.exerciseSummaryBlock}>
+                        {topExerciseSummaries.map((summary: any) => (
+                            <View key={summary.name} style={styles.exerciseSummaryRow}>
+                                <Text style={styles.exerciseSummaryName} numberOfLines={1}>{summary.name}</Text>
+                                <Text style={styles.exerciseSummaryMeta}>
+                                    {summary.sets} sets • {Math.round(summary.volume)}kg • best {summary.bestWeight}x{summary.bestReps}
+                                </Text>
+                            </View>
+                        ))}
+                    </View>
+                )}
 
                 <View style={styles.exercisesPreview}>
                     <Text style={styles.exercisesText} numberOfLines={1}>
@@ -320,7 +442,73 @@ export default function ProgressScreen() {
                                         <Text style={styles.miniStatValue}>{stats.totalVolume}k</Text>
                                         <Text style={styles.miniStatLabel}>Tot. Tonnes</Text>
                                     </View>
+                                    <View style={[styles.miniStatCard, { backgroundColor: colors.background.card, borderColor: colors.accent.primary + '20' }]}>
+                                        <Text style={styles.miniStatValue}>{stats.totalSets}</Text>
+                                        <Text style={styles.miniStatLabel}>Sets</Text>
+                                    </View>
                                 </View>
+                            )}
+
+                            <View style={styles.sectionHeader}>
+                                <Ionicons name="trophy" size={20} color={colors.accent.warning} />
+                                <Text style={styles.sectionTitle}>Records & PRs</Text>
+                            </View>
+
+                            <View style={styles.recordsGrid}>
+                                <View style={styles.recordCard}>
+                                    <Text style={styles.recordLabel}>Best Session Volume</Text>
+                                    <Text style={styles.recordValue}>{(trainingAnalytics.bestSessionVolume / 1000).toFixed(1)}k kg</Text>
+                                    <Text style={styles.recordMeta} numberOfLines={1}>
+                                        {trainingAnalytics.bestSession?.routineName || 'No workout yet'}
+                                    </Text>
+                                </View>
+                                <View style={styles.recordCard}>
+                                    <Text style={styles.recordLabel}>Exercises Tracked</Text>
+                                    <Text style={styles.recordValue}>{stats.uniqueExercises}</Text>
+                                    <Text style={styles.recordMeta}>with measurable sets</Text>
+                                </View>
+                            </View>
+
+                            {trainingAnalytics.recentPrs.length > 0 ? (
+                                <View style={styles.prList}>
+                                    {trainingAnalytics.recentPrs.map((pr, index) => (
+                                        <View key={`${pr.workoutId}-${pr.type}-${index}`} style={styles.prRow}>
+                                            <View style={styles.prIcon}>
+                                                <Ionicons name={pr.icon as any} size={16} color={colors.accent.warning} />
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.prTitle}>{pr.type}</Text>
+                                                <Text style={styles.prSubtitle} numberOfLines={1}>
+                                                    {pr.exercise ? `${pr.exercise} • ` : ''}{pr.label}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    ))}
+                                </View>
+                            ) : (
+                                <View style={styles.emptyChart}>
+                                    <Ionicons name="trophy-outline" size={48} color={colors.text.disabled} />
+                                    <Text style={styles.emptyText}>Complete repeat workouts to unlock PRs</Text>
+                                </View>
+                            )}
+
+                            {trainingAnalytics.topExercises.length > 0 && (
+                                <>
+                                    <Text style={styles.chartTitle}>Exercise Summary</Text>
+                                    <View style={styles.exerciseLeaderboard}>
+                                        {trainingAnalytics.topExercises.map((exercise) => (
+                                            <View key={exercise.name} style={styles.leaderboardRow}>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={styles.leaderboardName}>{exercise.name}</Text>
+                                                    <Text style={styles.leaderboardMeta}>
+                                                        Best {exercise.bestWeight}kg • est. 1RM {exercise.bestEstimatedOneRepMax}kg
+                                                    </Text>
+                                                </View>
+                                                <Text style={styles.leaderboardValue}>{Math.round(exercise.volume)}kg</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                </>
                             )}
 
                             <Text style={styles.chartTitle}>Training Volume (kg)</Text>
@@ -570,6 +758,52 @@ const createStyles = (colors: any, contentTop: number) => StyleSheet.create({
         color: colors.text.tertiary,
         fontStyle: 'italic',
     },
+    prStrip: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 12,
+    },
+    prPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        maxWidth: '100%',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 14,
+        backgroundColor: colors.accent.warning + '15',
+    },
+    prPillText: {
+        flexShrink: 1,
+        color: colors.accent.warning,
+        fontSize: 11,
+        fontWeight: '800',
+    },
+    exerciseSummaryBlock: {
+        gap: 8,
+        marginBottom: 12,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border.secondary,
+    },
+    exerciseSummaryRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
+    },
+    exerciseSummaryName: {
+        flex: 1,
+        color: colors.text.primary,
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    exerciseSummaryMeta: {
+        color: colors.text.tertiary,
+        fontSize: 11,
+        fontWeight: '600',
+    },
     emptyState: {
         alignItems: 'center',
         justifyContent: 'center',
@@ -601,9 +835,11 @@ const createStyles = (colors: any, contentTop: number) => StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
         marginBottom: 32,
+        flexWrap: 'wrap',
     },
     miniStatCard: {
         flex: 1,
+        minWidth: '46%',
         padding: 16,
         borderRadius: 16,
         alignItems: 'center',
@@ -638,6 +874,103 @@ const createStyles = (colors: any, contentTop: number) => StyleSheet.create({
         fontSize: 18,
         fontWeight: '800',
         color: colors.text.primary,
+    },
+    recordsGrid: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 20,
+    },
+    recordCard: {
+        flex: 1,
+        backgroundColor: colors.background.card,
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: colors.border.primary,
+    },
+    recordLabel: {
+        color: colors.text.tertiary,
+        fontSize: 11,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 8,
+    },
+    recordValue: {
+        color: colors.text.primary,
+        fontSize: 22,
+        fontWeight: '900',
+    },
+    recordMeta: {
+        color: colors.text.secondary,
+        fontSize: 12,
+        marginTop: 4,
+        fontWeight: '600',
+    },
+    prList: {
+        gap: 10,
+        marginBottom: 28,
+    },
+    prRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: colors.background.card,
+        borderRadius: 14,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: colors.border.secondary,
+    },
+    prIcon: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.accent.warning + '15',
+    },
+    prTitle: {
+        color: colors.text.primary,
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    prSubtitle: {
+        color: colors.text.tertiary,
+        fontSize: 12,
+        marginTop: 2,
+        fontWeight: '600',
+    },
+    exerciseLeaderboard: {
+        marginBottom: 28,
+        backgroundColor: colors.background.card,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: colors.border.secondary,
+        overflow: 'hidden',
+    },
+    leaderboardRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border.secondary,
+    },
+    leaderboardName: {
+        color: colors.text.primary,
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    leaderboardMeta: {
+        color: colors.text.tertiary,
+        fontSize: 12,
+        marginTop: 2,
+        fontWeight: '600',
+    },
+    leaderboardValue: {
+        color: colors.accent.primary,
+        fontSize: 13,
+        fontWeight: '900',
     },
     subToggleContainer: {
         flexDirection: 'row',

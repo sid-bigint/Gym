@@ -1,22 +1,37 @@
 import { create } from 'zustand';
 import { Platform, Linking } from 'react-native';
 import { endOfDay, startOfDay } from 'date-fns';
-import {
-    SdkAvailabilityStatus,
-    getGrantedPermissions,
-    getSdkStatus,
-    initialize,
-    openHealthConnectDataManagement,
-    openHealthConnectSettings,
-    readRecords,
-    requestPermission,
-} from 'react-native-health-connect';
 
 const REQUIRED_PERMISSIONS = [
     { accessType: 'read' as const, recordType: 'Steps' as const },
 ];
 
 const HEALTH_CONNECT_PACKAGE = 'com.google.android.apps.healthdata';
+const SDK_AVAILABLE = 3;
+
+let healthConnectModule: any | null = null;
+let healthConnectModuleChecked = false;
+
+function getHealthConnectModule() {
+    if (Platform.OS !== 'android') return null;
+    if (healthConnectModule) return healthConnectModule;
+    if (healthConnectModuleChecked) return null;
+
+    try {
+        healthConnectModuleChecked = true;
+        healthConnectModule = require('react-native-health-connect');
+        return healthConnectModule;
+    } catch {
+        return null;
+    }
+}
+
+function isMissingNativeModuleError(error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    return message.includes("doesn't seem to be linked") ||
+        message.includes('NativeModule') ||
+        message.includes('TurboModuleRegistry');
+}
 
 interface HealthConnectState {
     sdkStatus: number | null;
@@ -35,10 +50,6 @@ interface HealthConnectState {
     syncTodaySteps: () => Promise<void>;
     openPermissionsScreen: () => void;
     openHealthConnectApp: () => Promise<void>;
-}
-
-function isAndroid() {
-    return Platform.OS === 'android';
 }
 
 function hasRequiredStepPermission(grantedPermissions: { accessType: string; recordType: string }[]) {
@@ -63,21 +74,25 @@ export const useHealthConnectStore = create<HealthConnectState>((set, get) => ({
     error: null,
 
     refreshStatus: async () => {
-        if (!isAndroid()) {
+        const mod = getHealthConnectModule();
+        if (!mod) {
             set({
                 sdkStatus: null,
                 isAvailable: false,
                 isInitialized: false,
                 hasStepPermission: false,
                 todaySteps: 0,
-                error: 'Health Connect is available only on Android.',
+                error: Platform.OS === 'android'
+                    ? 'Health Connect requires a development or production build.'
+                    : 'Health Connect is available only on Android.',
             });
             return;
         }
 
         try {
-            const sdkStatus = await getSdkStatus();
-            const isAvailable = sdkStatus === SdkAvailabilityStatus.SDK_AVAILABLE;
+            const sdkStatus = await mod.getSdkStatus();
+            const availableStatus = mod.SdkAvailabilityStatus?.SDK_AVAILABLE ?? SDK_AVAILABLE;
+            const isAvailable = sdkStatus === availableStatus;
 
             set({
                 sdkStatus,
@@ -85,11 +100,15 @@ export const useHealthConnectStore = create<HealthConnectState>((set, get) => ({
                 error: isAvailable ? null : 'Health Connect is not available on this device yet.',
             });
         } catch (error) {
-            console.error('Failed to refresh Health Connect status', error);
+            if (!isMissingNativeModuleError(error)) {
+                console.error('Failed to refresh Health Connect status', error);
+            }
             set({
                 sdkStatus: null,
                 isAvailable: false,
-                error: 'Could not check Health Connect availability.',
+                error: isMissingNativeModuleError(error)
+                    ? 'Health Connect requires a development or production build.'
+                    : 'Could not check Health Connect availability.',
             });
         }
     },
@@ -103,8 +122,11 @@ export const useHealthConnectStore = create<HealthConnectState>((set, get) => ({
                 return;
             }
 
-            const initialized = await initialize();
-            const grantedPermissions = await getGrantedPermissions();
+            const mod = getHealthConnectModule();
+            if (!mod) return;
+
+            const initialized = await mod.initialize();
+            const grantedPermissions = await mod.getGrantedPermissions();
             const hasStepPermission = hasRequiredStepPermission(grantedPermissions);
 
             set({
@@ -117,9 +139,13 @@ export const useHealthConnectStore = create<HealthConnectState>((set, get) => ({
                 await get().syncTodaySteps();
             }
         } catch (error) {
-            console.error('Failed to bootstrap Health Connect', error);
+            if (!isMissingNativeModuleError(error)) {
+                console.error('Failed to bootstrap Health Connect', error);
+            }
             set({
-                error: error instanceof Error ? error.message : 'Failed to connect to Health Connect.',
+                error: isMissingNativeModuleError(error)
+                    ? 'Health Connect requires a development or production build.'
+                    : error instanceof Error ? error.message : 'Failed to connect to Health Connect.',
             });
         } finally {
             set({ isLoading: false });
@@ -127,8 +153,9 @@ export const useHealthConnectStore = create<HealthConnectState>((set, get) => ({
     },
 
     connectAndSync: async () => {
-        if (!isAndroid()) {
-            set({ error: 'Health Connect is available only on Android.' });
+        const mod = getHealthConnectModule();
+        if (!mod) {
+            set({ error: 'Health Connect requires a development or production Android build.' });
             return;
         }
 
@@ -136,18 +163,20 @@ export const useHealthConnectStore = create<HealthConnectState>((set, get) => ({
         try {
             await get().refreshStatus();
             const currentStatus = get().sdkStatus;
+            const availableStatus = mod.SdkAvailabilityStatus?.SDK_AVAILABLE ?? SDK_AVAILABLE;
+            const updateRequiredStatus = mod.SdkAvailabilityStatus?.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED;
 
-            if (currentStatus !== SdkAvailabilityStatus.SDK_AVAILABLE) {
+            if (currentStatus !== availableStatus) {
                 set({
-                    error: currentStatus === SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
+                    error: currentStatus === updateRequiredStatus
                         ? 'Install or update Health Connect to continue.'
                         : 'Health Connect is not available on this device.',
                 });
                 return;
             }
 
-            const initialized = await initialize();
-            const grantedPermissions = await requestPermission(REQUIRED_PERMISSIONS);
+            const initialized = await mod.initialize();
+            const grantedPermissions = await mod.requestPermission(REQUIRED_PERMISSIONS);
             const hasStepPermission = hasRequiredStepPermission(grantedPermissions);
 
             set({
@@ -160,9 +189,13 @@ export const useHealthConnectStore = create<HealthConnectState>((set, get) => ({
                 await get().syncTodaySteps();
             }
         } catch (error) {
-            console.error('Failed to connect Health Connect', error);
+            if (!isMissingNativeModuleError(error)) {
+                console.error('Failed to connect Health Connect', error);
+            }
             set({
-                error: error instanceof Error ? error.message : 'Health Connect connection failed.',
+                error: isMissingNativeModuleError(error)
+                    ? 'Health Connect requires a development or production Android build.'
+                    : error instanceof Error ? error.message : 'Health Connect connection failed.',
             });
         } finally {
             set({ isLoading: false });
@@ -174,10 +207,13 @@ export const useHealthConnectStore = create<HealthConnectState>((set, get) => ({
             return;
         }
 
+        const mod = getHealthConnectModule();
+        if (!mod) return;
+
         set({ isSyncing: true, error: null });
         try {
             const now = new Date();
-            const result = await readRecords('Steps', {
+            const result = await mod.readRecords('Steps', {
                 timeRangeFilter: {
                     operator: 'between',
                     startTime: startOfDay(now).toISOString(),
@@ -185,7 +221,7 @@ export const useHealthConnectStore = create<HealthConnectState>((set, get) => ({
                 },
             });
 
-            const todaySteps = result.records.reduce((total, record) => total + (record.count || 0), 0);
+            const todaySteps = result.records.reduce((total: number, record: any) => total + (record.count || 0), 0);
 
             set({
                 todaySteps,
@@ -193,9 +229,13 @@ export const useHealthConnectStore = create<HealthConnectState>((set, get) => ({
                 error: null,
             });
         } catch (error) {
-            console.error('Failed to sync today steps', error);
+            if (!isMissingNativeModuleError(error)) {
+                console.error('Failed to sync today steps', error);
+            }
             set({
-                error: error instanceof Error ? error.message : 'Could not sync step data.',
+                error: isMissingNativeModuleError(error)
+                    ? 'Health Connect requires a development or production build.'
+                    : error instanceof Error ? error.message : 'Could not sync step data.',
             });
         } finally {
             set({ isSyncing: false });
@@ -203,31 +243,39 @@ export const useHealthConnectStore = create<HealthConnectState>((set, get) => ({
     },
 
     openPermissionsScreen: () => {
+        const mod = getHealthConnectModule();
+        if (!mod) return;
+
         try {
-            openHealthConnectDataManagement();
+            mod.openHealthConnectDataManagement();
         } catch (error) {
             console.error('Failed to open Health Connect data management', error);
         }
     },
 
     openHealthConnectApp: async () => {
-        if (!isAndroid()) {
+        if (Platform.OS !== 'android') {
             return;
         }
 
+        const mod = getHealthConnectModule();
         try {
-            openHealthConnectSettings();
+            if (mod?.openHealthConnectSettings) {
+                mod.openHealthConnectSettings();
+                return;
+            }
         } catch (error) {
             console.warn('Falling back to Play Store for Health Connect', error);
-            const marketUrl = `market://details?id=${HEALTH_CONNECT_PACKAGE}`;
-            const webUrl = `https://play.google.com/store/apps/details?id=${HEALTH_CONNECT_PACKAGE}`;
+        }
 
-            const canOpenMarket = await Linking.canOpenURL(marketUrl);
-            if (canOpenMarket) {
-                await Linking.openURL(marketUrl);
-            } else {
-                await Linking.openURL(webUrl);
-            }
+        const marketUrl = `market://details?id=${HEALTH_CONNECT_PACKAGE}`;
+        const webUrl = `https://play.google.com/store/apps/details?id=${HEALTH_CONNECT_PACKAGE}`;
+
+        const canOpenMarket = await Linking.canOpenURL(marketUrl);
+        if (canOpenMarket) {
+            await Linking.openURL(marketUrl);
+        } else {
+            await Linking.openURL(webUrl);
         }
     },
 }));

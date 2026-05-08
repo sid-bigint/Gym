@@ -14,6 +14,7 @@ import { useUserStore } from '../../src/store/useUserStore';
 import { useAlertStore } from '../../src/store/useAlertStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { configureGoogleSignIn, isGoogleAuthAvailable, signInWithGoogleNative } from '../../src/services/authService';
+import { CloudSyncService } from '../../src/services/cloudSyncService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -60,8 +61,15 @@ export default function LoginScreen() {
 
             await updateProfile(safeProfileData);
             setTempProfileData(null);
+            await CloudSyncService.backupNow('google-onboarding-complete');
             router.replace('/(tabs)');
         } else {
+            const restored = await CloudSyncService.restoreFromCloudIfLocalEmpty();
+            if (restored) {
+                await useUserStore.getState().loadUser();
+            } else {
+                await CloudSyncService.backupNow('google-login');
+            }
             // Check if user has a name/profile setups?
             // If new user, create default profile
             // We can optionally check if profile is empty, but for now redirect

@@ -1,4 +1,4 @@
-import { ref, set, get, child, update } from 'firebase/database';
+import { ref, set, get, child } from 'firebase/database';
 import { rtdb, auth } from '../config/firebase';
 import { UserProfile } from '../types';
 
@@ -14,7 +14,7 @@ export const CloudRepository = {
         if (!currentUser) return; // Not logged in, skip sync
 
         try {
-            const userRef = ref(rtdb, `users/${currentUser.uid}`);
+            const userRef = ref(rtdb, `users/${currentUser.uid}/profile`);
 
             // Sanitize data -> Remove undefined values properly
             // Firebase doesn't like 'undefined', prefer 'null' or missing keys
@@ -41,7 +41,7 @@ export const CloudRepository = {
 
         try {
             const dbRef = ref(rtdb);
-            const snapshot = await get(child(dbRef, `users/${currentUser.uid}`));
+            const snapshot = await get(child(dbRef, `users/${currentUser.uid}/profile`));
 
             if (snapshot.exists()) {
                 const data = snapshot.val();

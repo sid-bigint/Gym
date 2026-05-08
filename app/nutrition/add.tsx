@@ -8,10 +8,13 @@ import { useUserStore } from '../../src/store/useUserStore';
 import { useTheme } from '../../src/store/useTheme';
 import { useAlertStore } from '../../src/store/useAlertStore';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, borderRadius, shadows } from '../../src/constants/theme';
+import { spacing, shadows } from '../../src/constants/theme';
 import foodDatabase from '../../src/data/foodDatabase.json';
 import { getUserCustomFoods, addCustomFood, deleteCustomFood, CustomFood } from '../../src/services/customFoodsService';
 import { LinearGradient } from 'expo-linear-gradient';
+import { KeyboardAwareScreen } from '../../src/components/KeyboardAwareScreen';
+import { KeyboardAwareModal } from '../../src/components/KeyboardAwareModal';
+import { SavedMeal, addSavedMeal, deleteSavedMeal, getSavedMeals } from '../../src/services/savedMealsService';
 
 
 
@@ -53,7 +56,10 @@ export default function AddFoodScreen() {
     const [grams, setGrams] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [customFoods, setCustomFoods] = useState<CustomFood[]>([]);
+    const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
     const [showCustomFoodModal, setShowCustomFoodModal] = useState(false);
+    const [showSaveMealModal, setShowSaveMealModal] = useState(false);
+    const [savedMealName, setSavedMealName] = useState('');
 
     // Custom Meal Type State
     const [showMealTypeModal, setShowMealTypeModal] = useState(false);
@@ -64,7 +70,7 @@ export default function AddFoodScreen() {
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
     // Delete Modal State
-    const [deleteModal, setDeleteModal] = useState<{ visible: boolean; type: 'mealType' | 'food'; id: string; name: string } | null>(null);
+    const [deleteModal, setDeleteModal] = useState<{ visible: boolean; type: 'mealType' | 'food' | 'savedMeal'; id: string; name: string } | null>(null);
     const [isSearchActive, setIsSearchActive] = useState(false);
 
     const confirmDelete = async () => {
@@ -78,6 +84,9 @@ export default function AddFoodScreen() {
         } else if (deleteModal.type === 'food') {
             await deleteCustomFood(Number(deleteModal.id));
             await loadCustomFoods();
+        } else if (deleteModal.type === 'savedMeal' && user?.id) {
+            await deleteSavedMeal(Number(deleteModal.id), user.id);
+            await loadSavedMeals();
         }
         setDeleteModal(null);
     };
@@ -91,12 +100,20 @@ export default function AddFoodScreen() {
 
     useEffect(() => {
         loadCustomFoods();
+        loadSavedMeals();
     }, []);
 
     const loadCustomFoods = async () => {
         if (user?.id) {
             const foods = await getUserCustomFoods(user.id);
             setCustomFoods(foods);
+        }
+    };
+
+    const loadSavedMeals = async () => {
+        if (user?.id) {
+            const meals = await getSavedMeals(user.id);
+            setSavedMeals(meals);
         }
     };
 
@@ -170,6 +187,50 @@ export default function AddFoodScreen() {
             id: String(id),
             name: food?.name || 'Food Item'
         });
+    };
+
+    const handleDeleteSavedMeal = (meal: SavedMeal) => {
+        setDeleteModal({
+            visible: true,
+            type: 'savedMeal',
+            id: String(meal.id),
+            name: meal.name
+        });
+    };
+
+    const handleUseSavedMeal = (meal: SavedMeal) => {
+        const stamp = Date.now();
+        const clonedItems = meal.items.map((item, index) => ({
+            ...item,
+            id: `saved-${meal.id}-${stamp}-${index}`,
+        }));
+        setFoodItems(prev => [...prev, ...clonedItems]);
+        setIsSearchActive(false);
+        setSearchQuery('');
+        setSelectedFood('');
+        useAlertStore.getState().showAlert('Meal Added', `${meal.name} added to this log`);
+    };
+
+    const handleSaveReusableMeal = async () => {
+        if (!user?.id) {
+            useAlertStore.getState().showAlert('Error', 'User not found');
+            return;
+        }
+        if (foodItems.length === 0) {
+            useAlertStore.getState().showAlert('Required', 'Add food items before saving a meal');
+            return;
+        }
+        const name = savedMealName.trim();
+        if (!name) {
+            useAlertStore.getState().showAlert('Required', 'Please enter a meal name');
+            return;
+        }
+
+        await addSavedMeal(user.id, name, foodItems);
+        setSavedMealName('');
+        setShowSaveMealModal(false);
+        await loadSavedMeals();
+        useAlertStore.getState().showAlert('Saved', `${name} is ready to reuse`);
     };
 
     const handleAddCustomFood = async () => {
@@ -307,7 +368,10 @@ export default function AddFoodScreen() {
                 headerTintColor: colors.text.primary
             }} />
 
-            <ScrollView ref={scrollViewRef} contentContainerStyle={[styles.content, isSearchActive && styles.searchContentActive]} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareScreen
+                scrollRef={scrollViewRef}
+                contentContainerStyle={[styles.content, isSearchActive && styles.searchContentActive]}
+            >
                 {/* Food Search Section - Now at the Top */}
                 <View style={[styles.searchSection, isSearchActive && styles.searchSectionActive]}>
                     <View style={styles.searchHeader}>
@@ -590,6 +654,69 @@ export default function AddFoodScreen() {
                             </View>
                         </LinearGradient>
 
+                        {/* Saved Meals */}
+                        <View style={styles.quickAccessSection}>
+                            <View style={styles.sectionHeaderRow}>
+                                <Text style={[styles.sectionTitleMini, { color: colors.text.tertiary }]}>SAVED MEALS</Text>
+                                {foodItems.length > 0 && (
+                                    <TouchableOpacity onPress={() => {
+                                        setSavedMealName(`${mealType} meal`);
+                                        setShowSaveMealModal(true);
+                                    }}>
+                                        <Text style={{ color: colors.accent.primary, fontWeight: '700', fontSize: 12 }}>Save Current</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickAccessScroll}>
+                                {foodItems.length > 0 && (
+                                    <TouchableOpacity
+                                        style={[styles.quickFoodCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary, borderStyle: 'dashed' }]}
+                                        onPress={() => {
+                                            setSavedMealName(`${mealType} meal`);
+                                            setShowSaveMealModal(true);
+                                        }}
+                                    >
+                                        <View style={[styles.quickFoodIcon, { backgroundColor: colors.background.elevated }]}>
+                                            <Ionicons name="bookmark-outline" size={16} color={colors.accent.primary} />
+                                        </View>
+                                        <Text style={[styles.quickFoodText, { color: colors.accent.primary, fontWeight: '700' }]}>Save This Meal</Text>
+                                    </TouchableOpacity>
+                                )}
+
+                                {savedMeals.length === 0 ? (
+                                    <View style={[styles.savedMealEmpty, { borderColor: colors.border.secondary }]}>
+                                        <Text style={[styles.savedMealEmptyText, { color: colors.text.tertiary }]}>Reusable meals will show here</Text>
+                                    </View>
+                                ) : (
+                                    savedMeals.map(meal => (
+                                        <TouchableOpacity
+                                            key={meal.id}
+                                            style={[styles.savedMealCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}
+                                            onPress={() => handleUseSavedMeal(meal)}
+                                            onLongPress={() => handleDeleteSavedMeal(meal)}
+                                        >
+                                            <View style={[styles.quickFoodIcon, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                                                <Ionicons name="restaurant" size={15} color={colors.accent.success} />
+                                            </View>
+                                            <View style={styles.savedMealInfo}>
+                                                <Text style={[styles.savedMealName, { color: colors.text.primary }]} numberOfLines={1}>{meal.name}</Text>
+                                                <Text style={[styles.savedMealMeta, { color: colors.text.tertiary }]} numberOfLines={1}>
+                                                    {meal.items.length} items • {meal.calories} kcal
+                                                </Text>
+                                            </View>
+                                            <TouchableOpacity
+                                                onPress={() => handleDeleteSavedMeal(meal)}
+                                                style={styles.savedMealDelete}
+                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                            >
+                                                <Ionicons name="trash-outline" size={16} color={colors.text.tertiary} />
+                                            </TouchableOpacity>
+                                        </TouchableOpacity>
+                                    ))
+                                )}
+                            </ScrollView>
+                        </View>
+
                         {/* Custom Foods Quick Access & Creation */}
                         <View style={styles.quickAccessSection}>
                             <View style={styles.sectionHeaderRow}>
@@ -698,7 +825,12 @@ export default function AddFoodScreen() {
                             <View style={styles.addedItemsSection}>
                                 <View style={styles.sectionHeaderRow}>
                                     <Text style={[styles.sectionTitleMini, { color: colors.text.tertiary }]}>LOGGED ITEMS</Text>
-                                    <Text style={{ color: colors.text.tertiary, fontSize: 12 }}>{foodItems.length} items</Text>
+                                    <TouchableOpacity onPress={() => {
+                                        setSavedMealName(`${mealType} meal`);
+                                        setShowSaveMealModal(true);
+                                    }}>
+                                        <Text style={{ color: colors.accent.primary, fontSize: 12, fontWeight: '700' }}>Save as Meal</Text>
+                                    </TouchableOpacity>
                                 </View>
                                 {foodItems.map(item => (
                                     <View key={item.id} style={[styles.foodCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
@@ -727,7 +859,47 @@ export default function AddFoodScreen() {
                         />
                     </>
                 )}
-            </ScrollView >
+            </KeyboardAwareScreen>
+
+            {/* Save Reusable Meal Modal */}
+            <Modal
+                visible={showSaveMealModal}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setShowSaveMealModal(false)}
+            >
+                <KeyboardAwareModal
+                    overlayStyle={styles.deleteOverlay}
+                    contentStyle={[styles.confirmModal, { backgroundColor: colors.background.elevated, borderColor: colors.accent.primary, borderWidth: 1.5, shadowColor: colors.accent.primary, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 }]}
+                >
+                    <Text style={[styles.confirmTitle, { color: colors.text.primary }]}>Save Reusable Meal</Text>
+                    <Text style={[styles.confirmText, { color: colors.text.secondary }]}>
+                        Save these {foodItems.length} item(s) so you can add them again later.
+                    </Text>
+                    <TextInput
+                        style={[styles.input, { backgroundColor: colors.background.card, color: colors.text.primary, borderColor: colors.border.primary, width: '100%' }]}
+                        placeholder="e.g., Morning oats"
+                        placeholderTextColor={colors.text.disabled}
+                        value={savedMealName}
+                        onChangeText={setSavedMealName}
+                        autoFocus
+                    />
+                    <View style={[styles.confirmButtons, { marginTop: spacing.lg }]}>
+                        <TouchableOpacity
+                            style={[styles.confirmButton, { backgroundColor: colors.background.card }]}
+                            onPress={() => setShowSaveMealModal(false)}
+                        >
+                            <Text style={[styles.confirmButtonText, { color: colors.text.primary }]}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.confirmButton, { backgroundColor: colors.accent.primary }]}
+                            onPress={handleSaveReusableMeal}
+                        >
+                            <Text style={[styles.confirmButtonText, { color: colors.text.inverse }]}>Save Meal</Text>
+                        </TouchableOpacity>
+                    </View>
+                </KeyboardAwareModal>
+            </Modal>
 
             {/* Custom Food Modal */}
             < Modal
@@ -737,8 +909,10 @@ export default function AddFoodScreen() {
                 onRequestClose={() => setShowCustomFoodModal(false)
                 }
             >
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.background.primary, borderColor: colors.accent.primary, borderWidth: 1.5, shadowColor: colors.accent.primary, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 }]}>
+                <KeyboardAwareModal
+                    overlayStyle={styles.modalOverlay}
+                    contentStyle={[styles.modalContent, { backgroundColor: colors.background.primary, borderColor: colors.accent.primary, borderWidth: 1.5, shadowColor: colors.accent.primary, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 }]}
+                >
                         <View style={styles.modalHeader}>
                             <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Manage Custom Foods</Text>
                             <TouchableOpacity onPress={() => setShowCustomFoodModal(false)}>
@@ -746,7 +920,7 @@ export default function AddFoodScreen() {
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView>
+                        <ScrollView keyboardShouldPersistTaps="handled">
                             <View style={{ marginBottom: spacing.lg }}>
                                 <Text style={[styles.label, { color: colors.text.secondary, marginTop: 0 }]}>My Foods</Text>
                                 {customFoods.length === 0 ? (
@@ -842,8 +1016,7 @@ export default function AddFoodScreen() {
                                 style={{ marginTop: spacing.lg }}
                             />
                         </ScrollView>
-                    </View>
-                </View>
+                </KeyboardAwareModal>
             </Modal >
             {/* Custom Meal Type Modal */}
             <Modal
@@ -852,8 +1025,10 @@ export default function AddFoodScreen() {
                 transparent={true}
                 onRequestClose={() => setShowMealTypeModal(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.background.primary, borderColor: colors.accent.primary, borderWidth: 1.5, shadowColor: colors.accent.primary, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 }]}>
+                <KeyboardAwareModal
+                    overlayStyle={styles.modalOverlay}
+                    contentStyle={[styles.modalContent, { backgroundColor: colors.background.primary, borderColor: colors.accent.primary, borderWidth: 1.5, shadowColor: colors.accent.primary, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 }]}
+                >
                         <View style={styles.modalHeader}>
                             <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Manage Meal Types</Text>
                             <TouchableOpacity onPress={() => setShowMealTypeModal(false)}>
@@ -897,8 +1072,7 @@ export default function AddFoodScreen() {
                             onPress={handleAddCustomMealType}
                             style={{ marginTop: spacing.lg }}
                         />
-                    </View>
-                </View>
+                </KeyboardAwareModal>
             </Modal>
             {/* Delete Confirmation Modal */}
             <Modal
@@ -910,7 +1084,7 @@ export default function AddFoodScreen() {
                 <View style={styles.deleteOverlay}>
                     <View style={[styles.confirmModal, { backgroundColor: colors.background.elevated, borderColor: colors.accent.primary, borderWidth: 1.5, shadowColor: colors.accent.primary, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 }]}>
                         <Text style={[styles.confirmTitle, { color: colors.text.primary }]}>
-                            Delete {deleteModal?.type === 'mealType' ? 'Meal Type' : 'Food'}
+                            Delete {deleteModal?.type === 'mealType' ? 'Meal Type' : deleteModal?.type === 'savedMeal' ? 'Saved Meal' : 'Food'}
                         </Text>
                         <Text style={[styles.confirmText, { color: colors.text.secondary }]}>
                             {`Are you sure you want to delete "${deleteModal?.name}"?`}
@@ -1113,6 +1287,49 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         maxWidth: 120,
+    },
+    savedMealCard: {
+        width: 230,
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        borderRadius: 14,
+        borderWidth: 1,
+        marginRight: 10,
+        gap: 10,
+    },
+    savedMealInfo: {
+        flex: 1,
+        minWidth: 0,
+    },
+    savedMealName: {
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    savedMealMeta: {
+        fontSize: 12,
+        marginTop: 2,
+    },
+    savedMealDelete: {
+        width: 28,
+        height: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    savedMealEmpty: {
+        minWidth: 220,
+        minHeight: 52,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 16,
+        marginRight: 10,
+    },
+    savedMealEmptyText: {
+        fontSize: 13,
+        fontWeight: '600',
     },
     addedItemsSection: {
         marginBottom: spacing.xxl,

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { getDatabase } from '../db/database';
 import { format } from 'date-fns';
+import { CloudSyncService } from '../services/cloudSyncService';
 
 export interface NutritionLog {
     id: number;
@@ -112,6 +113,7 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
                 [dateStr, log.foodName, log.calories, log.protein, log.carbs, log.fats, log.mealType, userId]
             );
             await get().loadLogs();
+            CloudSyncService.scheduleBackup('nutrition-log-created');
         } catch (e) {
             console.error("Failed to add nutrition log", e);
             throw e;
@@ -129,6 +131,7 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
                 [log.foodName, log.calories, log.protein, log.carbs, log.fats, log.mealType, log.id]
             );
             await get().loadLogs();
+            CloudSyncService.scheduleBackup('nutrition-log-updated');
         } catch (e) {
             console.error("Failed to update nutrition log", e);
             throw e;
@@ -140,6 +143,7 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
             const db = await getDatabase();
             await db.runAsync('DELETE FROM nutrition_logs WHERE id = ?', [id]);
             await get().loadLogs();
+            CloudSyncService.scheduleBackup('nutrition-log-deleted');
         } catch (e) {
             console.error("Failed to delete nutrition log", e);
         }
