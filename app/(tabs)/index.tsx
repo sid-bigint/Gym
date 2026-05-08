@@ -6,6 +6,7 @@ import { useNutritionStore } from '../../src/store/useNutritionStore';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { useProgressStore } from '../../src/store/useProgressStore';
 import { useHealthConnectStore } from '../../src/store/useHealthConnectStore';
+import { useNotesStore } from '../../src/store/useNotesStore';
 import { useTheme } from '../../src/store/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, borderRadius, shadows } from '../../src/constants/theme';
@@ -140,6 +141,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
     marginBottom: spacing.xl,
+  },
+  notebookCard: {
+    marginTop: -spacing.md,
+    marginBottom: spacing.xl,
+    borderRadius: 24,
+    padding: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    ...shadows.sm,
+  },
+  notebookIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notebookTitle: {
+    fontSize: 17,
+    fontWeight: '900',
+    marginBottom: 3,
+  },
+  notebookMeta: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   mainCard: {
     padding: spacing.lg,
@@ -410,6 +437,7 @@ export default function Dashboard() {
   const { totals, loadLogs: loadNutrition } = useNutritionStore();
   const { activeWorkout, history, streak, loadRoutines: loadWorkouts, loadHistory, loadStreak } = useWorkoutStore();
   const { measurements, loadMeasurements, addMeasurement } = useProgressStore();
+  const notebookItems = useNotesStore((s) => s.items);
   const {
     todaySteps,
     isAvailable: isHealthConnectAvailable,
@@ -524,6 +552,17 @@ export default function Dashboard() {
   const latestWeight = useMemo(() => {
     return measurements[0]?.weight || user?.weight || '--';
   }, [measurements, user?.weight]);
+
+  const notebookSummary = useMemo(() => {
+    const taskCount = notebookItems.filter(item => item.type === 'task').length;
+    const openTaskCount = notebookItems.filter(item => item.type === 'task' && !item.isDone).length;
+    return {
+      total: notebookItems.length,
+      label: notebookItems.length === 0
+        ? 'Notes, tasks, reminders'
+        : `${notebookItems.length} items · ${openTaskCount}/${taskCount} tasks open`,
+    };
+  }, [notebookItems]);
 
   const handleSaveWeight = async () => {
     if (!weightInput) return;
@@ -829,6 +868,27 @@ export default function Dashboard() {
             </TouchableOpacity>
           </View>
         </View>
+
+        <TouchableOpacity
+          style={[styles.notebookCard, { backgroundColor: colors.background.card }]}
+          onPress={() => router.push('/notes' as any)}
+        >
+          <View style={[styles.notebookIcon, { backgroundColor: colors.accent.primary + '18' }]}>
+            <Ionicons name="book-outline" size={24} color={colors.accent.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.notebookTitle, { color: colors.text.primary }]}>Notebook Tracker</Text>
+            <Text style={[styles.notebookMeta, { color: colors.text.tertiary }]}>{notebookSummary.label}</Text>
+          </View>
+          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+            {notebookSummary.total > 0 && (
+              <Text style={{ color: colors.accent.primary, fontSize: 13, fontWeight: '900', marginBottom: 2 }}>
+                {notebookSummary.total}
+              </Text>
+            )}
+            <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
+          </View>
+        </TouchableOpacity>
 
         {/* Action Buttons */}
         <View style={styles.actionGrid}>

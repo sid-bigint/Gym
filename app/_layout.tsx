@@ -20,7 +20,7 @@ export default function RootLayout() {
   const loadUser = useUserStore((s) => s.loadUser);
   const loadAuthState = useAuthStore((s) => s.loadAuthState);
   const [isReady, setIsReady] = useState(false);
-  const [loadingStep, setLoadingStep] = useState('Starting options...');
+  const [loadingStep, setLoadingStep] = useState('Starting app...');
 
   useWorkoutNotification();
 
@@ -71,6 +71,7 @@ export default function RootLayout() {
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="programs" />
+        <Stack.Screen name="notes" />
       </Stack>
       <GlobalAlert />
     </>
