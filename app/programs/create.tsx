@@ -77,18 +77,16 @@ export default function CreateRoutineScreen() {
         handleBack();
     };
 
-    const handleAddExercises = (newExercises: Exercise[]) => {
-        // Filter out already selected
-        const currentIds = new Set(selectedExercises.map(e => e.exercise.id));
-        const toAdd = newExercises.filter(e => !currentIds.has(e.id));
+    const handleExerciseSelection = (newExercises: Exercise[]) => {
+        setSelectedExercises(prev => {
+            const previousById = new Map(prev.map(item => [item.exercise.id, item]));
 
-        const prepared = toAdd.map(ex => ({
-            exercise: ex,
-            sets: '3',
-            reps: '10'
-        }));
-
-        setSelectedExercises(prev => [...prev, ...prepared]);
+            return newExercises.map(ex => previousById.get(ex.id) ?? {
+                exercise: ex,
+                sets: '3',
+                reps: '10'
+            });
+        });
         setShowExerciseSelector(false);
     };
 
@@ -195,7 +193,7 @@ export default function CreateRoutineScreen() {
                 <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
                     <ExerciseSelector
                         onClose={() => setShowExerciseSelector(false)}
-                        onSelect={handleAddExercises}
+                        onSelect={handleExerciseSelection}
                         multiSelect={true}
                         initialSelected={selectedExercises.map(item => item.exercise.id)}
                         buttonLabel="Add Selected"

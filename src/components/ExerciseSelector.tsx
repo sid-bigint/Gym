@@ -77,7 +77,9 @@ export const ExerciseSelector = ({
     }, [footerAnim, selectedIds.length, multiSelect]);
 
     const selectedExercises = useMemo(
-        () => exercises.filter(ex => selectedIds.includes(ex.id)),
+        () => selectedIds
+            .map(id => exercises.find(ex => ex.id === id))
+            .filter((ex): ex is Exercise => Boolean(ex)),
         [exercises, selectedIds]
     );
 
@@ -106,6 +108,11 @@ export const ExerciseSelector = ({
         setSearchQuery('');
         setSelectedCategory('All');
         setSelectedType('All');
+    };
+
+    const clearSelection = () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setSelectedIds([]);
     };
 
     const toggleSelection = (ex: Exercise) => {
@@ -346,18 +353,28 @@ export const ExerciseSelector = ({
                     ]}
                 >
                     {selectedExercises.length > 0 && (
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectedTray}>
-                            {selectedExercises.map(ex => (
-                                <TouchableOpacity
-                                    key={ex.id}
-                                    style={[styles.selectedPill, { backgroundColor: colors.background.elevated }]}
-                                    onPress={() => toggleSelection(ex)}
-                                >
-                                    <Text style={[styles.selectedPillText, { color: colors.text.primary }]} numberOfLines={1}>{ex.name}</Text>
-                                    <Ionicons name="close" size={14} color={colors.text.tertiary} />
+                        <>
+                            <View style={styles.footerSummary}>
+                                <Text style={[styles.footerSummaryText, { color: colors.text.secondary }]}>
+                                    {selectedExercises.length} selected
+                                </Text>
+                                <TouchableOpacity onPress={clearSelection} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                    <Text style={[styles.clearSelectionText, { color: colors.accent.error }]}>Clear</Text>
                                 </TouchableOpacity>
-                            ))}
-                        </ScrollView>
+                            </View>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectedTray}>
+                                {selectedExercises.map(ex => (
+                                    <TouchableOpacity
+                                        key={ex.id}
+                                        style={[styles.selectedPill, { backgroundColor: colors.background.elevated }]}
+                                        onPress={() => toggleSelection(ex)}
+                                    >
+                                        <Text style={[styles.selectedPillText, { color: colors.text.primary }]} numberOfLines={1}>{ex.name}</Text>
+                                        <Ionicons name="close" size={14} color={colors.text.tertiary} />
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </>
                     )}
                     <Button
                         title={selectedIds.length > 0 ? `${buttonLabel} (${selectedIds.length})` : buttonLabel}
@@ -581,6 +598,20 @@ const createStyles = (colors: any) => StyleSheet.create({
     selectedTray: {
         gap: 8,
         paddingBottom: spacing.md,
+    },
+    footerSummary: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: spacing.sm,
+    },
+    footerSummaryText: {
+        fontSize: 13,
+        fontWeight: '800',
+    },
+    clearSelectionText: {
+        fontSize: 13,
+        fontWeight: '800',
     },
     selectedPill: {
         maxWidth: 170,

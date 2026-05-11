@@ -1,23 +1,21 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native';
-
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { Button } from '../../src/components/Button';
-import { useNutritionStore } from '../../src/store/useNutritionStore';
-import { useUserStore } from '../../src/store/useUserStore';
-import { useTheme } from '../../src/store/useTheme';
-import { useAlertStore } from '../../src/store/useAlertStore';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, shadows } from '../../src/constants/theme';
+
+import { Button } from '../../src/components/Button';
+import { KeyboardAwareModal } from '../../src/components/KeyboardAwareModal';
+import { KeyboardAwareScreen } from '../../src/components/KeyboardAwareScreen';
+import { spacing } from '../../src/constants/theme';
 import foodDatabase from '../../src/data/foodDatabase.json';
 import { getUserCustomFoods, addCustomFood, deleteCustomFood, CustomFood } from '../../src/services/customFoodsService';
-import { LinearGradient } from 'expo-linear-gradient';
-import { KeyboardAwareScreen } from '../../src/components/KeyboardAwareScreen';
-import { KeyboardAwareModal } from '../../src/components/KeyboardAwareModal';
 import { SavedMeal, addSavedMeal, deleteSavedMeal, getSavedMeals } from '../../src/services/savedMealsService';
+import { useAlertStore } from '../../src/store/useAlertStore';
+import { useNutritionStore } from '../../src/store/useNutritionStore';
+import { useTheme } from '../../src/store/useTheme';
+import { useUserStore } from '../../src/store/useUserStore';
 
-
-
+type MealFlowStep = 'mealType' | 'addMethod' | 'savedMeals' | 'customFoods' | 'searchFoods' | 'quantity' | 'review';
 type MealType = string;
 
 interface FoodItem {
@@ -44,12 +42,23 @@ interface CombinedFood {
     servingOptions?: { label: string; grams: number }[];
 }
 
+const DEFAULT_MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+
+const mealIcon = (type: string) => {
+    if (type === 'Breakfast') return 'cafe';
+    if (type === 'Lunch') return 'restaurant';
+    if (type === 'Dinner') return 'moon';
+    if (type === 'Snack') return 'fast-food';
+    return 'star-outline';
+};
+
 export default function AddFoodScreen() {
     const scrollViewRef = useRef<ScrollView>(null);
     const { addLog } = useNutritionStore();
     const { user } = useUserStore();
     const { colors } = useTheme();
 
+    const [step, setStep] = useState<MealFlowStep>('mealType');
     const [mealType, setMealType] = useState<MealType>('Breakfast');
     const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
     const [selectedFood, setSelectedFood] = useState('');
@@ -59,39 +68,14 @@ export default function AddFoodScreen() {
     const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
     const [showCustomFoodModal, setShowCustomFoodModal] = useState(false);
     const [showSaveMealModal, setShowSaveMealModal] = useState(false);
-    const [savedMealName, setSavedMealName] = useState('');
-
-    // Custom Meal Type State
     const [showMealTypeModal, setShowMealTypeModal] = useState(false);
+    const [savedMealName, setSavedMealName] = useState('');
     const [newMealTypeName, setNewMealTypeName] = useState('');
     const [customMealTypes, setCustomMealTypes] = useState<string[]>([]);
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [loggingUnit, setLoggingUnit] = useState<'grams' | 'count'>('grams');
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
-
-    // Delete Modal State
     const [deleteModal, setDeleteModal] = useState<{ visible: boolean; type: 'mealType' | 'food' | 'savedMeal'; id: string; name: string } | null>(null);
-    const [isSearchActive, setIsSearchActive] = useState(false);
 
-    const confirmDelete = async () => {
-        if (!deleteModal) return;
-
-        if (deleteModal.type === 'mealType') {
-            setCustomMealTypes(prev => prev.filter(t => t !== deleteModal.name));
-            if (mealType === deleteModal.name) {
-                setMealType('Breakfast');
-            }
-        } else if (deleteModal.type === 'food') {
-            await deleteCustomFood(Number(deleteModal.id));
-            await loadCustomFoods();
-        } else if (deleteModal.type === 'savedMeal' && user?.id) {
-            await deleteSavedMeal(Number(deleteModal.id), user.id);
-            await loadSavedMeals();
-        }
-        setDeleteModal(null);
-    };
-
-    // Custom food form state
     const [customFoodName, setCustomFoodName] = useState('');
     const [customCalories, setCustomCalories] = useState('');
     const [customProtein, setCustomProtein] = useState('');
@@ -104,98 +88,124 @@ export default function AddFoodScreen() {
     }, []);
 
     const loadCustomFoods = async () => {
-        if (user?.id) {
-            const foods = await getUserCustomFoods(user.id);
-            setCustomFoods(foods);
-        }
+        if (!user?.id) return;
+        setCustomFoods(await getUserCustomFoods(user.id));
     };
 
     const loadSavedMeals = async () => {
-        if (user?.id) {
-            const meals = await getSavedMeals(user.id);
-            setSavedMeals(meals);
-        }
+        if (!user?.id) return;
+        setSavedMeals(await getSavedMeals(user.id));
     };
 
-    const handleAddCustomMealType = () => {
-        if (newMealTypeName.trim()) {
-            const name = newMealTypeName.trim();
-            // Prevent duplicates
-            if (customMealTypes.includes(name) || ['Breakfast', 'Lunch', 'Dinner', 'Snack'].includes(name)) {
-                useAlertStore.getState().showAlert('Error', 'Meal type already exists');
-                return;
-            }
-            setCustomMealTypes([...customMealTypes, name]);
-            setMealType(name);
-            setNewMealTypeName('');
-        }
-    };
-
-    const handleDeleteCustomMealType = (typeToDelete: string) => {
-        setDeleteModal({
-            visible: true,
-            type: 'mealType',
-            id: typeToDelete,
-            name: typeToDelete
-        });
-    };
-
-    // ... (rest of filtering logic) ...
-
-    // ... (rest of methods) ...
-    // Note: I am NOT replacing methods filter/handleAddCustomFood yet, just the top part.
-    // Wait, replace_file_content needs contiguous block. I'll stick to the top part.
-
-    const combinedFoods: CombinedFood[] = [
+    const combinedFoods: CombinedFood[] = useMemo(() => [
         ...foodDatabase.foods.map(f => ({
             id: f.id,
             name: f.name,
             category: f.category,
             isCustom: false,
-            per100g: f.per100g
+            per100g: f.per100g,
+            servingOptions: (f as any).servingOptions,
         })),
         ...customFoods.map(f => ({
             id: `custom-${f.id}`,
-            name: `${f.name} ⭐`,
+            name: f.name,
             category: f.category || 'custom',
             isCustom: true,
             per100g: {
                 calories: f.calories,
                 protein: f.protein,
                 carbs: f.carbs,
-                fats: f.fats
-            }
-        }))
-    ];
+                fats: f.fats,
+            },
+        })),
+    ], [customFoods]);
 
-    const filteredFoods = combinedFoods.filter(food =>
-        food.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredFoods = useMemo(() => {
+        const terms = searchQuery.toLowerCase().trim().split(/\s+/).filter(Boolean);
+        if (terms.length === 0) return [];
+        return combinedFoods.filter(food => {
+            const searchable = `${food.name} ${food.category}`.toLowerCase();
+            return terms.every(term => searchable.includes(term));
+        });
+    }, [combinedFoods, searchQuery]);
+
+    const mealTypes = [...DEFAULT_MEAL_TYPES, ...customMealTypes];
+    const totals = foodItems.reduce(
+        (acc, item) => ({
+            calories: acc.calories + item.calories,
+            protein: acc.protein + item.protein,
+            carbs: acc.carbs + item.carbs,
+            fats: acc.fats + item.fats,
+        }),
+        { calories: 0, protein: 0, carbs: 0, fats: 0 }
     );
 
-    // ... methods ...
+    const selectedFoodData = combinedFoods.find(food => food.id === selectedFood);
 
-    // I will target the Rendering Part for the Meal Type Grid in the next step. 
-    // This step handles imports/type/state.
+    const openQuantityForFood = (foodId: string, label?: string) => {
+        setSelectedFood(foodId);
+        setSearchQuery(label || '');
+        setGrams('');
+        setLoggingUnit('grams');
+        setSelectedSize(null);
+        setStep('quantity');
+    };
 
+    const goBackStep = () => {
+        if (step === 'mealType') {
+            router.back();
+        } else if (step === 'review') {
+            setStep('addMethod');
+        } else if (step === 'quantity') {
+            setSelectedFood('');
+            setGrams('');
+            setStep('addMethod');
+        } else {
+            setStep('mealType');
+        }
+    };
 
+    const handleAddCustomMealType = () => {
+        const name = newMealTypeName.trim();
+        if (!name) return;
+        if (mealTypes.includes(name)) {
+            useAlertStore.getState().showAlert('Error', 'Meal type already exists');
+            return;
+        }
+        setCustomMealTypes(prev => [...prev, name]);
+        setMealType(name);
+        setNewMealTypeName('');
+        setShowMealTypeModal(false);
+        setStep('addMethod');
+    };
+
+    const handleDeleteCustomMealType = (typeToDelete: string) => {
+        setDeleteModal({ visible: true, type: 'mealType', id: typeToDelete, name: typeToDelete });
+    };
 
     const handleDeleteCustomFood = (id: number) => {
         const food = customFoods.find(f => f.id === id);
-        setDeleteModal({
-            visible: true,
-            type: 'food',
-            id: String(id),
-            name: food?.name || 'Food Item'
-        });
+        setDeleteModal({ visible: true, type: 'food', id: String(id), name: food?.name || 'Food Item' });
     };
 
     const handleDeleteSavedMeal = (meal: SavedMeal) => {
-        setDeleteModal({
-            visible: true,
-            type: 'savedMeal',
-            id: String(meal.id),
-            name: meal.name
-        });
+        setDeleteModal({ visible: true, type: 'savedMeal', id: String(meal.id), name: meal.name });
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteModal) return;
+
+        if (deleteModal.type === 'mealType') {
+            setCustomMealTypes(prev => prev.filter(t => t !== deleteModal.name));
+            if (mealType === deleteModal.name) setMealType('Breakfast');
+        } else if (deleteModal.type === 'food') {
+            await deleteCustomFood(Number(deleteModal.id));
+            await loadCustomFoods();
+        } else if (deleteModal.type === 'savedMeal' && user?.id) {
+            await deleteSavedMeal(Number(deleteModal.id), user.id);
+            await loadSavedMeals();
+        }
+        setDeleteModal(null);
     };
 
     const handleUseSavedMeal = (meal: SavedMeal) => {
@@ -205,10 +215,93 @@ export default function AddFoodScreen() {
             id: `saved-${meal.id}-${stamp}-${index}`,
         }));
         setFoodItems(prev => [...prev, ...clonedItems]);
-        setIsSearchActive(false);
-        setSearchQuery('');
+        setStep('review');
+    };
+
+    const handleAddCustomFood = async () => {
+        if (!customFoodName.trim() || !customCalories || !customProtein || !customCarbs || !customFats) {
+            useAlertStore.getState().showAlert('Required', 'Please fill all fields');
+            return;
+        }
+        if (!user?.id) {
+            useAlertStore.getState().showAlert('Error', 'User not found');
+            return;
+        }
+
+        const createdFoodName = customFoodName.trim();
+        const newId = await addCustomFood({
+            userId: user.id,
+            name: createdFoodName,
+            category: 'custom',
+            calories: Number(customCalories),
+            protein: Number(customProtein),
+            carbs: Number(customCarbs),
+            fats: Number(customFats),
+        });
+
+        setCustomFoodName('');
+        setCustomCalories('');
+        setCustomProtein('');
+        setCustomCarbs('');
+        setCustomFats('');
+        setShowCustomFoodModal(false);
+        await loadCustomFoods();
+        openQuantityForFood(`custom-${newId}`, createdFoodName);
+    };
+
+    const addFoodItem = () => {
+        if (!selectedFoodData || !grams) {
+            useAlertStore.getState().showAlert('Required', 'Please enter a value');
+            return;
+        }
+
+        const val = Number(grams);
+        if (!Number.isFinite(val) || val <= 0) {
+            useAlertStore.getState().showAlert('Invalid Input', 'Please enter a valid amount');
+            return;
+        }
+
+        let gramsNum = val;
+        if (loggingUnit === 'count') {
+            const sizeOption = selectedFoodData.servingOptions?.find(option => option.label === selectedSize);
+            if (sizeOption) {
+                gramsNum = val * sizeOption.grams;
+            } else {
+                const nameLower = selectedFoodData.name.toLowerCase();
+                let itemWeight = 100;
+                if (nameLower.includes('egg')) itemWeight = 50;
+                else if (nameLower.includes('roti') || nameLower.includes('chapati')) itemWeight = 35;
+                else if (nameLower.includes('bread') || nameLower.includes('slice')) itemWeight = 30;
+                else if (nameLower.includes('idli')) itemWeight = 40;
+                else if (nameLower.includes('dosa')) itemWeight = 60;
+                else if (nameLower.includes('biscuit') || nameLower.includes('cookie')) itemWeight = 10;
+                else if (nameLower.includes('fruit') || nameLower.includes('apple') || nameLower.includes('banana')) itemWeight = 120;
+                gramsNum = val * itemWeight;
+            }
+        }
+
+        const multiplier = gramsNum / 100;
+        const newItem: FoodItem = {
+            id: `${selectedFoodData.id}-${Date.now()}`,
+            name: selectedFoodData.name,
+            grams: Math.round(gramsNum),
+            calories: Math.round(Number(selectedFoodData.per100g.calories) * multiplier),
+            protein: Math.round(Number(selectedFoodData.per100g.protein) * multiplier * 10) / 10,
+            carbs: Math.round(Number(selectedFoodData.per100g.carbs) * multiplier * 10) / 10,
+            fats: Math.round(Number(selectedFoodData.per100g.fats) * multiplier * 10) / 10,
+        };
+
+        setFoodItems(prev => [...prev, newItem]);
         setSelectedFood('');
-        useAlertStore.getState().showAlert('Meal Added', `${meal.name} added to this log`);
+        setGrams('');
+        setSearchQuery('');
+        setLoggingUnit('grams');
+        setSelectedSize(null);
+        setStep('review');
+    };
+
+    const removeFoodItem = (id: string) => {
+        setFoodItems(prev => prev.filter(item => item.id !== id));
     };
 
     const handleSaveReusableMeal = async () => {
@@ -233,1435 +326,748 @@ export default function AddFoodScreen() {
         useAlertStore.getState().showAlert('Saved', `${name} is ready to reuse`);
     };
 
-    const handleAddCustomFood = async () => {
-        if (!customFoodName || !customCalories || !customProtein || !customCarbs || !customFats) {
-            useAlertStore.getState().showAlert('Required', 'Please fill all fields');
-            return;
-        }
-
-        if (!user?.id) {
-            useAlertStore.getState().showAlert('Error', 'User not found');
-            return;
-        }
-
-        await addCustomFood({
-            userId: user.id,
-            name: customFoodName,
-            category: 'custom',
-            calories: Number(customCalories),
-            protein: Number(customProtein),
-            carbs: Number(customCarbs),
-            fats: Number(customFats)
-        });
-
-        // Reset form
-        setCustomFoodName('');
-        setCustomCalories('');
-        setCustomProtein('');
-        setCustomCarbs('');
-        setCustomFats('');
-        setShowCustomFoodModal(false);
-
-        // Reload custom foods
-        await loadCustomFoods();
-        useAlertStore.getState().showAlert('Success', 'Custom food added!');
-    };
-
-    const addFoodItem = () => {
-        const food = [...foodDatabase.foods, ...customFoods].find(f => f.id === selectedFood || `custom-${f.id}` === selectedFood);
-        if (!food || !grams) {
-            useAlertStore.getState().showAlert('Required', 'Please enter a value');
-            return;
-        }
-
-        const val = Number(grams);
-        let gramsNum = val;
-
-        if (loggingUnit === 'count') {
-            const sizeOption = (food as any).servingOptions?.find((o: any) => o.label === selectedSize);
-
-            if (sizeOption) {
-                gramsNum = val * sizeOption.grams;
-            } else {
-                // Heuristics for items without DB serving options
-                let itemWeight = 100;
-                const nameLower = food.name.toLowerCase();
-
-                if (nameLower.includes('egg')) itemWeight = 50;
-                else if (nameLower.includes('roti') || nameLower.includes('chapati')) itemWeight = 35;
-                else if (nameLower.includes('bread') || nameLower.includes('slice')) itemWeight = 30;
-                else if (nameLower.includes('idli')) itemWeight = 40;
-                else if (nameLower.includes('dosa')) itemWeight = 60;
-                else if (nameLower.includes('biscuit') || nameLower.includes('cookie')) itemWeight = 10;
-                else if (nameLower.includes('fruit') || nameLower.includes('apple') || nameLower.includes('banana')) itemWeight = 120;
-
-                gramsNum = val * itemWeight;
-            }
-        }
-
-        const multiplier = gramsNum / 100;
-
-        // Handle both database food and custom food structures
-        const macros = 'per100g' in food ? food.per100g : food;
-
-        const newItem: FoodItem = {
-            id: `${food.id}-${Date.now()}`,
-            name: food.name,
-            grams: Math.round(gramsNum),
-            calories: Math.round(Number(macros.calories) * multiplier),
-            protein: Math.round(Number(macros.protein) * multiplier * 10) / 10,
-            carbs: Math.round(Number(macros.carbs) * multiplier * 10) / 10,
-            fats: Math.round(Number(macros.fats) * multiplier * 10) / 10,
-        };
-
-        setFoodItems([...foodItems, newItem]);
-        setSelectedFood('');
-        setGrams('');
-        setSearchQuery('');
-        setLoggingUnit('grams');
-        setSelectedSize(null);
-    };
-
-    const removeFoodItem = (id: string) => {
-        setFoodItems(foodItems.filter(item => item.id !== id));
-    };
-
-    const calculateTotals = () => {
-        return foodItems.reduce(
-            (acc, item) => ({
-                calories: acc.calories + item.calories,
-                protein: acc.protein + item.protein,
-                carbs: acc.carbs + item.carbs,
-                fats: acc.fats + item.fats,
-            }),
-            { calories: 0, protein: 0, carbs: 0, fats: 0 }
-        );
-    };
-
     const handleSave = async () => {
         if (foodItems.length === 0) {
             useAlertStore.getState().showAlert('Required', 'Please add at least one food item');
             return;
         }
 
-        const totals = calculateTotals();
-        const foodNames = foodItems.map(item => `${item.name} (${item.grams}g)`).join(', ');
-
         await addLog({
-            foodName: foodNames,
+            foodName: foodItems.map(item => `${item.name} (${item.grams}g)`).join(', '),
             calories: totals.calories,
             protein: totals.protein,
             carbs: totals.carbs,
             fats: totals.fats,
-            mealType: mealType as any
+            mealType: mealType as any,
         });
         router.back();
     };
-
-    const totals = calculateTotals();
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
             <Stack.Screen options={{
                 title: 'Log Meal',
                 headerStyle: { backgroundColor: colors.background.secondary },
-                headerTintColor: colors.text.primary
+                headerTintColor: colors.text.primary,
             }} />
 
-            <KeyboardAwareScreen
-                scrollRef={scrollViewRef}
-                contentContainerStyle={[styles.content, isSearchActive && styles.searchContentActive]}
-            >
-                {/* Food Search Section - Now at the Top */}
-                <View style={[styles.searchSection, isSearchActive && styles.searchSectionActive]}>
-                    <View style={styles.searchHeader}>
-                        <TouchableOpacity
-                            onPress={() => {
-                                setIsSearchActive(false);
-                                setSearchQuery('');
-                                setSelectedFood('');
-                            }}
-                            style={styles.backButtonIcon}
-                        >
-                            <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
-                        </TouchableOpacity>
-                        <Text style={[styles.searchTitleLarge, { color: colors.text.primary }]}>
-                            {isSearchActive ? 'Find Food' : 'Search'}
+            <KeyboardAwareScreen scrollRef={scrollViewRef} contentContainerStyle={styles.content}>
+                <View style={styles.flowHeader}>
+                    <TouchableOpacity onPress={goBackStep} style={styles.flowBackButton}>
+                        <Ionicons name={step === 'mealType' ? 'close' : 'arrow-back'} size={22} color={colors.text.primary} />
+                    </TouchableOpacity>
+                    <View style={styles.flowHeaderText}>
+                        <Text style={[styles.flowKicker, { color: colors.text.tertiary }]}>LOG MEAL</Text>
+                        <Text style={[styles.flowTitle, { color: colors.text.primary }]}>
+                            {step === 'mealType' && 'Choose meal type'}
+                            {step === 'addMethod' && `Add to ${mealType}`}
+                            {step === 'savedMeals' && 'Saved meals'}
+                            {step === 'customFoods' && 'Custom foods'}
+                            {step === 'searchFoods' && 'Search foods'}
+                            {step === 'quantity' && 'Set quantity'}
+                            {step === 'review' && 'Review meal'}
                         </Text>
-                        <View style={{ width: 40 }} />
                     </View>
-
-                    <View style={[
-                        styles.searchBarContainer,
-                        {
-                            backgroundColor: isSearchActive ? 'rgba(139, 92, 246, 0.04)' : colors.background.card,
-                            borderColor: isSearchActive ? colors.accent.primary : colors.border.secondary,
-                            shadowColor: colors.accent.primary,
-                            shadowOpacity: isSearchActive ? 0.08 : 0,
-                            shadowRadius: 15,
-                        }
-                    ]}>
-                        <Ionicons name="search" size={20} color={isSearchActive ? colors.accent.primary : colors.text.tertiary} style={styles.searchIcon} />
-                        <TextInput
-                            style={[styles.searchInputInline, { color: colors.text.primary }]}
-                            placeholder="Find food or ingredients..."
-                            placeholderTextColor={colors.text.disabled}
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                            onFocus={() => setIsSearchActive(true)}
-                        />
-                        {searchQuery.length > 0 && (
-                            <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <Ionicons name="close-circle" size={20} color={colors.text.tertiary} />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-
-                    {isSearchActive && searchQuery.length > 0 && !selectedFood && (
-                        <View style={[styles.searchResultsWrapper, { backgroundColor: colors.background.elevated, borderColor: colors.border.secondary, minHeight: 400 }]}>
-                            <ScrollView style={styles.dropdownScroll} keyboardShouldPersistTaps="handled">
-                                {filteredFoods.length > 0 ? filteredFoods.slice(0, 15).map(food => (
-                                    <TouchableOpacity
-                                        key={food.id}
-                                        style={[styles.dropdownItem, { borderBottomColor: colors.border.secondary }]}
-                                        onPress={() => {
-                                            setSelectedFood(food.id);
-                                            // Keep search query as is or use it as label
-                                        }}
-                                    >
-                                        <View style={styles.dropdownContent}>
-                                            <Text style={[styles.dropdownText, { color: colors.text.primary }]}>{food.name}</Text>
-                                            <Text style={[styles.dropdownSubtext, { color: colors.text.tertiary }]}>
-                                                {food.per100g.calories} kcal • P: {food.per100g.protein}g {food.isCustom && '• ⭐ Custom'}
-                                            </Text>
-                                        </View>
-                                        <Ionicons
-                                            name="add-circle-outline"
-                                            size={24}
-                                            color={colors.accent.primary}
-                                        />
-                                    </TouchableOpacity>
-                                )) : (
-                                    <View style={styles.emptyResults}>
-                                        <Ionicons name="search-outline" size={48} color={colors.text.disabled} />
-                                        <Text style={{ color: colors.text.tertiary, marginTop: 12, marginBottom: 16 }}>No foods found</Text>
-                                        <TouchableOpacity
-                                            style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                                                paddingHorizontal: 16,
-                                                paddingVertical: 10,
-                                                borderRadius: 12,
-                                                gap: 8
-                                            }}
-                                            onPress={() => {
-                                                setCustomFoodName(searchQuery); // Pre-fill name
-                                                setShowCustomFoodModal(true);
-                                            }}
-                                        >
-                                            <Ionicons name="add-circle" size={20} color={colors.accent.primary} />
-                                            <Text style={{ color: colors.accent.primary, fontWeight: '700' }}>Create Custom Food</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-                            </ScrollView>
-                        </View>
-                    )}
-
-                    {selectedFood && (
-                        <View style={styles.selectionFocusContainer}>
-                            {/* Focused Selection Card */}
-                            <View style={[styles.focusedFoodCard, { backgroundColor: colors.background.elevated, borderColor: colors.accent.primary }]}>
-                                <View style={styles.focusedFoodHeader}>
-                                    <View style={styles.focusedFoodInfo}>
-                                        <Text style={[styles.focusedFoodName, { color: colors.text.primary }]}>
-                                            {(() => {
-                                                const food = [...foodDatabase.foods, ...customFoods].find(f => f.id === selectedFood || `custom-${f.id}` === selectedFood);
-                                                return food?.name || 'Selected Food';
-                                            })()}
-                                        </Text>
-                                        <Text style={[styles.focusedFoodMeta, { color: colors.text.tertiary }]}>
-                                            {(() => {
-                                                const food = [...foodDatabase.foods, ...customFoods].find(f => f.id === selectedFood || `custom-${f.id}` === selectedFood);
-                                                if (food && 'per100g' in food) {
-                                                    return `${food.per100g.calories} kcal per 100g`;
-                                                } else if (food) {
-                                                    //@ts-ignore - CustomFood has direct macro properties
-                                                    return `${food.calories} kcal per 100g`;
-                                                }
-                                                return '';
-                                            })()}
-                                        </Text>
-                                    </View>
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            setSelectedFood('');
-                                            setGrams('');
-                                        }}
-                                        style={styles.changeFoodBtn}
-                                    >
-                                        <Ionicons name="close-circle" size={24} color={colors.text.tertiary} />
-                                    </TouchableOpacity>
-                                </View>
-
-                                <View style={styles.unitSelector}>
-                                    <TouchableOpacity
-                                        onPress={() => setLoggingUnit('grams')}
-                                        style={[styles.unitTab, loggingUnit === 'grams' && { backgroundColor: 'rgba(139, 92, 246, 0.1)', borderColor: colors.accent.primary }]}
-                                    >
-                                        <Text style={[styles.unitTabText, { color: loggingUnit === 'grams' ? colors.accent.primary : colors.text.tertiary }]}>Grams</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => setLoggingUnit('count')}
-                                        style={[styles.unitTab, loggingUnit === 'count' && { backgroundColor: 'rgba(139, 92, 246, 0.1)', borderColor: colors.accent.primary }]}
-                                    >
-                                        <Text style={[styles.unitTabText, { color: loggingUnit === 'count' ? colors.accent.primary : colors.text.tertiary }]}>Quantity</Text>
-                                    </TouchableOpacity>
-                                </View>
-
-                                {loggingUnit === 'count' && (() => {
-                                    const food = [...foodDatabase.foods, ...customFoods].find(f => f.id === selectedFood || `custom-${f.id}` === selectedFood);
-                                    const options = (food as any)?.servingOptions;
-                                    if (!options) return null;
-
-                                    return (
-                                        <View style={styles.sizeOptionsWrapper}>
-                                            <Text style={[styles.sizeLabel, { color: colors.text.tertiary }]}>Select Size</Text>
-                                            <View style={styles.sizeGrid}>
-                                                {options.map((opt: any) => (
-                                                    <TouchableOpacity
-                                                        key={opt.label}
-                                                        onPress={() => setSelectedSize(opt.label)}
-                                                        style={[
-                                                            styles.sizeBtn,
-                                                            { borderColor: colors.border.secondary },
-                                                            selectedSize === opt.label && { borderColor: colors.accent.primary, backgroundColor: 'rgba(139, 92, 246, 0.05)' }
-                                                        ]}
-                                                    >
-                                                        <Text style={[styles.sizeBtnText, { color: selectedSize === opt.label ? colors.accent.primary : colors.text.primary }]}>{opt.label}</Text>
-                                                        <Text style={[styles.sizeBtnSubtext, { color: colors.text.tertiary }]}>{opt.grams}g</Text>
-                                                    </TouchableOpacity>
-                                                ))}
-                                            </View>
-                                        </View>
-                                    );
-                                })()}
-
-                                <View style={styles.gramsActionRowFocused}>
-                                    <View style={[styles.gramsInputWrapperFocused, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
-                                        <TextInput
-                                            style={[styles.gramsInputInline, { color: colors.text.primary }]}
-                                            placeholder="0"
-                                            placeholderTextColor={colors.text.disabled}
-                                            keyboardType="numeric"
-                                            value={grams}
-                                            onChangeText={setGrams}
-                                            autoFocus
-                                        />
-                                        <Text style={[styles.unitLabel, { color: colors.text.tertiary }]}>
-                                            {loggingUnit === 'grams' ? 'grams' : 'pcs/serv'}
-                                        </Text>
-                                    </View>
-                                    <TouchableOpacity
-                                        style={[styles.addBtnLarge, { backgroundColor: colors.accent.primary }]}
-                                        onPress={() => {
-                                            addFoodItem();
-                                            // Stay in search mode
-                                        }}
-                                    >
-                                        <Ionicons name="checkmark" size={28} color="white" />
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        </View>
-                    )}
-
-                    {/* Quick Session Log - Visible during active search */}
-                    {isSearchActive && foodItems.length > 0 && !selectedFood && (
-                        <View style={styles.sessionLogSection}>
-                            <View style={styles.sessionLogHeader}>
-                                <Text style={[styles.sectionTitleMini, { color: colors.text.tertiary }]}>ADDED THIS SESSION</Text>
-                                <View style={[styles.sessionBadge, { backgroundColor: colors.accent.primary }]}>
-                                    <Text style={{ color: 'white', fontWeight: '800', fontSize: 12 }}>{foodItems.length}</Text>
-                                </View>
-                            </View>
-                            <View style={styles.sessionList}>
-                                {foodItems.slice(-4).reverse().map(item => (
-                                    <View key={item.id} style={[styles.sessionFoodCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
-                                        <View style={styles.sessionFoodInfo}>
-                                            <Text style={[styles.sessionFoodName, { color: colors.text.primary }]} numberOfLines={1}>{item.name}</Text>
-                                            <Text style={[styles.sessionFoodMeta, { color: colors.text.tertiary }]}>{item.grams}g • {item.calories} kcal</Text>
-                                        </View>
-                                        <TouchableOpacity onPress={() => removeFoodItem(item.id)} style={styles.sessionRemoveBtn}>
-                                            <Ionicons name="close" size={18} color={colors.text.tertiary} />
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
-                            </View>
-
-                            <TouchableOpacity
-                                style={[styles.doneButtonLarge, { backgroundColor: colors.accent.primary }]}
-                                onPress={() => {
-                                    setIsSearchActive(false);
-                                    setSearchQuery('');
-                                    setSelectedFood('');
-                                }}
-                            >
-                                <Text style={styles.doneButtonText}>Finished Logging</Text>
-                                <Ionicons name="chevron-forward" size={20} color="white" />
-                            </TouchableOpacity>
-                        </View>
-                    )}
+                    {foodItems.length > 0 ? (
+                        <TouchableOpacity onPress={() => setStep('review')} style={[styles.countPill, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
+                            <Text style={[styles.countPillText, { color: colors.accent.primary }]}>{foodItems.length}</Text>
+                        </TouchableOpacity>
+                    ) : <View style={{ width: 40 }} />}
                 </View>
 
-                {!isSearchActive && (
-                    <>
-
-
-                        {/* Totals Summary - Impactful Hero Card */}
-                        <LinearGradient
-                            colors={[colors.accent.primary, colors.accent.secondary]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.heroSummaryCard}
-                        >
-                            <View style={styles.summaryHeader}>
-                                <View>
-                                    <Text style={styles.summarySubtitle}>Total Meal Calories</Text>
-                                    <Text style={styles.summaryValue}>{totals.calories}</Text>
-                                </View>
-                                <View style={styles.summaryIconCircle}>
-                                    <Ionicons name="flame" size={32} color="white" />
-                                </View>
-                            </View>
-
-                            <View style={styles.summaryDivider} />
-
-                            <View style={styles.macroStrip}>
-                                <View style={styles.macroBox}>
-                                    <Text style={styles.macroValue}>{totals.protein.toFixed(1)}g</Text>
-                                    <Text style={styles.macroLabel}>Protein</Text>
-                                </View>
-                                <View style={styles.macroBox}>
-                                    <Text style={styles.macroValue}>{totals.carbs.toFixed(1)}g</Text>
-                                    <Text style={styles.macroLabel}>Carbs</Text>
-                                </View>
-                                <View style={styles.macroBox}>
-                                    <Text style={styles.macroValue}>{totals.fats.toFixed(1)}g</Text>
-                                    <Text style={styles.macroLabel}>Fats</Text>
-                                </View>
-                            </View>
-                        </LinearGradient>
-
-                        {/* Saved Meals */}
-                        <View style={styles.quickAccessSection}>
-                            <View style={styles.sectionHeaderRow}>
-                                <Text style={[styles.sectionTitleMini, { color: colors.text.tertiary }]}>SAVED MEALS</Text>
-                                {foodItems.length > 0 && (
-                                    <TouchableOpacity onPress={() => {
-                                        setSavedMealName(`${mealType} meal`);
-                                        setShowSaveMealModal(true);
-                                    }}>
-                                        <Text style={{ color: colors.accent.primary, fontWeight: '700', fontSize: 12 }}>Save Current</Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickAccessScroll}>
-                                {foodItems.length > 0 && (
+                {step === 'mealType' && (
+                    <View>
+                        <Text style={[styles.leadText, { color: colors.text.secondary }]}>Start with the meal category. Then choose where the food comes from.</Text>
+                        <View style={styles.optionGrid}>
+                            {mealTypes.map(type => {
+                                const isSelected = mealType === type;
+                                return (
                                     <TouchableOpacity
-                                        style={[styles.quickFoodCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary, borderStyle: 'dashed' }]}
+                                        key={type}
+                                        style={[styles.optionCard, { backgroundColor: colors.background.card, borderColor: isSelected ? colors.accent.primary : colors.border.secondary }]}
                                         onPress={() => {
-                                            setSavedMealName(`${mealType} meal`);
-                                            setShowSaveMealModal(true);
+                                            setMealType(type);
+                                            setStep('addMethod');
                                         }}
                                     >
-                                        <View style={[styles.quickFoodIcon, { backgroundColor: colors.background.elevated }]}>
-                                            <Ionicons name="bookmark-outline" size={16} color={colors.accent.primary} />
-                                        </View>
-                                        <Text style={[styles.quickFoodText, { color: colors.accent.primary, fontWeight: '700' }]}>Save This Meal</Text>
+                                        <Ionicons name={mealIcon(type)} size={22} color={isSelected ? colors.accent.primary : colors.text.tertiary} />
+                                        <Text style={[styles.optionTitle, { color: colors.text.primary }]}>{type}</Text>
+                                        {isSelected && <Ionicons name="checkmark-circle" size={18} color={colors.accent.primary} />}
                                     </TouchableOpacity>
-                                )}
-
-                                {savedMeals.length === 0 ? (
-                                    <View style={[styles.savedMealEmpty, { borderColor: colors.border.secondary }]}>
-                                        <Text style={[styles.savedMealEmptyText, { color: colors.text.tertiary }]}>Reusable meals will show here</Text>
-                                    </View>
-                                ) : (
-                                    savedMeals.map(meal => (
-                                        <TouchableOpacity
-                                            key={meal.id}
-                                            style={[styles.savedMealCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}
-                                            onPress={() => handleUseSavedMeal(meal)}
-                                            onLongPress={() => handleDeleteSavedMeal(meal)}
-                                        >
-                                            <View style={[styles.quickFoodIcon, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-                                                <Ionicons name="restaurant" size={15} color={colors.accent.success} />
-                                            </View>
-                                            <View style={styles.savedMealInfo}>
-                                                <Text style={[styles.savedMealName, { color: colors.text.primary }]} numberOfLines={1}>{meal.name}</Text>
-                                                <Text style={[styles.savedMealMeta, { color: colors.text.tertiary }]} numberOfLines={1}>
-                                                    {meal.items.length} items • {meal.calories} kcal
-                                                </Text>
-                                            </View>
-                                            <TouchableOpacity
-                                                onPress={() => handleDeleteSavedMeal(meal)}
-                                                style={styles.savedMealDelete}
-                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                            >
-                                                <Ionicons name="trash-outline" size={16} color={colors.text.tertiary} />
-                                            </TouchableOpacity>
-                                        </TouchableOpacity>
-                                    ))
-                                )}
-                            </ScrollView>
+                                );
+                            })}
                         </View>
+                        <TouchableOpacity style={styles.secondaryActionRow} onPress={() => setShowMealTypeModal(true)}>
+                            <Ionicons name="settings-outline" size={18} color={colors.accent.primary} />
+                            <Text style={[styles.secondaryActionText, { color: colors.accent.primary }]}>Manage meal types</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
-                        {/* Custom Foods Quick Access & Creation */}
-                        <View style={styles.quickAccessSection}>
-                            <View style={styles.sectionHeaderRow}>
-                                <Text style={[styles.sectionTitleMini, { color: colors.text.tertiary }]}>CUSTOM FOODS</Text>
-                                <TouchableOpacity onPress={() => setShowCustomFoodModal(true)}>
-                                    <Text style={{ color: colors.accent.primary, fontWeight: '700', fontSize: 12 }}>Manage All</Text>
-                                </TouchableOpacity>
-                            </View>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickAccessScroll}>
-                                <TouchableOpacity
-                                    style={[styles.quickFoodCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary, borderStyle: 'dashed' }]}
-                                    onPress={() => setShowCustomFoodModal(true)}
-                                >
-                                    <View style={[styles.quickFoodIcon, { backgroundColor: colors.background.elevated }]}>
-                                        <Ionicons name="add" size={16} color={colors.accent.primary} />
-                                    </View>
-                                    <Text style={[styles.quickFoodText, { color: colors.accent.primary, fontWeight: '700' }]}>Create New</Text>
-                                </TouchableOpacity>
-
-                                {customFoods.map(food => (
-                                    <TouchableOpacity
-                                        key={food.id}
-                                        style={[styles.quickFoodCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}
-                                        onPress={() => {
-                                            setSelectedFood(`custom-${food.id}`);
-                                            setSearchQuery(food.name + ' ⭐');
-                                            setIsSearchActive(true);
-                                        }}
-                                    >
-                                        <View style={[styles.quickFoodIcon, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
-                                            <Ionicons name="star" size={14} color={colors.accent.primary} />
-                                        </View>
-                                        <Text style={[styles.quickFoodText, { color: colors.text.primary }]} numberOfLines={1}>{food.name}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
+                {step === 'addMethod' && (
+                    <View>
+                        <MealSummary totals={totals} colors={colors} mealType={mealType} itemCount={foodItems.length} />
+                        <View style={styles.actionList}>
+                            <FlowAction title="Saved meals" subtitle="Reuse a meal you already created" icon="bookmark-outline" colors={colors} onPress={() => setStep('savedMeals')} />
+                            <FlowAction title="Custom foods" subtitle="Pick one of your own foods" icon="star-outline" colors={colors} onPress={() => setStep('customFoods')} />
+                            <FlowAction title="Search foods" subtitle="Find food from the database" icon="search-outline" colors={colors} onPress={() => setStep('searchFoods')} />
+                            <FlowAction title="Create custom food" subtitle="Add a food to your library" icon="add-circle-outline" colors={colors} onPress={() => setShowCustomFoodModal(true)} />
                         </View>
+                        {foodItems.length > 0 && <Button title="Review Meal" onPress={() => setStep('review')} style={{ marginTop: spacing.xl }} />}
+                    </View>
+                )}
 
-                        {/* Meal Type Selection - Moved Here */}
-                        <View style={styles.mealTypeSection}>
-                            <View style={styles.sectionHeaderRow}>
-                                <Text style={[styles.inputLabel, { color: colors.text.primary, marginBottom: 0 }]}>Meal Category</Text>
-                                <TouchableOpacity
-                                    style={[styles.manageTypesBtn, { backgroundColor: 'rgba(167, 139, 250, 0.1)' }]}
-                                    onPress={() => setShowMealTypeModal(true)}
-                                >
-                                    <Ionicons name="settings-outline" size={14} color={colors.accent.primary} />
-                                    <Text style={[styles.manageTypesText, { color: colors.accent.primary }]}>Manage</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            <TouchableOpacity
-                                style={[styles.dropdownTrigger, { backgroundColor: colors.background.card, borderColor: isDropdownOpen ? colors.accent.primary : colors.border.secondary }]}
-                                onPress={() => setIsDropdownOpen(!isDropdownOpen)}
-                            >
-                                <View style={styles.dropdownTriggerLeft}>
-                                    <View style={[styles.categoryIconCircleSmall, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
-                                        <Ionicons
-                                            name={['Breakfast', 'Lunch', 'Dinner', 'Snack'].includes(mealType)
-                                                ? (mealType === 'Breakfast' ? 'cafe' : mealType === 'Lunch' ? 'restaurant' : mealType === 'Dinner' ? 'moon' : 'fast-food')
-                                                : 'star'}
-                                            size={16}
-                                            color={colors.accent.primary}
-                                        />
-                                    </View>
-                                    <Text style={[styles.selectedTypeText, { color: colors.text.primary }]}>{mealType}</Text>
+                {step === 'savedMeals' && (
+                    <View>
+                        {savedMeals.length === 0 ? (
+                            <EmptyFlowState colors={colors} icon="bookmark-outline" title="No saved meals yet" body="After adding items, save the meal so it appears here next time." />
+                        ) : savedMeals.map(meal => (
+                            <TouchableOpacity key={meal.id} style={[styles.listRow, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]} onPress={() => handleUseSavedMeal(meal)}>
+                                <View style={styles.listRowMain}>
+                                    <Text style={[styles.listRowTitle, { color: colors.text.primary }]}>{meal.name}</Text>
+                                    <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{meal.items.length} items - {meal.calories} kcal</Text>
                                 </View>
-                                <Ionicons name={isDropdownOpen ? "chevron-up" : "chevron-down"} size={20} color={colors.text.tertiary} />
+                                <TouchableOpacity onPress={() => handleDeleteSavedMeal(meal)} style={styles.rowIconButton}>
+                                    <Ionicons name="trash-outline" size={18} color={colors.text.tertiary} />
+                                </TouchableOpacity>
                             </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
 
-                            {isDropdownOpen && (
-                                <View style={[styles.dropdownList, { backgroundColor: colors.background.elevated, borderColor: colors.border.secondary }]}>
-                                    {['Breakfast', 'Lunch', 'Dinner', 'Snack', ...customMealTypes].map((type) => {
-                                        const isSelected = mealType === type;
-                                        const isDefault = ['Breakfast', 'Lunch', 'Dinner', 'Snack'].includes(type);
-
-                                        return (
-                                            <TouchableOpacity
-                                                key={type}
-                                                style={[styles.dropdownOption, isSelected && { backgroundColor: 'rgba(139, 92, 246, 0.08)' }]}
-                                                onPress={() => {
-                                                    setMealType(type);
-                                                    setIsDropdownOpen(false);
-                                                }}
-                                            >
-                                                <View style={styles.dropdownOptionLeft}>
-                                                    <Ionicons
-                                                        name={isDefault ? (type === 'Breakfast' ? 'cafe' : type === 'Lunch' ? 'restaurant' : type === 'Dinner' ? 'moon' : 'fast-food') : 'star-outline'}
-                                                        size={18}
-                                                        color={isSelected ? colors.accent.primary : colors.text.tertiary}
-                                                    />
-                                                    <Text style={[styles.dropdownOptionText, { color: isSelected ? colors.accent.primary : colors.text.primary, fontWeight: isSelected ? '700' : '500' }]}>
-                                                        {type}
-                                                    </Text>
-                                                </View>
-                                                {isSelected && <Ionicons name="checkmark" size={18} color={colors.accent.primary} />}
-                                            </TouchableOpacity>
-                                        );
-                                    })}
+                {step === 'customFoods' && (
+                    <View>
+                        <TouchableOpacity style={[styles.createRow, { borderColor: colors.border.secondary }]} onPress={() => setShowCustomFoodModal(true)}>
+                            <Ionicons name="add" size={18} color={colors.accent.primary} />
+                            <Text style={[styles.secondaryActionText, { color: colors.accent.primary }]}>Create custom food</Text>
+                        </TouchableOpacity>
+                        {customFoods.length === 0 ? (
+                            <EmptyFlowState colors={colors} icon="star-outline" title="No custom foods yet" body="Create your frequent foods once, then log them quickly here." />
+                        ) : customFoods.map(food => (
+                            <TouchableOpacity key={food.id} style={[styles.listRow, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]} onPress={() => food.id && openQuantityForFood(`custom-${food.id}`, food.name)}>
+                                <View style={styles.listRowMain}>
+                                    <Text style={[styles.listRowTitle, { color: colors.text.primary }]}>{food.name}</Text>
+                                    <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{food.calories} kcal per 100g - P:{food.protein} C:{food.carbs} F:{food.fats}</Text>
                                 </View>
+                                <TouchableOpacity onPress={() => food.id && handleDeleteCustomFood(food.id)} style={styles.rowIconButton}>
+                                    <Ionicons name="trash-outline" size={18} color={colors.text.tertiary} />
+                                </TouchableOpacity>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+
+                {step === 'searchFoods' && (
+                    <View>
+                        <View style={[styles.searchBar, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
+                            <Ionicons name="search" size={18} color={colors.text.tertiary} />
+                            <TextInput
+                                style={[styles.searchInput, { color: colors.text.primary }]}
+                                placeholder="Search food or ingredient"
+                                placeholderTextColor={colors.text.disabled}
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                autoFocus
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                    <Ionicons name="close-circle" size={18} color={colors.text.tertiary} />
+                                </TouchableOpacity>
                             )}
                         </View>
-
-                        {/* Added Food Items UI */}
-                        {foodItems.length > 0 && (
-                            <View style={styles.addedItemsSection}>
-                                <View style={styles.sectionHeaderRow}>
-                                    <Text style={[styles.sectionTitleMini, { color: colors.text.tertiary }]}>LOGGED ITEMS</Text>
-                                    <TouchableOpacity onPress={() => {
-                                        setSavedMealName(`${mealType} meal`);
-                                        setShowSaveMealModal(true);
-                                    }}>
-                                        <Text style={{ color: colors.accent.primary, fontSize: 12, fontWeight: '700' }}>Save as Meal</Text>
-                                    </TouchableOpacity>
-                                </View>
-                                {foodItems.map(item => (
-                                    <View key={item.id} style={[styles.foodCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
-                                        <View style={styles.foodCardLeft}>
-                                            <View style={[styles.foodDot, { backgroundColor: colors.accent.primary }]} />
-                                            <View>
-                                                <Text style={[styles.foodName, { color: colors.text.primary }]}>{item.name}</Text>
-                                                <Text style={[styles.foodMeta, { color: colors.text.tertiary }]}>
-                                                    {item.grams}g • {item.calories} kcal • P: {item.protein}g
-                                                </Text>
-                                            </View>
-                                        </View>
-                                        <TouchableOpacity onPress={() => removeFoodItem(item.id)} style={styles.removeBtn}>
-                                            <Ionicons name="remove-circle-outline" size={22} color={colors.status.error} />
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
+                        {searchQuery.trim().length === 0 ? (
+                            <EmptyFlowState colors={colors} icon="search-outline" title="Search foods" body="Type a food name to add it to this meal." />
+                        ) : filteredFoods.length === 0 ? (
+                            <View>
+                                <EmptyFlowState colors={colors} icon="search-outline" title="No foods found" body="Create it as a custom food and use it right away." />
+                                <Button title={`Create "${searchQuery}"`} onPress={() => {
+                                    setCustomFoodName(searchQuery);
+                                    setShowCustomFoodModal(true);
+                                }} />
                             </View>
-                        )}
+                        ) : filteredFoods.slice(0, 25).map(food => (
+                            <TouchableOpacity key={food.id} style={[styles.listRow, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]} onPress={() => openQuantityForFood(food.id, food.name)}>
+                                <View style={styles.listRowMain}>
+                                    <Text style={[styles.listRowTitle, { color: colors.text.primary }]}>{food.name}</Text>
+                                    <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{food.per100g.calories} kcal per 100g - P:{food.per100g.protein}g{food.isCustom ? ' - Custom' : ''}</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={18} color={colors.text.tertiary} />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
 
-                        <Button
-                            title={`Save ${mealType.charAt(0).toUpperCase() + mealType.slice(1)}`}
-                            onPress={handleSave}
-                            style={{ marginTop: spacing.xl }}
-                            disabled={foodItems.length === 0}
-                        />
-                    </>
+                {step === 'quantity' && selectedFoodData && (
+                    <View>
+                        <View style={[styles.quantityCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
+                            <Text style={[styles.quantityFoodName, { color: colors.text.primary }]}>{selectedFoodData.name}</Text>
+                            <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{selectedFoodData.per100g.calories} kcal per 100g</Text>
+
+                            <View style={styles.unitSelector}>
+                                <TouchableOpacity onPress={() => setLoggingUnit('grams')} style={[styles.unitTab, loggingUnit === 'grams' && { borderColor: colors.accent.primary, backgroundColor: colors.background.elevated }]}>
+                                    <Text style={[styles.unitTabText, { color: loggingUnit === 'grams' ? colors.accent.primary : colors.text.tertiary }]}>Grams</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setLoggingUnit('count')} style={[styles.unitTab, loggingUnit === 'count' && { borderColor: colors.accent.primary, backgroundColor: colors.background.elevated }]}>
+                                    <Text style={[styles.unitTabText, { color: loggingUnit === 'count' ? colors.accent.primary : colors.text.tertiary }]}>Quantity</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {loggingUnit === 'count' && selectedFoodData.servingOptions ? (
+                                <View style={styles.sizeGrid}>
+                                    {selectedFoodData.servingOptions.map(opt => (
+                                        <TouchableOpacity key={opt.label} onPress={() => setSelectedSize(opt.label)} style={[styles.sizeBtn, { borderColor: selectedSize === opt.label ? colors.accent.primary : colors.border.secondary }]}>
+                                            <Text style={[styles.sizeBtnText, { color: selectedSize === opt.label ? colors.accent.primary : colors.text.primary }]}>{opt.label}</Text>
+                                            <Text style={[styles.sizeBtnSubtext, { color: colors.text.tertiary }]}>{opt.grams}g</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            ) : null}
+
+                            <View style={[styles.quantityInputRow, { borderColor: colors.border.secondary }]}>
+                                <TextInput
+                                    style={[styles.quantityInput, { color: colors.text.primary }]}
+                                    placeholder="0"
+                                    placeholderTextColor={colors.text.disabled}
+                                    keyboardType="numeric"
+                                    value={grams}
+                                    onChangeText={setGrams}
+                                    autoFocus
+                                />
+                                <Text style={[styles.unitLabel, { color: colors.text.tertiary }]}>{loggingUnit === 'grams' ? 'grams' : 'servings'}</Text>
+                            </View>
+                        </View>
+                        <Button title="Add to Meal" onPress={addFoodItem} style={{ marginTop: spacing.xl }} />
+                    </View>
+                )}
+
+                {step === 'review' && (
+                    <View>
+                        <MealSummary totals={totals} colors={colors} mealType={mealType} itemCount={foodItems.length} />
+                        <View style={styles.reviewActions}>
+                            <TouchableOpacity style={[styles.compactAction, { borderColor: colors.border.secondary }]} onPress={() => setStep('addMethod')}>
+                                <Ionicons name="add" size={18} color={colors.accent.primary} />
+                                <Text style={[styles.secondaryActionText, { color: colors.accent.primary }]}>Add More</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.compactAction, { borderColor: colors.border.secondary, opacity: foodItems.length === 0 ? 0.45 : 1 }]}
+                                disabled={foodItems.length === 0}
+                                onPress={() => {
+                                    setSavedMealName(`${mealType} meal`);
+                                    setShowSaveMealModal(true);
+                                }}
+                            >
+                                <Ionicons name="bookmark-outline" size={18} color={colors.accent.primary} />
+                                <Text style={[styles.secondaryActionText, { color: colors.accent.primary }]}>Save Meal</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {foodItems.length === 0 ? (
+                            <EmptyFlowState colors={colors} icon="restaurant-outline" title="No items yet" body="Add food before saving this meal log." />
+                        ) : foodItems.map(item => (
+                            <View key={item.id} style={[styles.listRow, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
+                                <View style={styles.listRowMain}>
+                                    <Text style={[styles.listRowTitle, { color: colors.text.primary }]}>{item.name}</Text>
+                                    <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{item.grams}g - {item.calories} kcal - P:{item.protein}g</Text>
+                                </View>
+                                <TouchableOpacity onPress={() => removeFoodItem(item.id)} style={styles.rowIconButton}>
+                                    <Ionicons name="remove-circle-outline" size={20} color={colors.status.error} />
+                                </TouchableOpacity>
+                            </View>
+                        ))}
+
+                        <Button title={`Log ${mealType}`} onPress={handleSave} style={{ marginTop: spacing.xl }} disabled={foodItems.length === 0} />
+                    </View>
                 )}
             </KeyboardAwareScreen>
 
-            {/* Save Reusable Meal Modal */}
-            <Modal
+            <SaveMealModal
                 visible={showSaveMealModal}
-                animationType="fade"
-                transparent={true}
-                onRequestClose={() => setShowSaveMealModal(false)}
-            >
-                <KeyboardAwareModal
-                    overlayStyle={styles.deleteOverlay}
-                    contentStyle={[styles.confirmModal, { backgroundColor: colors.background.elevated, borderColor: colors.accent.primary, borderWidth: 1.5, shadowColor: colors.accent.primary, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 }]}
-                >
-                    <Text style={[styles.confirmTitle, { color: colors.text.primary }]}>Save Reusable Meal</Text>
-                    <Text style={[styles.confirmText, { color: colors.text.secondary }]}>
-                        Save these {foodItems.length} item(s) so you can add them again later.
-                    </Text>
-                    <TextInput
-                        style={[styles.input, { backgroundColor: colors.background.card, color: colors.text.primary, borderColor: colors.border.primary, width: '100%' }]}
-                        placeholder="e.g., Morning oats"
-                        placeholderTextColor={colors.text.disabled}
-                        value={savedMealName}
-                        onChangeText={setSavedMealName}
-                        autoFocus
-                    />
-                    <View style={[styles.confirmButtons, { marginTop: spacing.lg }]}>
-                        <TouchableOpacity
-                            style={[styles.confirmButton, { backgroundColor: colors.background.card }]}
-                            onPress={() => setShowSaveMealModal(false)}
-                        >
+                colors={colors}
+                foodItems={foodItems}
+                savedMealName={savedMealName}
+                setSavedMealName={setSavedMealName}
+                onClose={() => setShowSaveMealModal(false)}
+                onSave={handleSaveReusableMeal}
+            />
+
+            <CustomFoodModal
+                visible={showCustomFoodModal}
+                colors={colors}
+                customFoods={customFoods}
+                customFoodName={customFoodName}
+                customCalories={customCalories}
+                customProtein={customProtein}
+                customCarbs={customCarbs}
+                customFats={customFats}
+                setCustomFoodName={setCustomFoodName}
+                setCustomCalories={setCustomCalories}
+                setCustomProtein={setCustomProtein}
+                setCustomCarbs={setCustomCarbs}
+                setCustomFats={setCustomFats}
+                onDeleteFood={handleDeleteCustomFood}
+                onClose={() => setShowCustomFoodModal(false)}
+                onSave={handleAddCustomFood}
+            />
+
+            <MealTypeModal
+                visible={showMealTypeModal}
+                colors={colors}
+                customMealTypes={customMealTypes}
+                newMealTypeName={newMealTypeName}
+                setNewMealTypeName={setNewMealTypeName}
+                onDeleteType={handleDeleteCustomMealType}
+                onClose={() => setShowMealTypeModal(false)}
+                onSave={handleAddCustomMealType}
+            />
+
+            <DeleteModal
+                deleteModal={deleteModal}
+                colors={colors}
+                onClose={() => setDeleteModal(null)}
+                onConfirm={confirmDelete}
+            />
+        </View>
+    );
+}
+
+function FlowAction({ title, subtitle, icon, colors, onPress }: any) {
+    return (
+        <TouchableOpacity style={[styles.flowAction, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]} onPress={onPress}>
+            <View style={[styles.flowActionIcon, { backgroundColor: colors.background.elevated }]}>
+                <Ionicons name={icon} size={20} color={colors.accent.primary} />
+            </View>
+            <View style={styles.listRowMain}>
+                <Text style={[styles.listRowTitle, { color: colors.text.primary }]}>{title}</Text>
+                <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{subtitle}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.text.tertiary} />
+        </TouchableOpacity>
+    );
+}
+
+function MealSummary({ totals, colors, mealType, itemCount }: any) {
+    return (
+        <View style={[styles.summaryCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
+            <View>
+                <Text style={[styles.summaryLabel, { color: colors.text.tertiary }]}>{mealType} total</Text>
+                <Text style={[styles.summaryCalories, { color: colors.text.primary }]}>{totals.calories} kcal</Text>
+            </View>
+            <Text style={[styles.summaryItems, { color: colors.text.tertiary }]}>{itemCount} items</Text>
+            <View style={styles.summaryMacros}>
+                <Text style={[styles.summaryMacroText, { color: colors.text.secondary }]}>P {totals.protein.toFixed(1)}g</Text>
+                <Text style={[styles.summaryMacroText, { color: colors.text.secondary }]}>C {totals.carbs.toFixed(1)}g</Text>
+                <Text style={[styles.summaryMacroText, { color: colors.text.secondary }]}>F {totals.fats.toFixed(1)}g</Text>
+            </View>
+        </View>
+    );
+}
+
+function EmptyFlowState({ colors, icon, title, body }: any) {
+    return (
+        <View style={styles.emptyState}>
+            <Ionicons name={icon} size={36} color={colors.text.disabled} />
+            <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>{title}</Text>
+            <Text style={[styles.emptyBody, { color: colors.text.tertiary }]}>{body}</Text>
+        </View>
+    );
+}
+
+function SaveMealModal({ visible, colors, foodItems, savedMealName, setSavedMealName, onClose, onSave }: any) {
+    return (
+        <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+            <KeyboardAwareModal overlayStyle={styles.deleteOverlay} contentStyle={[styles.confirmModal, { backgroundColor: colors.background.elevated }]}>
+                <Text style={[styles.confirmTitle, { color: colors.text.primary }]}>Save Reusable Meal</Text>
+                <Text style={[styles.confirmText, { color: colors.text.secondary }]}>Save these {foodItems.length} item(s) so you can add them again later.</Text>
+                <TextInput
+                    style={[styles.input, { backgroundColor: colors.background.card, color: colors.text.primary, borderColor: colors.border.primary, width: '100%' }]}
+                    placeholder="e.g., Morning oats"
+                    placeholderTextColor={colors.text.disabled}
+                    value={savedMealName}
+                    onChangeText={setSavedMealName}
+                    autoFocus
+                />
+                <View style={[styles.confirmButtons, { marginTop: spacing.lg }]}>
+                    <TouchableOpacity style={[styles.confirmButton, { backgroundColor: colors.background.card }]} onPress={onClose}>
+                        <Text style={[styles.confirmButtonText, { color: colors.text.primary }]}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.confirmButton, { backgroundColor: colors.accent.primary }]} onPress={onSave}>
+                        <Text style={[styles.confirmButtonText, { color: colors.text.inverse }]}>Save Meal</Text>
+                    </TouchableOpacity>
+                </View>
+            </KeyboardAwareModal>
+        </Modal>
+    );
+}
+
+function CustomFoodModal(props: any) {
+    const { visible, colors, customFoods, customFoodName, customCalories, customProtein, customCarbs, customFats, setCustomFoodName, setCustomCalories, setCustomProtein, setCustomCarbs, setCustomFats, onDeleteFood, onClose, onSave } = props;
+    return (
+        <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+            <KeyboardAwareModal overlayStyle={styles.modalOverlay} contentStyle={[styles.modalContent, { backgroundColor: colors.background.primary }]}>
+                <View style={styles.modalHeader}>
+                    <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Custom Food</Text>
+                    <TouchableOpacity onPress={onClose}><Ionicons name="close" size={24} color={colors.text.primary} /></TouchableOpacity>
+                </View>
+                <ScrollView keyboardShouldPersistTaps="handled">
+                    <Text style={[styles.label, { color: colors.text.secondary, marginTop: 0 }]}>Created foods</Text>
+                    {customFoods.length === 0 ? (
+                        <Text style={{ color: colors.text.tertiary, paddingVertical: spacing.sm }}>No custom foods added.</Text>
+                    ) : customFoods.map((food: CustomFood) => (
+                        <View key={food.id} style={[styles.modalListRow, { borderBottomColor: colors.border.secondary }]}>
+                            <View style={styles.listRowMain}>
+                                <Text style={{ color: colors.text.primary, fontWeight: '700' }}>{food.name}</Text>
+                                <Text style={{ color: colors.text.tertiary, fontSize: 12 }}>{food.calories} kcal - P:{food.protein} C:{food.carbs} F:{food.fats}</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => food.id && onDeleteFood(food.id)} style={styles.rowIconButton}>
+                                <Ionicons name="trash-outline" size={20} color={colors.status.error} />
+                            </TouchableOpacity>
+                        </View>
+                    ))}
+                    <View style={[styles.modalDivider, { backgroundColor: colors.border.secondary }]} />
+                    <Text style={[styles.label, { color: colors.text.secondary }]}>Food Name</Text>
+                    <TextInput style={[styles.input, { backgroundColor: colors.background.card, color: colors.text.primary, borderColor: colors.border.primary }]} placeholder="e.g., My Protein Shake" placeholderTextColor={colors.text.disabled} value={customFoodName} onChangeText={setCustomFoodName} />
+                    <Text style={[styles.helpText, { color: colors.text.tertiary }]}>Nutrition per 100g</Text>
+                    <View style={styles.row}>
+                        <InputField label="Calories" value={customCalories} onChangeText={setCustomCalories} colors={colors} />
+                        <InputField label="Protein" value={customProtein} onChangeText={setCustomProtein} colors={colors} />
+                    </View>
+                    <View style={styles.row}>
+                        <InputField label="Carbs" value={customCarbs} onChangeText={setCustomCarbs} colors={colors} />
+                        <InputField label="Fats" value={customFats} onChangeText={setCustomFats} colors={colors} />
+                    </View>
+                    <Button title="Save Food" onPress={onSave} style={{ marginTop: spacing.lg }} />
+                </ScrollView>
+            </KeyboardAwareModal>
+        </Modal>
+    );
+}
+
+function InputField({ label, value, onChangeText, colors }: any) {
+    return (
+        <View style={styles.halfCol}>
+            <Text style={[styles.label, { color: colors.text.secondary }]}>{label}</Text>
+            <TextInput style={[styles.input, { backgroundColor: colors.background.card, color: colors.text.primary, borderColor: colors.border.primary }]} placeholder="0" placeholderTextColor={colors.text.disabled} keyboardType="numeric" value={value} onChangeText={onChangeText} />
+        </View>
+    );
+}
+
+function MealTypeModal({ visible, colors, customMealTypes, newMealTypeName, setNewMealTypeName, onDeleteType, onClose, onSave }: any) {
+    return (
+        <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+            <KeyboardAwareModal overlayStyle={styles.modalOverlay} contentStyle={[styles.modalContent, { backgroundColor: colors.background.primary }]}>
+                <View style={styles.modalHeader}>
+                    <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Meal Types</Text>
+                    <TouchableOpacity onPress={onClose}><Ionicons name="close" size={24} color={colors.text.primary} /></TouchableOpacity>
+                </View>
+                <Text style={[styles.label, { color: colors.text.secondary, marginTop: 0 }]}>Custom types</Text>
+                {customMealTypes.length === 0 ? (
+                    <Text style={{ color: colors.text.tertiary, paddingVertical: spacing.sm }}>No custom types added yet.</Text>
+                ) : customMealTypes.map((type: string) => (
+                    <View key={type} style={[styles.modalListRow, { borderBottomColor: colors.border.secondary }]}>
+                        <Text style={{ color: colors.text.primary, fontWeight: '700' }}>{type}</Text>
+                        <TouchableOpacity onPress={() => onDeleteType(type)} style={styles.rowIconButton}>
+                            <Ionicons name="trash-outline" size={20} color={colors.status.error} />
+                        </TouchableOpacity>
+                    </View>
+                ))}
+                <Text style={[styles.label, { color: colors.text.secondary }]}>Add type</Text>
+                <TextInput style={[styles.input, { backgroundColor: colors.background.card, color: colors.text.primary, borderColor: colors.border.primary }]} placeholder="e.g., Pre-workout" placeholderTextColor={colors.text.disabled} value={newMealTypeName} onChangeText={setNewMealTypeName} />
+                <Button title="Add Type" onPress={onSave} style={{ marginTop: spacing.lg }} />
+            </KeyboardAwareModal>
+        </Modal>
+    );
+}
+
+function DeleteModal({ deleteModal, colors, onClose, onConfirm }: any) {
+    return (
+        <Modal visible={!!deleteModal?.visible} animationType="fade" transparent onRequestClose={onClose}>
+            <View style={styles.deleteOverlay}>
+                <View style={[styles.confirmModal, { backgroundColor: colors.background.elevated }]}>
+                    <Text style={[styles.confirmTitle, { color: colors.text.primary }]}>Delete {deleteModal?.type === 'mealType' ? 'Meal Type' : deleteModal?.type === 'savedMeal' ? 'Saved Meal' : 'Food'}</Text>
+                    <Text style={[styles.confirmText, { color: colors.text.secondary }]}>{`Are you sure you want to delete "${deleteModal?.name}"?`}</Text>
+                    <View style={styles.confirmButtons}>
+                        <TouchableOpacity style={[styles.confirmButton, { backgroundColor: colors.background.card }]} onPress={onClose}>
                             <Text style={[styles.confirmButtonText, { color: colors.text.primary }]}>Cancel</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.confirmButton, { backgroundColor: colors.accent.primary }]}
-                            onPress={handleSaveReusableMeal}
-                        >
-                            <Text style={[styles.confirmButtonText, { color: colors.text.inverse }]}>Save Meal</Text>
+                        <TouchableOpacity style={[styles.confirmButton, { backgroundColor: colors.status.error }]} onPress={onConfirm}>
+                            <Text style={[styles.confirmButtonText, { color: colors.text.inverse }]}>Delete</Text>
                         </TouchableOpacity>
                     </View>
-                </KeyboardAwareModal>
-            </Modal>
-
-            {/* Custom Food Modal */}
-            < Modal
-                visible={showCustomFoodModal}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setShowCustomFoodModal(false)
-                }
-            >
-                <KeyboardAwareModal
-                    overlayStyle={styles.modalOverlay}
-                    contentStyle={[styles.modalContent, { backgroundColor: colors.background.primary, borderColor: colors.accent.primary, borderWidth: 1.5, shadowColor: colors.accent.primary, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 }]}
-                >
-                        <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Manage Custom Foods</Text>
-                            <TouchableOpacity onPress={() => setShowCustomFoodModal(false)}>
-                                <Ionicons name="close" size={24} color={colors.text.primary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView keyboardShouldPersistTaps="handled">
-                            <View style={{ marginBottom: spacing.lg }}>
-                                <Text style={[styles.label, { color: colors.text.secondary, marginTop: 0 }]}>My Foods</Text>
-                                {customFoods.length === 0 ? (
-                                    <Text style={{ color: colors.text.tertiary, fontStyle: 'italic' }}>No custom foods added.</Text>
-                                ) : (
-                                    customFoods.map((food) => (
-                                        <View key={food.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border.secondary }}>
-                                            <View style={{ flex: 1, paddingRight: 8 }}>
-                                                <Text style={{ color: colors.text.primary, fontSize: 16, fontWeight: '500' }}>{food.name}</Text>
-                                                <Text style={{ color: colors.text.tertiary, fontSize: 12 }}>{food.calories} cal • P:{food.protein} • C:{food.carbs} • F:{food.fats}</Text>
-                                            </View>
-                                            <TouchableOpacity
-                                                onPress={() => food.id && handleDeleteCustomFood(food.id)}
-                                                style={{ padding: 8, marginRight: -8 }}
-                                            >
-                                                <Ionicons name="trash-outline" size={20} color={colors.status.error} />
-                                            </TouchableOpacity>
-                                        </View>
-                                    ))
-                                )}
-                            </View>
-
-                            <View style={{ height: 1, backgroundColor: colors.border.secondary, marginBottom: spacing.lg }} />
-
-                            <Text style={[styles.sectionTitle, { color: colors.text.primary, fontSize: 16, marginBottom: spacing.sm }]}>Add New Food</Text>
-
-                            <Text style={[styles.label, { color: colors.text.secondary }]}>Food Name</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: colors.background.card, color: colors.text.primary, borderColor: colors.border.primary }]}
-                                placeholder="e.g., My Protein Shake"
-                                placeholderTextColor={colors.text.disabled}
-                                value={customFoodName}
-                                onChangeText={setCustomFoodName}
-                            />
-
-                            <Text style={[styles.helpText, { color: colors.text.tertiary }]}>
-                                Enter nutrition per 100g:
-                            </Text>
-
-                            <View style={styles.row}>
-                                <View style={styles.halfCol}>
-                                    <Text style={[styles.label, { color: colors.text.secondary }]}>Calories</Text>
-                                    <TextInput
-                                        style={[styles.input, { backgroundColor: colors.background.card, color: colors.text.primary, borderColor: colors.border.primary }]}
-                                        placeholder="0"
-                                        placeholderTextColor={colors.text.disabled}
-                                        keyboardType="numeric"
-                                        value={customCalories}
-                                        onChangeText={setCustomCalories}
-                                    />
-                                </View>
-                                <View style={styles.halfCol}>
-                                    <Text style={[styles.label, { color: colors.text.secondary }]}>Protein (g)</Text>
-                                    <TextInput
-                                        style={[styles.input, { backgroundColor: colors.background.card, color: colors.text.primary, borderColor: colors.border.primary }]}
-                                        placeholder="0"
-                                        placeholderTextColor={colors.text.disabled}
-                                        keyboardType="numeric"
-                                        value={customProtein}
-                                        onChangeText={setCustomProtein}
-                                    />
-                                </View>
-                            </View>
-
-                            <View style={styles.row}>
-                                <View style={styles.halfCol}>
-                                    <Text style={[styles.label, { color: colors.text.secondary }]}>Carbs (g)</Text>
-                                    <TextInput
-                                        style={[styles.input, { backgroundColor: colors.background.card, color: colors.text.primary, borderColor: colors.border.primary }]}
-                                        placeholder="0"
-                                        placeholderTextColor={colors.text.disabled}
-                                        keyboardType="numeric"
-                                        value={customCarbs}
-                                        onChangeText={setCustomCarbs}
-                                    />
-                                </View>
-                                <View style={styles.halfCol}>
-                                    <Text style={[styles.label, { color: colors.text.secondary }]}>Fats (g)</Text>
-                                    <TextInput
-                                        style={[styles.input, { backgroundColor: colors.background.card, color: colors.text.primary, borderColor: colors.border.primary }]}
-                                        placeholder="0"
-                                        placeholderTextColor={colors.text.disabled}
-                                        keyboardType="numeric"
-                                        value={customFats}
-                                        onChangeText={setCustomFats}
-                                    />
-                                </View>
-                            </View>
-
-                            <Button
-                                title="Add Custom Food"
-                                onPress={handleAddCustomFood}
-                                style={{ marginTop: spacing.lg }}
-                            />
-                        </ScrollView>
-                </KeyboardAwareModal>
-            </Modal >
-            {/* Custom Meal Type Modal */}
-            <Modal
-                visible={showMealTypeModal}
-                animationType="fade"
-                transparent={true}
-                onRequestClose={() => setShowMealTypeModal(false)}
-            >
-                <KeyboardAwareModal
-                    overlayStyle={styles.modalOverlay}
-                    contentStyle={[styles.modalContent, { backgroundColor: colors.background.primary, borderColor: colors.accent.primary, borderWidth: 1.5, shadowColor: colors.accent.primary, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 }]}
-                >
-                        <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Manage Meal Types</Text>
-                            <TouchableOpacity onPress={() => setShowMealTypeModal(false)}>
-                                <Ionicons name="close" size={24} color={colors.text.primary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <Text style={[styles.label, { color: colors.text.secondary, marginTop: 0 }]}>My Custom Types</Text>
-                        <ScrollView style={{ maxHeight: 150, marginBottom: spacing.lg }}>
-                            {customMealTypes.length === 0 ? (
-                                <Text style={{ color: colors.text.tertiary, fontStyle: 'italic', paddingVertical: 8 }}>No custom types added yet.</Text>
-                            ) : (
-                                customMealTypes.map((type, index) => (
-                                    <View key={index} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border.secondary }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                            <Ionicons name="star-outline" size={16} color={colors.accent.secondary} />
-                                            <Text style={{ color: colors.text.primary, fontSize: 16 }}>{type}</Text>
-                                        </View>
-                                        <TouchableOpacity
-                                            onPress={() => handleDeleteCustomMealType(type)}
-                                            style={{ padding: 8, marginRight: -8 }}
-                                        >
-                                            <Ionicons name="trash-outline" size={20} color={colors.status.error} />
-                                        </TouchableOpacity>
-                                    </View>
-                                ))
-                            )}
-                        </ScrollView>
-
-                        <Text style={[styles.label, { color: colors.text.secondary }]}>Add New Type</Text>
-                        <TextInput
-                            style={[styles.input, { backgroundColor: colors.background.card, color: colors.text.primary, borderColor: colors.border.primary }]}
-                            placeholder="e.g., Pre-workout, Late Snack"
-                            placeholderTextColor={colors.text.disabled}
-                            value={newMealTypeName}
-                            onChangeText={setNewMealTypeName}
-                        />
-
-                        <Button
-                            title="Add"
-                            onPress={handleAddCustomMealType}
-                            style={{ marginTop: spacing.lg }}
-                        />
-                </KeyboardAwareModal>
-            </Modal>
-            {/* Delete Confirmation Modal */}
-            <Modal
-                visible={!!deleteModal?.visible}
-                animationType="fade"
-                transparent={true}
-                onRequestClose={() => setDeleteModal(null)}
-            >
-                <View style={styles.deleteOverlay}>
-                    <View style={[styles.confirmModal, { backgroundColor: colors.background.elevated, borderColor: colors.accent.primary, borderWidth: 1.5, shadowColor: colors.accent.primary, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 }]}>
-                        <Text style={[styles.confirmTitle, { color: colors.text.primary }]}>
-                            Delete {deleteModal?.type === 'mealType' ? 'Meal Type' : deleteModal?.type === 'savedMeal' ? 'Saved Meal' : 'Food'}
-                        </Text>
-                        <Text style={[styles.confirmText, { color: colors.text.secondary }]}>
-                            {`Are you sure you want to delete "${deleteModal?.name}"?`}
-                        </Text>
-                        <View style={styles.confirmButtons}>
-                            <TouchableOpacity
-                                style={[styles.confirmButton, { backgroundColor: colors.background.card }]}
-                                onPress={() => setDeleteModal(null)}
-                            >
-                                <Text style={[styles.confirmButtonText, { color: colors.text.primary }]}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.confirmButton, { backgroundColor: colors.status.error }]}
-                                onPress={confirmDelete}
-                            >
-                                <Text style={[styles.confirmButtonText, { color: colors.text.inverse }]}>Delete</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
                 </View>
-            </Modal>
-        </View >
+            </View>
+        </Modal>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
+    container: { flex: 1 },
     content: {
         padding: spacing.xl,
-        paddingBottom: 100,
+        paddingBottom: 110,
     },
-    searchContentActive: {
-        paddingTop: spacing.md,
-    },
-    mealTypeSection: {
-        marginTop: spacing.md,
+    flowHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
         marginBottom: spacing.xl,
     },
-    inputLabel: {
-        fontSize: 13,
-        fontWeight: '800',
-        textTransform: 'uppercase',
-        letterSpacing: 1.5,
-        opacity: 0.8,
-    },
-    manageTypesBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 12,
-    },
-    manageTypesText: {
-        fontSize: 12,
-        fontWeight: '700',
-    },
-    dropdownTrigger: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: 64,
-        paddingHorizontal: 20,
-        borderRadius: 20,
-        borderWidth: 1.5,
-        marginTop: 14,
-        ...shadows.sm,
-    },
-    dropdownTriggerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 14,
-    },
-    categoryIconCircleSmall: {
-        width: 36,
-        height: 36,
-        borderRadius: 12, // Squircle look
+    flowBackButton: {
+        width: 40,
+        height: 40,
         alignItems: 'center',
         justifyContent: 'center',
+        marginRight: spacing.sm,
     },
-    selectedTypeText: {
-        fontSize: 17,
-        fontWeight: '700',
-    },
-    dropdownList: {
-        marginTop: 10,
-        borderRadius: 20,
-        borderWidth: 1.5,
-        overflow: 'hidden',
-        ...shadows.lg,
-    },
-    dropdownOption: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 18,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
-    },
-    dropdownOptionLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 14,
-    },
-    dropdownOptionText: {
-        fontSize: 16,
-    },
-    heroSummaryCard: {
-        borderRadius: 20,
-        padding: 16,
-        marginBottom: spacing.xl,
-        ...shadows.md,
-    },
-    summaryHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    summarySubtitle: {
-        color: 'white',
-        fontSize: 12,
-        opacity: 0.8,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    summaryValue: {
-        color: 'white',
-        fontSize: 28,
-        fontWeight: '800',
-    },
-    summaryIconCircle: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    summaryDivider: {
-        height: 1,
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        marginBottom: 12,
-    },
-    macroStrip: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        padding: 10,
-        borderRadius: 12,
-    },
-    macroBox: {
-        alignItems: 'center',
-        flex: 1,
-    },
-    macroValue: {
-        color: 'white',
-        fontSize: 14,
-        fontWeight: '700',
-    },
-    macroLabel: {
-        color: 'white',
-        fontSize: 10,
-        opacity: 0.8,
-        fontWeight: '600',
-    },
-    quickAccessSection: {
-        marginBottom: spacing.xxl,
-    },
-    sectionTitleMini: {
-        fontSize: 12,
+    flowHeaderText: { flex: 1 },
+    flowKicker: {
+        fontSize: 11,
         fontWeight: '800',
         letterSpacing: 1.2,
-        marginBottom: spacing.md,
     },
-    quickAccessScroll: {
-        paddingRight: spacing.xl,
+    flowTitle: {
+        fontSize: 24,
+        fontWeight: '900',
+        marginTop: 2,
     },
-    quickFoodCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 10,
-        paddingRight: 16,
-        borderRadius: 12,
+    countPill: {
+        minWidth: 40,
+        height: 34,
+        borderRadius: 10,
         borderWidth: 1,
-        marginRight: 10,
-        gap: 10,
-    },
-    quickFoodIcon: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    quickFoodText: {
-        fontSize: 13,
-        fontWeight: '600',
-        maxWidth: 120,
+    countPillText: { fontSize: 14, fontWeight: '900' },
+    leadText: {
+        fontSize: 15,
+        lineHeight: 22,
+        marginBottom: spacing.xl,
     },
-    savedMealCard: {
-        width: 230,
+    optionGrid: {
+        gap: spacing.md,
+    },
+    optionCard: {
+        minHeight: 66,
+        borderRadius: 12,
+        borderWidth: 1,
+        padding: spacing.md,
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
-        borderRadius: 14,
-        borderWidth: 1,
-        marginRight: 10,
-        gap: 10,
+        gap: spacing.md,
     },
-    savedMealInfo: {
+    optionTitle: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    secondaryActionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        paddingVertical: spacing.lg,
+    },
+    secondaryActionText: {
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    actionList: { gap: spacing.sm },
+    flowAction: {
+        minHeight: 72,
+        borderRadius: 12,
+        borderWidth: 1,
+        padding: spacing.md,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+    },
+    flowActionIcon: {
+        width: 38,
+        height: 38,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    summaryCard: {
+        borderRadius: 12,
+        borderWidth: 1,
+        padding: spacing.md,
+        marginBottom: spacing.xl,
+    },
+    summaryLabel: {
+        fontSize: 12,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
+    },
+    summaryCalories: {
+        fontSize: 28,
+        fontWeight: '900',
+        marginTop: 2,
+    },
+    summaryItems: {
+        position: 'absolute',
+        top: spacing.md,
+        right: spacing.md,
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    summaryMacros: {
+        flexDirection: 'row',
+        gap: spacing.md,
+        marginTop: spacing.md,
+    },
+    summaryMacroText: {
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    listRow: {
+        borderRadius: 12,
+        borderWidth: 1,
+        padding: spacing.md,
+        marginBottom: spacing.sm,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+    },
+    listRowMain: {
         flex: 1,
         minWidth: 0,
     },
-    savedMealName: {
-        fontSize: 14,
+    listRowTitle: {
+        fontSize: 15,
         fontWeight: '800',
     },
-    savedMealMeta: {
+    listRowMeta: {
         fontSize: 12,
-        marginTop: 2,
+        marginTop: 3,
+        lineHeight: 17,
     },
-    savedMealDelete: {
-        width: 28,
-        height: 28,
+    rowIconButton: {
+        width: 34,
+        height: 34,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    savedMealEmpty: {
-        minWidth: 220,
-        minHeight: 52,
+    createRow: {
+        borderRadius: 12,
         borderWidth: 1,
         borderStyle: 'dashed',
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 16,
-        marginRight: 10,
-    },
-    savedMealEmptyText: {
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    addedItemsSection: {
-        marginBottom: spacing.xxl,
-    },
-    sectionHeaderRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: spacing.md,
-    },
-    foodCard: {
+        padding: spacing.md,
+        marginBottom: spacing.lg,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 14,
-        borderRadius: 16,
-        borderWidth: 1,
-        marginBottom: 10,
-        ...shadows.sm,
+        gap: spacing.sm,
     },
-    foodCardLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        flex: 1,
-    },
-    foodDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    foodName: {
-        fontSize: 15,
-        fontWeight: '700',
-    },
-    foodMeta: {
-        fontSize: 12,
-        marginTop: 2,
-    },
-    removeBtn: {
-        padding: 4,
-    },
-    searchHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: spacing.md,
-    },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    customFoodButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 6,
-        paddingHorizontal: 12,
+    searchBar: {
+        minHeight: 50,
         borderRadius: 12,
-    },
-    customFoodButtonText: {
-        fontSize: 12,
-        fontWeight: '700',
-    },
-    searchSection: {
-        marginBottom: spacing.xxl,
-        paddingTop: 16,
-    },
-    searchSectionActive: {
-        marginTop: 0,
-        flex: 1,
-        paddingTop: 12,
-    },
-    cancelSearchBtn: {
-        paddingLeft: 12,
-        paddingVertical: 8,
-    },
-    backButtonIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    searchTitleLarge: {
-        fontSize: 24,
-        fontWeight: '900',
-        letterSpacing: -1,
-    },
-    searchBarContainer: {
+        borderWidth: 1,
+        paddingHorizontal: spacing.md,
         flexDirection: 'row',
         alignItems: 'center',
-        height: 60, // Slightly taller for more presence
-        paddingHorizontal: 20,
-        borderRadius: 20,
-        borderWidth: 1.5,
+        gap: spacing.sm,
+        marginBottom: spacing.lg,
     },
-    searchIcon: {
-        marginRight: 12,
-    },
-    searchInputInline: {
+    searchInput: {
         flex: 1,
+        fontSize: 16,
+        height: 48,
+    },
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: spacing.xxxl,
+        paddingHorizontal: spacing.xl,
+    },
+    emptyTitle: {
         fontSize: 17,
-        height: '100%',
-        fontWeight: '500',
+        fontWeight: '900',
+        marginTop: spacing.md,
     },
-    searchResultsWrapper: {
-        borderRadius: 20,
-        borderWidth: 1.5,
-        marginTop: 16,
-        overflow: 'hidden',
-        flex: 1,
-        ...shadows.md,
-    },
-    dropdownScroll: {
-        flex: 1,
-    },
-    dropdownContent: {
-        flex: 1,
-    },
-    emptyResults: {
-        padding: 40,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    selectionFocusContainer: {
-        marginTop: 16,
-    },
-    focusedFoodCard: {
-        padding: 20,
-        borderRadius: 24,
-        borderWidth: 2,
-        ...shadows.md,
-    },
-    focusedFoodHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 20,
-    },
-    focusedFoodInfo: {
-        flex: 1,
-    },
-    focusedFoodName: {
-        fontSize: 20,
-        fontWeight: '800',
-        marginBottom: 4,
-    },
-    focusedFoodMeta: {
+    emptyBody: {
         fontSize: 14,
-        opacity: 0.7,
+        textAlign: 'center',
+        lineHeight: 20,
+        marginTop: spacing.sm,
     },
-    changeFoodBtn: {
-        padding: 4,
+    quantityCard: {
+        borderRadius: 12,
+        borderWidth: 1,
+        padding: spacing.lg,
+    },
+    quantityFoodName: {
+        fontSize: 20,
+        fontWeight: '900',
     },
     unitSelector: {
         flexDirection: 'row',
-        backgroundColor: 'rgba(0,0,0,0.03)',
-        padding: 4,
-        borderRadius: 14,
-        marginBottom: 20,
+        gap: spacing.sm,
+        marginTop: spacing.lg,
+        marginBottom: spacing.lg,
     },
     unitTab: {
         flex: 1,
-        height: 38,
+        minHeight: 40,
+        borderRadius: 10,
+        borderWidth: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 11,
-        borderWidth: 1,
-        borderColor: 'transparent',
     },
     unitTabText: {
         fontSize: 13,
-        fontWeight: '700',
-    },
-    sizeOptionsWrapper: {
-        marginBottom: 20,
-    },
-    sizeLabel: {
-        fontSize: 12,
         fontWeight: '800',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginBottom: 10,
-        paddingLeft: 4,
     },
     sizeGrid: {
         flexDirection: 'row',
-        gap: 8,
+        gap: spacing.sm,
+        marginBottom: spacing.lg,
     },
     sizeBtn: {
         flex: 1,
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: 14,
-        borderWidth: 1.5,
+        borderRadius: 10,
+        borderWidth: 1,
+        padding: spacing.sm,
         alignItems: 'center',
-        justifyContent: 'center',
     },
     sizeBtnText: {
-        fontSize: 14,
-        fontWeight: '700',
+        fontSize: 13,
+        fontWeight: '800',
     },
     sizeBtnSubtext: {
         fontSize: 11,
         marginTop: 2,
     },
-    gramsActionRowFocused: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    gramsInputWrapperFocused: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        height: 60,
-        paddingHorizontal: 16,
-        borderRadius: 18,
-        borderWidth: 1.5,
-    },
-    gramsActionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        marginTop: 16,
-    },
-    gramsInputWrapper: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        height: 54,
-        paddingHorizontal: 16,
-        borderRadius: 16,
+    quantityInputRow: {
+        borderRadius: 12,
         borderWidth: 1,
+        minHeight: 54,
+        paddingHorizontal: spacing.md,
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-    gramsInputInline: {
+    quantityInput: {
         flex: 1,
-        fontSize: 18,
-        fontWeight: '700',
-        height: '100%',
+        fontSize: 22,
+        fontWeight: '900',
+        height: 54,
     },
     unitLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        marginLeft: 8,
-    },
-    addBtnLarge: {
-        width: 54,
-        height: 54,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-        ...shadows.md,
-    },
-    dropdownItem: {
-        padding: 16,
-        borderBottomWidth: 1,
-    },
-    dropdownText: {
-        fontSize: 15,
-        fontWeight: '600',
-    },
-    dropdownSubtext: {
-        fontSize: 12,
-        marginTop: 4,
-    },
-    sessionLogSection: {
-        marginTop: 32,
-        paddingTop: 24,
-        borderTopWidth: 1.5,
-        borderTopColor: 'rgba(0,0,0,0.05)',
-    },
-    sessionLogHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-        paddingHorizontal: 4,
-    },
-    sessionBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        minWidth: 32,
-        alignItems: 'center',
-    },
-    sessionList: {
-        marginBottom: 24,
-    },
-    sessionFoodCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 14,
-        borderRadius: 18,
-        borderWidth: 1,
-        marginBottom: 10,
-        ...shadows.sm,
-    },
-    sessionFoodInfo: {
-        flex: 1,
-    },
-    sessionFoodName: {
-        fontSize: 15,
+        fontSize: 13,
         fontWeight: '700',
     },
-    sessionFoodMeta: {
-        fontSize: 13,
-        marginTop: 2,
-        opacity: 0.6,
+    reviewActions: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+        marginBottom: spacing.lg,
     },
-    sessionRemoveBtn: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(0,0,0,0.03)',
-    },
-    doneButtonLarge: {
+    compactAction: {
+        flex: 1,
+        minHeight: 44,
+        borderRadius: 12,
+        borderWidth: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        height: 64,
-        borderRadius: 20,
-        gap: 12,
-        ...shadows.md,
-    },
-    doneButtonText: {
-        color: 'white',
-        fontSize: 18,
-        fontWeight: '800',
+        gap: spacing.sm,
     },
     modalOverlay: {
         flex: 1,
@@ -1669,87 +1075,94 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        padding: 24,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: spacing.xl,
         maxHeight: '85%',
     },
     modalHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 24,
+        marginBottom: spacing.xl,
     },
     modalTitle: {
         fontSize: 22,
-        fontWeight: '800',
+        fontWeight: '900',
+    },
+    modalListRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: spacing.md,
+        borderBottomWidth: 1,
+    },
+    modalDivider: {
+        height: 1,
+        marginVertical: spacing.lg,
     },
     label: {
-        fontSize: 13,
-        fontWeight: '700',
+        fontSize: 12,
+        fontWeight: '800',
         textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginBottom: 8,
-        marginTop: 16,
+        letterSpacing: 0.8,
+        marginTop: spacing.md,
+        marginBottom: spacing.sm,
     },
     input: {
-        height: 54,
-        paddingHorizontal: 16,
-        borderRadius: 16,
+        height: 52,
+        paddingHorizontal: spacing.md,
+        borderRadius: 12,
         borderWidth: 1,
         fontSize: 16,
     },
     row: {
         flexDirection: 'row',
-        gap: 12,
+        gap: spacing.md,
     },
-    halfCol: {
-        flex: 1,
-    },
+    halfCol: { flex: 1 },
     helpText: {
         fontSize: 12,
-        marginTop: 16,
+        marginTop: spacing.md,
         fontStyle: 'italic',
-        opacity: 0.7,
     },
     deleteOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.6)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 24,
+        padding: spacing.xl,
     },
     confirmModal: {
         width: '100%',
-        padding: 24,
-        borderRadius: 24,
+        padding: spacing.xl,
+        borderRadius: 18,
         alignItems: 'center',
     },
     confirmTitle: {
         fontSize: 20,
-        fontWeight: '800',
-        marginBottom: 12,
+        fontWeight: '900',
+        marginBottom: spacing.sm,
     },
     confirmText: {
         fontSize: 14,
         textAlign: 'center',
-        lineHeight: 22,
-        marginBottom: 24,
+        lineHeight: 21,
+        marginBottom: spacing.xl,
     },
     confirmButtons: {
         flexDirection: 'row',
-        gap: 12,
+        gap: spacing.md,
         width: '100%',
     },
     confirmButton: {
         flex: 1,
-        height: 50,
-        borderRadius: 16,
+        height: 48,
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
     },
     confirmButtonText: {
-        fontSize: 16,
-        fontWeight: '700',
+        fontSize: 15,
+        fontWeight: '800',
     },
 });

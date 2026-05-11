@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../src/components/Button';
-import { Routine, Exercise, WorkoutSet } from '../../src/types';
+import { Routine, WorkoutSet } from '../../src/types';
+import { KeyboardAwareScreen } from '../../src/components/KeyboardAwareScreen';
 
 interface ActiveSet {
     exerciseId: number;
@@ -119,7 +120,7 @@ export default function ActiveWorkoutScreen() {
                                 }))
                             );
                             router.back();
-                        } catch (e) {
+                        } catch {
                             Alert.alert("Error", "Failed to save workout");
                         }
                     }
@@ -137,7 +138,6 @@ export default function ActiveWorkoutScreen() {
     }
 
     // Group sets by exercise
-    const exercisesInOrder = routine?.exercises.map(re => re.exerciseId) || [];
     // Use a map to preserve order if needed, or just unique
     const uniqueExerciseIds = Array.from(new Set(activeSets.map(s => s.exerciseId)));
 
@@ -154,7 +154,7 @@ export default function ActiveWorkoutScreen() {
                 <Button title="Finish" onPress={finishWorkout} style={{ height: 40, minHeight: 40, paddingHorizontal: 16 }} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
+            <KeyboardAwareScreen contentContainerStyle={styles.content}>
                 {uniqueExerciseIds.map((exId) => {
                     const sets = activeSets.filter(s => s.exerciseId === exId);
                     // Get exercise name from first set
@@ -205,7 +205,7 @@ export default function ActiveWorkoutScreen() {
                         </View>
                     );
                 })}
-            </ScrollView>
+            </KeyboardAwareScreen>
         </View>
     );
 }
