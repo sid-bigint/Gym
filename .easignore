@@ -6,6 +6,9 @@ android/
 ios/
 .git/
 .vscode/
+.vscode/**
+srcdb/
+srcdb/**
 .eas-tmp/
 *.tsbuildinfo
 npm-debug.*

@@ -27,21 +27,23 @@ export default function CreateRoutineScreen() {
 
     useEffect(() => {
         loadExercises();
+    }, [loadExercises]);
 
-        if (isEditing) {
-            const routine = routines.find(r => r.id === Number(id));
-            if (routine) {
-                setName(routine.name);
-                if (routine.exercises) {
-                    setSelectedExercises(routine.exercises.map(re => ({
-                        exercise: re.exercise,
-                        sets: String(re.sets || 3),
-                        reps: String(re.reps || 10)
-                    })));
-                }
-            }
-        }
-    }, [id, routines]);
+    useEffect(() => {
+        if (!isEditing) return;
+
+        const routine = routines.find(r => r.id === Number(id));
+        if (!routine) return;
+
+        setName(routine.name);
+        setSelectedExercises(
+            (routine.exercises || []).map(re => ({
+                exercise: re.exercise,
+                sets: String(re.sets || 3),
+                reps: String(re.reps || 10)
+            }))
+        );
+    }, [id, isEditing, routines]);
 
     const handleBack = () => {
         if (router.canGoBack()) {

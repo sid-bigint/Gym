@@ -1,25 +1,46 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { useTheme } from '../../src/store/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { PREDEFINED_BUNDLES } from '../../src/data/exploreBundles';
-import { spacing, borderRadius, shadows } from '../../src/constants/theme';
-
-const { width } = Dimensions.get('window');
+import { spacing } from '../../src/constants/theme';
 
 export default function ProgramDetailsScreen() {
     const { colors } = useTheme();
     const { bundleId } = useLocalSearchParams();
     const { exercises, routines, createRoutine } = useWorkoutStore();
     const [isAdding, setIsAdding] = useState(false);
+    const exerciseIdByName = useMemo(
+        () => new Map(exercises.map((exercise) => [exercise.name.toLowerCase(), exercise.id])),
+        [exercises]
+    );
 
-    // Find the bundle
     const bundle = PREDEFINED_BUNDLES.find(b => b.id === bundleId);
+    const bundleDetails = useMemo(() => {
+        if (!bundle) return null;
 
-    if (!bundle) {
+        return {
+            totalExercises: bundle.routines.reduce((acc, routine) => acc + routine.exercises.length, 0),
+            primaryMuscle: bundle.muscles[0],
+            muscleTags: bundle.muscles,
+            routineCards: bundle.routines.map((routine, index) => ({
+                key: `${routine.name}-${index}`,
+                dayLabel: `Day ${index + 1}`,
+                name: routine.name,
+                exercises: routine.exercises.map((exercise, exerciseIndex) => ({
+                    key: `${routine.name}-${exercise.name}-${exerciseIndex}`,
+                    name: exercise.name,
+                    sets: exercise.sets,
+                    reps: exercise.reps,
+                })),
+            })),
+        };
+    }, [bundle]);
+
+    if (!bundle || !bundleDetails) {
         return (
             <View style={[styles.container, { backgroundColor: colors.background.primary, justifyContent: 'center', alignItems: 'center' }]}>
                 <Text style={{ color: colors.text.primary }}>Program not found.</Text>
@@ -34,15 +55,14 @@ export default function ProgramDetailsScreen() {
             const existingRoutineNames = routines.map(r => r.name.toLowerCase());
 
             for (const routineTemplate of bundle.routines) {
-                // Skip if routine already exists
                 if (existingRoutineNames.includes(routineTemplate.name.toLowerCase())) {
                     continue;
                 }
 
                 const routineExercises = routineTemplate.exercises.map(te => {
-                    const ex = exercises.find(e => e.name.toLowerCase() === te.name.toLowerCase());
+                    const exerciseId = exerciseIdByName.get(te.name.toLowerCase()) ?? null;
                     return {
-                        exerciseId: ex ? ex.id : null,
+                        exerciseId,
                         sets: te.sets,
                         reps: te.reps
                     };
@@ -78,7 +98,6 @@ export default function ProgramDetailsScreen() {
             }} />
 
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-                {/* Hero Section */}
                 <View style={styles.heroContainer}>
                     <LinearGradient
                         colors={bundle.gradient as any}
@@ -97,7 +116,6 @@ export default function ProgramDetailsScreen() {
                 </View>
 
                 <View style={styles.contentContainer}>
-                    {/* Stats Row */}
                     <View style={[styles.statsRow, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}>
                         <View style={styles.statItem}>
                             <Ionicons name="calendar-outline" size={20} color={colors.text.tertiary} />
@@ -107,20 +125,17 @@ export default function ProgramDetailsScreen() {
                         <View style={[styles.dividerVertical, { backgroundColor: colors.border.primary }]} />
                         <View style={styles.statItem}>
                             <Ionicons name="barbell-outline" size={20} color={colors.text.tertiary} />
-                            <Text style={[styles.statValue, { color: colors.text.primary }]}>
-                                {bundle.routines.reduce((acc, r) => acc + r.exercises.length, 0)}
-                            </Text>
+                            <Text style={[styles.statValue, { color: colors.text.primary }]}>{bundleDetails.totalExercises}</Text>
                             <Text style={[styles.statLabel, { color: colors.text.tertiary }]}>Total Exercises</Text>
                         </View>
                         <View style={[styles.dividerVertical, { backgroundColor: colors.border.primary }]} />
                         <View style={styles.statItem}>
                             <Ionicons name="body-outline" size={20} color={colors.text.tertiary} />
                             <Text style={[styles.statValue, { color: colors.text.primary }]}>Focus</Text>
-                            <Text style={[styles.statLabel, { color: colors.text.tertiary }]}>{bundle.muscles[0]}</Text>
+                            <Text style={[styles.statLabel, { color: colors.text.tertiary }]}>{bundleDetails.primaryMuscle}</Text>
                         </View>
                     </View>
 
-                    {/* Description */}
                     <View style={styles.section}>
                         <Text style={[styles.sectionHeader, { color: colors.text.primary }]}>About this Program</Text>
                         <Text style={[styles.descriptionText, { color: colors.text.secondary }]}>
@@ -128,11 +143,10 @@ export default function ProgramDetailsScreen() {
                         </Text>
                     </View>
 
-                    {/* Muscle Focus */}
                     <View style={styles.section}>
                         <Text style={[styles.sectionHeader, { color: colors.text.primary }]}>Target Muscles</Text>
                         <View style={styles.tagContainer}>
-                            {bundle.muscles.map(m => (
+                            {bundleDetails.muscleTags.map(m => (
                                 <View key={m} style={[styles.tag, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}>
                                     <Text style={[styles.tagText, { color: colors.text.secondary }]}>{m}</Text>
                                 </View>
@@ -140,22 +154,21 @@ export default function ProgramDetailsScreen() {
                         </View>
                     </View>
 
-                    {/* Routine Breakdown */}
                     <View style={styles.section}>
                         <Text style={[styles.sectionHeader, { color: colors.text.primary }]}>Workout Schedule</Text>
                         <View style={{ gap: 12 }}>
-                            {bundle.routines.map((routine, index) => (
-                                <View key={index} style={[styles.routineCard, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}>
+                            {bundleDetails.routineCards.map((routine) => (
+                                <View key={routine.key} style={[styles.routineCard, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}>
                                     <View style={styles.routineHeader}>
                                         <View style={[styles.dayBadge, { backgroundColor: colors.accent.primary + '15' }]}>
-                                            <Text style={[styles.dayText, { color: colors.accent.primary }]}>Day {index + 1}</Text>
+                                            <Text style={[styles.dayText, { color: colors.accent.primary }]}>{routine.dayLabel}</Text>
                                         </View>
                                         <Text style={[styles.routineName, { color: colors.text.primary }]}>{routine.name}</Text>
                                     </View>
                                     <View style={styles.exerciseList}>
-                                        {routine.exercises.map((ex, i) => (
-                                            <Text key={i} style={[styles.exerciseItem, { color: colors.text.secondary }]}>
-                                                • {ex.name} <Text style={{ color: colors.text.tertiary }}>({ex.sets} x {ex.reps})</Text>
+                                        {routine.exercises.map((exercise) => (
+                                            <Text key={exercise.key} style={[styles.exerciseItem, { color: colors.text.secondary }]}>
+                                                {'•'} {exercise.name} <Text style={{ color: colors.text.tertiary }}>({exercise.sets} x {exercise.reps})</Text>
                                             </Text>
                                         ))}
                                     </View>
@@ -166,7 +179,6 @@ export default function ProgramDetailsScreen() {
                 </View>
             </ScrollView>
 
-            {/* Bottom Action Bar */}
             <View style={[styles.actionBar, { backgroundColor: colors.background.card, borderTopColor: colors.border.primary }]}>
                 <View style={{ flex: 1 }}>
                     <Text style={[styles.actionTitle, { color: colors.text.primary }]}>Ready to start?</Text>
@@ -234,7 +246,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         marginTop: -24,
-        backgroundColor: 'transparent', // The background color is handled by the View below if needed, but here we just rely on the gap
+        backgroundColor: 'transparent',
         gap: 24,
     },
     statsRow: {

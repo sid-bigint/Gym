@@ -60,11 +60,9 @@ export function KeyboardAwareScreen({
     const getFocusedHandle = useCallback(() => {
         const textInputState = (TextInput as any).State;
         const focusedInput = textInputState?.currentlyFocusedInput?.();
-        const focusedField = textInputState?.currentlyFocusedField?.();
-        const focusedNode = focusedInput || focusedField;
 
-        if (!focusedNode) return null;
-        return typeof focusedNode === 'number' ? focusedNode : findNodeHandle(focusedNode);
+        if (!focusedInput) return null;
+        return typeof focusedInput === 'number' ? focusedInput : findNodeHandle(focusedInput);
     }, []);
 
     const scrollFocusedInputIntoView = useCallback(() => {

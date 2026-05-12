@@ -85,7 +85,7 @@ export default function AddFoodScreen() {
     useEffect(() => {
         loadCustomFoods();
         loadSavedMeals();
-    }, []);
+    }, [user?.id]);
 
     const loadCustomFoods = async () => {
         if (!user?.id) return;
@@ -129,18 +129,23 @@ export default function AddFoodScreen() {
         });
     }, [combinedFoods, searchQuery]);
 
-    const mealTypes = [...DEFAULT_MEAL_TYPES, ...customMealTypes];
-    const totals = foodItems.reduce(
-        (acc, item) => ({
-            calories: acc.calories + item.calories,
-            protein: acc.protein + item.protein,
-            carbs: acc.carbs + item.carbs,
-            fats: acc.fats + item.fats,
-        }),
-        { calories: 0, protein: 0, carbs: 0, fats: 0 }
-    );
+    const mealTypes = useMemo(() => [...DEFAULT_MEAL_TYPES, ...customMealTypes], [customMealTypes]);
+    const totals = useMemo(() => (
+        foodItems.reduce(
+            (acc, item) => ({
+                calories: acc.calories + item.calories,
+                protein: acc.protein + item.protein,
+                carbs: acc.carbs + item.carbs,
+                fats: acc.fats + item.fats,
+            }),
+            { calories: 0, protein: 0, carbs: 0, fats: 0 }
+        )
+    ), [foodItems]);
 
-    const selectedFoodData = combinedFoods.find(food => food.id === selectedFood);
+    const selectedFoodData = useMemo(
+        () => combinedFoods.find(food => food.id === selectedFood),
+        [combinedFoods, selectedFood]
+    );
 
     const openQuantityForFood = (foodId: string, label?: string) => {
         setSelectedFood(foodId);
@@ -343,6 +348,16 @@ export default function AddFoodScreen() {
         router.back();
     };
 
+    const stepTitle = useMemo(() => {
+        if (step === 'mealType') return 'Choose meal type';
+        if (step === 'addMethod') return `Add to ${mealType}`;
+        if (step === 'savedMeals') return 'Saved meals';
+        if (step === 'customFoods') return 'Custom foods';
+        if (step === 'searchFoods') return 'Search foods';
+        if (step === 'quantity') return 'Set quantity';
+        return 'Review meal';
+    }, [mealType, step]);
+
     return (
         <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
             <Stack.Screen options={{
@@ -358,15 +373,7 @@ export default function AddFoodScreen() {
                     </TouchableOpacity>
                     <View style={styles.flowHeaderText}>
                         <Text style={[styles.flowKicker, { color: colors.text.tertiary }]}>LOG MEAL</Text>
-                        <Text style={[styles.flowTitle, { color: colors.text.primary }]}>
-                            {step === 'mealType' && 'Choose meal type'}
-                            {step === 'addMethod' && `Add to ${mealType}`}
-                            {step === 'savedMeals' && 'Saved meals'}
-                            {step === 'customFoods' && 'Custom foods'}
-                            {step === 'searchFoods' && 'Search foods'}
-                            {step === 'quantity' && 'Set quantity'}
-                            {step === 'review' && 'Review meal'}
-                        </Text>
+                        <Text style={[styles.flowTitle, { color: colors.text.primary }]}>{stepTitle}</Text>
                     </View>
                     {foodItems.length > 0 ? (
                         <TouchableOpacity onPress={() => setStep('review')} style={[styles.countPill, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
@@ -376,207 +383,91 @@ export default function AddFoodScreen() {
                 </View>
 
                 {step === 'mealType' && (
-                    <View>
-                        <Text style={[styles.leadText, { color: colors.text.secondary }]}>Start with the meal category. Then choose where the food comes from.</Text>
-                        <View style={styles.optionGrid}>
-                            {mealTypes.map(type => {
-                                const isSelected = mealType === type;
-                                return (
-                                    <TouchableOpacity
-                                        key={type}
-                                        style={[styles.optionCard, { backgroundColor: colors.background.card, borderColor: isSelected ? colors.accent.primary : colors.border.secondary }]}
-                                        onPress={() => {
-                                            setMealType(type);
-                                            setStep('addMethod');
-                                        }}
-                                    >
-                                        <Ionicons name={mealIcon(type)} size={22} color={isSelected ? colors.accent.primary : colors.text.tertiary} />
-                                        <Text style={[styles.optionTitle, { color: colors.text.primary }]}>{type}</Text>
-                                        {isSelected && <Ionicons name="checkmark-circle" size={18} color={colors.accent.primary} />}
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                        <TouchableOpacity style={styles.secondaryActionRow} onPress={() => setShowMealTypeModal(true)}>
-                            <Ionicons name="settings-outline" size={18} color={colors.accent.primary} />
-                            <Text style={[styles.secondaryActionText, { color: colors.accent.primary }]}>Manage meal types</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <MealTypeStep
+                        colors={colors}
+                        mealType={mealType}
+                        mealTypes={mealTypes}
+                        onManageMealTypes={() => setShowMealTypeModal(true)}
+                        onSelectMealType={(type: string) => {
+                            setMealType(type);
+                            setStep('addMethod');
+                        }}
+                    />
                 )}
 
                 {step === 'addMethod' && (
-                    <View>
-                        <MealSummary totals={totals} colors={colors} mealType={mealType} itemCount={foodItems.length} />
-                        <View style={styles.actionList}>
-                            <FlowAction title="Saved meals" subtitle="Reuse a meal you already created" icon="bookmark-outline" colors={colors} onPress={() => setStep('savedMeals')} />
-                            <FlowAction title="Custom foods" subtitle="Pick one of your own foods" icon="star-outline" colors={colors} onPress={() => setStep('customFoods')} />
-                            <FlowAction title="Search foods" subtitle="Find food from the database" icon="search-outline" colors={colors} onPress={() => setStep('searchFoods')} />
-                            <FlowAction title="Create custom food" subtitle="Add a food to your library" icon="add-circle-outline" colors={colors} onPress={() => setShowCustomFoodModal(true)} />
-                        </View>
-                        {foodItems.length > 0 && <Button title="Review Meal" onPress={() => setStep('review')} style={{ marginTop: spacing.xl }} />}
-                    </View>
+                    <AddMethodStep
+                        colors={colors}
+                        itemCount={foodItems.length}
+                        mealType={mealType}
+                        totals={totals}
+                        onCreateCustomFood={() => setShowCustomFoodModal(true)}
+                        onOpenReview={() => setStep('review')}
+                        onSelectMethod={(nextStep: MealFlowStep) => setStep(nextStep)}
+                    />
                 )}
 
                 {step === 'savedMeals' && (
-                    <View>
-                        {savedMeals.length === 0 ? (
-                            <EmptyFlowState colors={colors} icon="bookmark-outline" title="No saved meals yet" body="After adding items, save the meal so it appears here next time." />
-                        ) : savedMeals.map(meal => (
-                            <TouchableOpacity key={meal.id} style={[styles.listRow, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]} onPress={() => handleUseSavedMeal(meal)}>
-                                <View style={styles.listRowMain}>
-                                    <Text style={[styles.listRowTitle, { color: colors.text.primary }]}>{meal.name}</Text>
-                                    <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{meal.items.length} items - {meal.calories} kcal</Text>
-                                </View>
-                                <TouchableOpacity onPress={() => handleDeleteSavedMeal(meal)} style={styles.rowIconButton}>
-                                    <Ionicons name="trash-outline" size={18} color={colors.text.tertiary} />
-                                </TouchableOpacity>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    <SavedMealsStep
+                        colors={colors}
+                        savedMeals={savedMeals}
+                        onDeleteMeal={handleDeleteSavedMeal}
+                        onUseMeal={handleUseSavedMeal}
+                    />
                 )}
 
                 {step === 'customFoods' && (
-                    <View>
-                        <TouchableOpacity style={[styles.createRow, { borderColor: colors.border.secondary }]} onPress={() => setShowCustomFoodModal(true)}>
-                            <Ionicons name="add" size={18} color={colors.accent.primary} />
-                            <Text style={[styles.secondaryActionText, { color: colors.accent.primary }]}>Create custom food</Text>
-                        </TouchableOpacity>
-                        {customFoods.length === 0 ? (
-                            <EmptyFlowState colors={colors} icon="star-outline" title="No custom foods yet" body="Create your frequent foods once, then log them quickly here." />
-                        ) : customFoods.map(food => (
-                            <TouchableOpacity key={food.id} style={[styles.listRow, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]} onPress={() => food.id && openQuantityForFood(`custom-${food.id}`, food.name)}>
-                                <View style={styles.listRowMain}>
-                                    <Text style={[styles.listRowTitle, { color: colors.text.primary }]}>{food.name}</Text>
-                                    <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{food.calories} kcal per 100g - P:{food.protein} C:{food.carbs} F:{food.fats}</Text>
-                                </View>
-                                <TouchableOpacity onPress={() => food.id && handleDeleteCustomFood(food.id)} style={styles.rowIconButton}>
-                                    <Ionicons name="trash-outline" size={18} color={colors.text.tertiary} />
-                                </TouchableOpacity>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    <CustomFoodsStep
+                        colors={colors}
+                        customFoods={customFoods}
+                        onCreateCustomFood={() => setShowCustomFoodModal(true)}
+                        onDeleteFood={handleDeleteCustomFood}
+                        onSelectFood={(foodId: number, foodName: string) => openQuantityForFood(`custom-${foodId}`, foodName)}
+                    />
                 )}
 
                 {step === 'searchFoods' && (
-                    <View>
-                        <View style={[styles.searchBar, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
-                            <Ionicons name="search" size={18} color={colors.text.tertiary} />
-                            <TextInput
-                                style={[styles.searchInput, { color: colors.text.primary }]}
-                                placeholder="Search food or ingredient"
-                                placeholderTextColor={colors.text.disabled}
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                                autoFocus
-                            />
-                            {searchQuery.length > 0 && (
-                                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                    <Ionicons name="close-circle" size={18} color={colors.text.tertiary} />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                        {searchQuery.trim().length === 0 ? (
-                            <EmptyFlowState colors={colors} icon="search-outline" title="Search foods" body="Type a food name to add it to this meal." />
-                        ) : filteredFoods.length === 0 ? (
-                            <View>
-                                <EmptyFlowState colors={colors} icon="search-outline" title="No foods found" body="Create it as a custom food and use it right away." />
-                                <Button title={`Create "${searchQuery}"`} onPress={() => {
-                                    setCustomFoodName(searchQuery);
-                                    setShowCustomFoodModal(true);
-                                }} />
-                            </View>
-                        ) : filteredFoods.slice(0, 25).map(food => (
-                            <TouchableOpacity key={food.id} style={[styles.listRow, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]} onPress={() => openQuantityForFood(food.id, food.name)}>
-                                <View style={styles.listRowMain}>
-                                    <Text style={[styles.listRowTitle, { color: colors.text.primary }]}>{food.name}</Text>
-                                    <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{food.per100g.calories} kcal per 100g - P:{food.per100g.protein}g{food.isCustom ? ' - Custom' : ''}</Text>
-                                </View>
-                                <Ionicons name="chevron-forward" size={18} color={colors.text.tertiary} />
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    <SearchFoodsStep
+                        colors={colors}
+                        filteredFoods={filteredFoods}
+                        searchQuery={searchQuery}
+                        onChangeSearch={setSearchQuery}
+                        onCreateFromSearch={() => {
+                            setCustomFoodName(searchQuery);
+                            setShowCustomFoodModal(true);
+                        }}
+                        onOpenFood={openQuantityForFood}
+                    />
                 )}
 
                 {step === 'quantity' && selectedFoodData && (
-                    <View>
-                        <View style={[styles.quantityCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
-                            <Text style={[styles.quantityFoodName, { color: colors.text.primary }]}>{selectedFoodData.name}</Text>
-                            <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{selectedFoodData.per100g.calories} kcal per 100g</Text>
-
-                            <View style={styles.unitSelector}>
-                                <TouchableOpacity onPress={() => setLoggingUnit('grams')} style={[styles.unitTab, loggingUnit === 'grams' && { borderColor: colors.accent.primary, backgroundColor: colors.background.elevated }]}>
-                                    <Text style={[styles.unitTabText, { color: loggingUnit === 'grams' ? colors.accent.primary : colors.text.tertiary }]}>Grams</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={() => setLoggingUnit('count')} style={[styles.unitTab, loggingUnit === 'count' && { borderColor: colors.accent.primary, backgroundColor: colors.background.elevated }]}>
-                                    <Text style={[styles.unitTabText, { color: loggingUnit === 'count' ? colors.accent.primary : colors.text.tertiary }]}>Quantity</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {loggingUnit === 'count' && selectedFoodData.servingOptions ? (
-                                <View style={styles.sizeGrid}>
-                                    {selectedFoodData.servingOptions.map(opt => (
-                                        <TouchableOpacity key={opt.label} onPress={() => setSelectedSize(opt.label)} style={[styles.sizeBtn, { borderColor: selectedSize === opt.label ? colors.accent.primary : colors.border.secondary }]}>
-                                            <Text style={[styles.sizeBtnText, { color: selectedSize === opt.label ? colors.accent.primary : colors.text.primary }]}>{opt.label}</Text>
-                                            <Text style={[styles.sizeBtnSubtext, { color: colors.text.tertiary }]}>{opt.grams}g</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            ) : null}
-
-                            <View style={[styles.quantityInputRow, { borderColor: colors.border.secondary }]}>
-                                <TextInput
-                                    style={[styles.quantityInput, { color: colors.text.primary }]}
-                                    placeholder="0"
-                                    placeholderTextColor={colors.text.disabled}
-                                    keyboardType="numeric"
-                                    value={grams}
-                                    onChangeText={setGrams}
-                                    autoFocus
-                                />
-                                <Text style={[styles.unitLabel, { color: colors.text.tertiary }]}>{loggingUnit === 'grams' ? 'grams' : 'servings'}</Text>
-                            </View>
-                        </View>
-                        <Button title="Add to Meal" onPress={addFoodItem} style={{ marginTop: spacing.xl }} />
-                    </View>
+                    <QuantityStep
+                        colors={colors}
+                        grams={grams}
+                        loggingUnit={loggingUnit}
+                        selectedFoodData={selectedFoodData}
+                        selectedSize={selectedSize}
+                        onAddToMeal={addFoodItem}
+                        onChangeGrams={setGrams}
+                        onChangeUnit={setLoggingUnit}
+                        onSelectSize={setSelectedSize}
+                    />
                 )}
 
                 {step === 'review' && (
-                    <View>
-                        <MealSummary totals={totals} colors={colors} mealType={mealType} itemCount={foodItems.length} />
-                        <View style={styles.reviewActions}>
-                            <TouchableOpacity style={[styles.compactAction, { borderColor: colors.border.secondary }]} onPress={() => setStep('addMethod')}>
-                                <Ionicons name="add" size={18} color={colors.accent.primary} />
-                                <Text style={[styles.secondaryActionText, { color: colors.accent.primary }]}>Add More</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.compactAction, { borderColor: colors.border.secondary, opacity: foodItems.length === 0 ? 0.45 : 1 }]}
-                                disabled={foodItems.length === 0}
-                                onPress={() => {
-                                    setSavedMealName(`${mealType} meal`);
-                                    setShowSaveMealModal(true);
-                                }}
-                            >
-                                <Ionicons name="bookmark-outline" size={18} color={colors.accent.primary} />
-                                <Text style={[styles.secondaryActionText, { color: colors.accent.primary }]}>Save Meal</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {foodItems.length === 0 ? (
-                            <EmptyFlowState colors={colors} icon="restaurant-outline" title="No items yet" body="Add food before saving this meal log." />
-                        ) : foodItems.map(item => (
-                            <View key={item.id} style={[styles.listRow, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
-                                <View style={styles.listRowMain}>
-                                    <Text style={[styles.listRowTitle, { color: colors.text.primary }]}>{item.name}</Text>
-                                    <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{item.grams}g - {item.calories} kcal - P:{item.protein}g</Text>
-                                </View>
-                                <TouchableOpacity onPress={() => removeFoodItem(item.id)} style={styles.rowIconButton}>
-                                    <Ionicons name="remove-circle-outline" size={20} color={colors.status.error} />
-                                </TouchableOpacity>
-                            </View>
-                        ))}
-
-                        <Button title={`Log ${mealType}`} onPress={handleSave} style={{ marginTop: spacing.xl }} disabled={foodItems.length === 0} />
-                    </View>
+                    <ReviewStep
+                        colors={colors}
+                        foodItems={foodItems}
+                        mealType={mealType}
+                        totals={totals}
+                        onAddMore={() => setStep('addMethod')}
+                        onLogMeal={handleSave}
+                        onRemoveItem={removeFoodItem}
+                        onSaveMeal={() => {
+                            setSavedMealName(`${mealType} meal`);
+                            setShowSaveMealModal(true);
+                        }}
+                    />
                 )}
             </KeyboardAwareScreen>
 
@@ -626,6 +517,217 @@ export default function AddFoodScreen() {
                 onClose={() => setDeleteModal(null)}
                 onConfirm={confirmDelete}
             />
+        </View>
+    );
+}
+
+function MealTypeStep({ colors, mealType, mealTypes, onManageMealTypes, onSelectMealType }: any) {
+    return (
+        <View>
+            <Text style={[styles.leadText, { color: colors.text.secondary }]}>Start with the meal category. Then choose where the food comes from.</Text>
+            <View style={styles.optionGrid}>
+                {mealTypes.map((type: string) => {
+                    const isSelected = mealType === type;
+                    return (
+                        <TouchableOpacity
+                            key={type}
+                            style={[styles.optionCard, { backgroundColor: colors.background.card, borderColor: isSelected ? colors.accent.primary : colors.border.secondary }]}
+                            onPress={() => onSelectMealType(type)}
+                        >
+                            <Ionicons name={mealIcon(type)} size={22} color={isSelected ? colors.accent.primary : colors.text.tertiary} />
+                            <Text style={[styles.optionTitle, { color: colors.text.primary }]}>{type}</Text>
+                            {isSelected && <Ionicons name="checkmark-circle" size={18} color={colors.accent.primary} />}
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+            <TouchableOpacity style={styles.secondaryActionRow} onPress={onManageMealTypes}>
+                <Ionicons name="settings-outline" size={18} color={colors.accent.primary} />
+                <Text style={[styles.secondaryActionText, { color: colors.accent.primary }]}>Manage meal types</Text>
+            </TouchableOpacity>
+        </View>
+    );
+}
+
+function AddMethodStep({ colors, itemCount, mealType, totals, onCreateCustomFood, onOpenReview, onSelectMethod }: any) {
+    return (
+        <View>
+            <MealSummary totals={totals} colors={colors} mealType={mealType} itemCount={itemCount} />
+            <View style={styles.actionList}>
+                <FlowAction title="Saved meals" subtitle="Reuse a meal you already created" icon="bookmark-outline" colors={colors} onPress={() => onSelectMethod('savedMeals')} />
+                <FlowAction title="Custom foods" subtitle="Pick one of your own foods" icon="star-outline" colors={colors} onPress={() => onSelectMethod('customFoods')} />
+                <FlowAction title="Search foods" subtitle="Find food from the database" icon="search-outline" colors={colors} onPress={() => onSelectMethod('searchFoods')} />
+                <FlowAction title="Create custom food" subtitle="Add a food to your library" icon="add-circle-outline" colors={colors} onPress={onCreateCustomFood} />
+            </View>
+            {itemCount > 0 && <Button title="Review Meal" onPress={onOpenReview} style={{ marginTop: spacing.xl }} />}
+        </View>
+    );
+}
+
+function SavedMealsStep({ colors, onDeleteMeal, onUseMeal, savedMeals }: any) {
+    if (savedMeals.length === 0) {
+        return <EmptyFlowState colors={colors} icon="bookmark-outline" title="No saved meals yet" body="After adding items, save the meal so it appears here next time." />;
+    }
+
+    return (
+        <View>
+            {savedMeals.map((meal: SavedMeal) => (
+                <TouchableOpacity key={meal.id} style={[styles.listRow, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]} onPress={() => onUseMeal(meal)}>
+                    <View style={styles.listRowMain}>
+                        <Text style={[styles.listRowTitle, { color: colors.text.primary }]}>{meal.name}</Text>
+                        <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{meal.items.length} items - {meal.calories} kcal</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => onDeleteMeal(meal)} style={styles.rowIconButton}>
+                        <Ionicons name="trash-outline" size={18} color={colors.text.tertiary} />
+                    </TouchableOpacity>
+                </TouchableOpacity>
+            ))}
+        </View>
+    );
+}
+
+function CustomFoodsStep({ colors, customFoods, onCreateCustomFood, onDeleteFood, onSelectFood }: any) {
+    return (
+        <View>
+            <TouchableOpacity style={[styles.createRow, { borderColor: colors.border.secondary }]} onPress={onCreateCustomFood}>
+                <Ionicons name="add" size={18} color={colors.accent.primary} />
+                <Text style={[styles.secondaryActionText, { color: colors.accent.primary }]}>Create custom food</Text>
+            </TouchableOpacity>
+            {customFoods.length === 0 ? (
+                <EmptyFlowState colors={colors} icon="star-outline" title="No custom foods yet" body="Create your frequent foods once, then log them quickly here." />
+            ) : customFoods.map((food: CustomFood) => (
+                <TouchableOpacity key={food.id} style={[styles.listRow, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]} onPress={() => food.id && onSelectFood(food.id, food.name)}>
+                    <View style={styles.listRowMain}>
+                        <Text style={[styles.listRowTitle, { color: colors.text.primary }]}>{food.name}</Text>
+                        <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{food.calories} kcal per 100g - P:{food.protein} C:{food.carbs} F:{food.fats}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => food.id && onDeleteFood(food.id)} style={styles.rowIconButton}>
+                        <Ionicons name="trash-outline" size={18} color={colors.text.tertiary} />
+                    </TouchableOpacity>
+                </TouchableOpacity>
+            ))}
+        </View>
+    );
+}
+
+function SearchFoodsStep({ colors, filteredFoods, onChangeSearch, onCreateFromSearch, onOpenFood, searchQuery }: any) {
+    return (
+        <View>
+            <View style={[styles.searchBar, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
+                <Ionicons name="search" size={18} color={colors.text.tertiary} />
+                <TextInput
+                    style={[styles.searchInput, { color: colors.text.primary }]}
+                    placeholder="Search food or ingredient"
+                    placeholderTextColor={colors.text.disabled}
+                    value={searchQuery}
+                    onChangeText={onChangeSearch}
+                    autoFocus
+                />
+                {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => onChangeSearch('')}>
+                        <Ionicons name="close-circle" size={18} color={colors.text.tertiary} />
+                    </TouchableOpacity>
+                )}
+            </View>
+            {searchQuery.trim().length === 0 ? (
+                <EmptyFlowState colors={colors} icon="search-outline" title="Search foods" body="Type a food name to add it to this meal." />
+            ) : filteredFoods.length === 0 ? (
+                <View>
+                    <EmptyFlowState colors={colors} icon="search-outline" title="No foods found" body="Create it as a custom food and use it right away." />
+                    <Button title={`Create "${searchQuery}"`} onPress={onCreateFromSearch} />
+                </View>
+            ) : filteredFoods.slice(0, 25).map((food: CombinedFood) => (
+                <TouchableOpacity key={food.id} style={[styles.listRow, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]} onPress={() => onOpenFood(food.id, food.name)}>
+                    <View style={styles.listRowMain}>
+                        <Text style={[styles.listRowTitle, { color: colors.text.primary }]}>{food.name}</Text>
+                        <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{food.per100g.calories} kcal per 100g - P:{food.per100g.protein}g{food.isCustom ? ' - Custom' : ''}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.text.tertiary} />
+                </TouchableOpacity>
+            ))}
+        </View>
+    );
+}
+
+function QuantityStep({ colors, grams, loggingUnit, onAddToMeal, onChangeGrams, onChangeUnit, onSelectSize, selectedFoodData, selectedSize }: any) {
+    return (
+        <View>
+            <View style={[styles.quantityCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
+                <Text style={[styles.quantityFoodName, { color: colors.text.primary }]}>{selectedFoodData.name}</Text>
+                <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{selectedFoodData.per100g.calories} kcal per 100g</Text>
+
+                <View style={styles.unitSelector}>
+                    <TouchableOpacity onPress={() => onChangeUnit('grams')} style={[styles.unitTab, loggingUnit === 'grams' && { borderColor: colors.accent.primary, backgroundColor: colors.background.elevated }]}>
+                        <Text style={[styles.unitTabText, { color: loggingUnit === 'grams' ? colors.accent.primary : colors.text.tertiary }]}>Grams</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => onChangeUnit('count')} style={[styles.unitTab, loggingUnit === 'count' && { borderColor: colors.accent.primary, backgroundColor: colors.background.elevated }]}>
+                        <Text style={[styles.unitTabText, { color: loggingUnit === 'count' ? colors.accent.primary : colors.text.tertiary }]}>Quantity</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {loggingUnit === 'count' && selectedFoodData.servingOptions ? (
+                    <View style={styles.sizeGrid}>
+                        {selectedFoodData.servingOptions.map((opt: { label: string; grams: number }) => (
+                            <TouchableOpacity key={opt.label} onPress={() => onSelectSize(opt.label)} style={[styles.sizeBtn, { borderColor: selectedSize === opt.label ? colors.accent.primary : colors.border.secondary }]}>
+                                <Text style={[styles.sizeBtnText, { color: selectedSize === opt.label ? colors.accent.primary : colors.text.primary }]}>{opt.label}</Text>
+                                <Text style={[styles.sizeBtnSubtext, { color: colors.text.tertiary }]}>{opt.grams}g</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                ) : null}
+
+                <View style={[styles.quantityInputRow, { borderColor: colors.border.secondary }]}>
+                    <TextInput
+                        style={[styles.quantityInput, { color: colors.text.primary }]}
+                        placeholder="0"
+                        placeholderTextColor={colors.text.disabled}
+                        keyboardType="numeric"
+                        value={grams}
+                        onChangeText={onChangeGrams}
+                        autoFocus
+                    />
+                    <Text style={[styles.unitLabel, { color: colors.text.tertiary }]}>{loggingUnit === 'grams' ? 'grams' : 'servings'}</Text>
+                </View>
+            </View>
+            <Button title="Add to Meal" onPress={onAddToMeal} style={{ marginTop: spacing.xl }} />
+        </View>
+    );
+}
+
+function ReviewStep({ colors, foodItems, mealType, onAddMore, onLogMeal, onRemoveItem, onSaveMeal, totals }: any) {
+    return (
+        <View>
+            <MealSummary totals={totals} colors={colors} mealType={mealType} itemCount={foodItems.length} />
+            <View style={styles.reviewActions}>
+                <TouchableOpacity style={[styles.compactAction, { borderColor: colors.border.secondary }]} onPress={onAddMore}>
+                    <Ionicons name="add" size={18} color={colors.accent.primary} />
+                    <Text style={[styles.secondaryActionText, { color: colors.accent.primary }]}>Add More</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.compactAction, { borderColor: colors.border.secondary, opacity: foodItems.length === 0 ? 0.45 : 1 }]}
+                    disabled={foodItems.length === 0}
+                    onPress={onSaveMeal}
+                >
+                    <Ionicons name="bookmark-outline" size={18} color={colors.accent.primary} />
+                    <Text style={[styles.secondaryActionText, { color: colors.accent.primary }]}>Save Meal</Text>
+                </TouchableOpacity>
+            </View>
+
+            {foodItems.length === 0 ? (
+                <EmptyFlowState colors={colors} icon="restaurant-outline" title="No items yet" body="Add food before saving this meal log." />
+            ) : foodItems.map((item: FoodItem) => (
+                <View key={item.id} style={[styles.listRow, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
+                    <View style={styles.listRowMain}>
+                        <Text style={[styles.listRowTitle, { color: colors.text.primary }]}>{item.name}</Text>
+                        <Text style={[styles.listRowMeta, { color: colors.text.tertiary }]}>{item.grams}g - {item.calories} kcal - P:{item.protein}g</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => onRemoveItem(item.id)} style={styles.rowIconButton}>
+                        <Ionicons name="remove-circle-outline" size={20} color={colors.status.error} />
+                    </TouchableOpacity>
+                </View>
+            ))}
+
+            <Button title={`Log ${mealType}`} onPress={onLogMeal} style={{ marginTop: spacing.xl }} disabled={foodItems.length === 0} />
         </View>
     );
 }

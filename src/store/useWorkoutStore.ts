@@ -202,49 +202,56 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
 
             const db = await getDatabase();
             const routines = await db.getAllAsync<Routine>('SELECT * FROM routines WHERE user_id = ? OR program_id IS NOT NULL', [userId]);
+            const routineIds = routines.map((routine) => routine.id).filter((id): id is number => typeof id === 'number');
 
-            // Load exercises sequentially. Android expo-sqlite can release prepared
-            // statement handles too early when several queries run in parallel.
-            const routinesWithExercises: Routine[] = [];
-            for (const routine of routines) {
-                const routineExercises = await db.getAllAsync<any>(
+            const routineExerciseRows = routineIds.length > 0
+                ? await db.getAllAsync<any>(
                     `SELECT re.*, e.name, e.muscle_group, e.type, e.instructions, e.images
-           FROM routine_exercises re 
-           JOIN exercises e ON re.exercise_id = e.id 
-           WHERE re.routine_id = ? 
-           ORDER BY re.order_index ASC`,
-                    [routine.id]
-                );
+                     FROM routine_exercises re
+                     JOIN exercises e ON re.exercise_id = e.id
+                     WHERE re.routine_id IN (${routineIds.map(() => '?').join(', ')})
+                     ORDER BY re.routine_id ASC, re.order_index ASC`,
+                    routineIds
+                )
+                : [];
 
-                const routineWithExercises = {
-                    ...routine,
-                    exercises: routineExercises.map(re => {
-                        let instructions: string[] = [];
-                        let images: string[] = [];
-                        try {
-                            if (re.instructions) instructions = JSON.parse(re.instructions);
-                            if (re.images) images = JSON.parse(re.images);
-                        } catch (e) { }
-
-                        return {
-                            id: re.id,
-                            exerciseId: re.exercise_id,
-                            sets: re.sets || 3,
-                            reps: re.reps || 10,
-                            exercise: {
-                                id: re.exercise_id,
-                                name: re.name,
-                                muscleGroup: re.muscle_group,
-                                type: re.type,
-                                isCustom: false,
-                                instructions: instructions,
-                                images: images
-                            }
-                        };
-                    })
-                };
-                routinesWithExercises.push(routineWithExercises);
+            const routineExercisesByRoutineId = new Map<number, any[]>();
+            for (const row of routineExerciseRows) {
+                const existing = routineExercisesByRoutineId.get(row.routine_id);
+                if (existing) {
+                    existing.push(row);
+                } else {
+                    routineExercisesByRoutineId.set(row.routine_id, [row]);
+                }
             }
+
+            const routinesWithExercises: Routine[] = routines.map((routine) => ({
+                ...routine,
+                exercises: (routineExercisesByRoutineId.get(routine.id) || []).map((re) => {
+                    let instructions: string[] = [];
+                    let images: string[] = [];
+                    try {
+                        if (re.instructions) instructions = JSON.parse(re.instructions);
+                        if (re.images) images = JSON.parse(re.images);
+                    } catch { }
+
+                    return {
+                        id: re.id,
+                        exerciseId: re.exercise_id,
+                        sets: re.sets || 3,
+                        reps: re.reps || 10,
+                        exercise: {
+                            id: re.exercise_id,
+                            name: re.name,
+                            muscleGroup: re.muscle_group,
+                            type: re.type,
+                            isCustom: false,
+                            instructions,
+                            images
+                        }
+                    };
+                })
+            }));
 
             set({
                 routines: routinesWithExercises.map(r => ({
@@ -276,33 +283,34 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                 return;
             }
 
-            console.log("Creating routine:", safeName, "for program:", safeProgramId);
-            const result = await db.runAsync('INSERT INTO routines (name, program_id, user_id) VALUES (?, ?, ?)', [safeName, safeProgramId, userId]);
-            const routineId = result.lastInsertRowId;
+            let routineId = 0;
+            await db.withTransactionAsync(async () => {
+                console.log("Creating routine:", safeName, "for program:", safeProgramId);
+                const result = await db.runAsync('INSERT INTO routines (name, program_id, user_id) VALUES (?, ?, ?)', [safeName, safeProgramId, userId]);
+                routineId = result.lastInsertRowId;
 
-            if (!routineId) {
-                console.error("Failed to get routine ID after insert.");
-                return;
-            }
-
-            for (let i = 0; i < exerciseList.length; i++) {
-                const item = exerciseList[i];
-                // Ensure explicit numbers, no NaNs
-                const exerciseId = parseInt(String(item.exerciseId), 10);
-                const sets = parseInt(String(item.sets), 10) || 3;
-                const reps = parseInt(String(item.reps), 10) || 10;
-
-                if (isNaN(exerciseId)) {
-                    console.warn(`Skipping invalid exercise ID at index ${i} for routine ${routineId}:`, item);
-                    continue;
+                if (!routineId) {
+                    throw new Error("Failed to get routine ID after insert.");
                 }
 
-                console.log(`Inserting routine_exercise for routine ${routineId}: exerciseId=${exerciseId}, order_index=${i}, sets=${sets}, reps=${reps}`);
-                await db.runAsync(
-                    `INSERT INTO routine_exercises (routine_id, exercise_id, order_index, sets, reps) VALUES (?, ?, ?, ?, ?)`,
-                    [routineId, exerciseId, i, sets, reps]
-                );
-            }
+                for (let i = 0; i < exerciseList.length; i++) {
+                    const item = exerciseList[i];
+                    const exerciseId = parseInt(String(item.exerciseId), 10);
+                    const sets = parseInt(String(item.sets), 10) || 3;
+                    const reps = parseInt(String(item.reps), 10) || 10;
+
+                    if (isNaN(exerciseId)) {
+                        console.warn(`Skipping invalid exercise ID at index ${i} for routine ${routineId}:`, item);
+                        continue;
+                    }
+
+                    console.log(`Inserting routine_exercise for routine ${routineId}: exerciseId=${exerciseId}, order_index=${i}, sets=${sets}, reps=${reps}`);
+                    await db.runAsync(
+                        `INSERT INTO routine_exercises (routine_id, exercise_id, order_index, sets, reps) VALUES (?, ?, ?, ?, ?)`,
+                        [routineId, exerciseId, i, sets, reps]
+                    );
+                }
+            });
             await get().loadRoutines();
             CloudSyncService.scheduleBackup('routine-created');
         } catch (e) {
@@ -321,26 +329,28 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                 return;
             }
 
-            await db.runAsync('UPDATE routines SET name = ? WHERE id = ?', [safeName, safeId]);
-            await db.runAsync('DELETE FROM routine_exercises WHERE routine_id = ?', [safeId]);
+            await db.withTransactionAsync(async () => {
+                await db.runAsync('UPDATE routines SET name = ? WHERE id = ?', [safeName, safeId]);
+                await db.runAsync('DELETE FROM routine_exercises WHERE routine_id = ?', [safeId]);
 
-            for (let i = 0; i < exerciseList.length; i++) {
-                const item = exerciseList[i];
-                const exerciseId = parseInt(String(item.exerciseId), 10);
-                const sets = parseInt(String(item.sets), 10) || 3;
-                const reps = parseInt(String(item.reps), 10) || 10;
+                for (let i = 0; i < exerciseList.length; i++) {
+                    const item = exerciseList[i];
+                    const exerciseId = parseInt(String(item.exerciseId), 10);
+                    const sets = parseInt(String(item.sets), 10) || 3;
+                    const reps = parseInt(String(item.reps), 10) || 10;
 
-                if (isNaN(exerciseId)) {
-                    console.warn(`Skipping invalid exercise ID at index ${i} for routine ${safeId}:`, item);
-                    continue;
+                    if (isNaN(exerciseId)) {
+                        console.warn(`Skipping invalid exercise ID at index ${i} for routine ${safeId}:`, item);
+                        continue;
+                    }
+
+                    console.log(`Inserting routine_exercise for routine ${safeId}: exerciseId=${exerciseId}, order_index=${i}, sets=${sets}, reps=${reps}`);
+                    await db.runAsync(
+                        `INSERT INTO routine_exercises (routine_id, exercise_id, order_index, sets, reps) VALUES (?, ?, ?, ?, ?)`,
+                        [safeId, exerciseId, i, sets, reps]
+                    );
                 }
-
-                console.log(`Inserting routine_exercise for routine ${safeId}: exerciseId=${exerciseId}, order_index=${i}, sets=${sets}, reps=${reps}`);
-                await db.runAsync(
-                    `INSERT INTO routine_exercises (routine_id, exercise_id, order_index, sets, reps) VALUES (?, ?, ?, ?, ?)`,
-                    [safeId, exerciseId, i, sets, reps]
-                );
-            }
+            });
             await get().loadRoutines();
             CloudSyncService.scheduleBackup('routine-updated');
         } catch (e) {
