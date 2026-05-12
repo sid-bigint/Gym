@@ -1,7 +1,8 @@
+import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek, subDays } from 'date-fns';
 import { create } from 'zustand';
+import type { MuscleGroup } from './useMuscleStore';
 import { getDatabase } from '../db/database';
 import { CloudSyncService } from '../services/cloudSyncService';
-import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek, subDays } from 'date-fns';
 import { ActiveSet, ActiveWorkoutSession, Exercise, Routine, WorkoutLog, WorkoutSet, WorkoutStreak } from '../types';
 
 const DEFAULT_STREAK: WorkoutStreak = {
@@ -458,6 +459,77 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                 }
 
                 console.log("Workout session saved successfully");
+
+                // --- NEW: Calculate and save muscle stats ---
+                try {
+                    const { getMuscleGroupsForExercise } = require('../services/muscleCalculationService');
+                    const MuscleRepository = require('../repositories/MuscleRepository').default;
+                    const allExercises = get().exercises;
+                    const statsMap = new Map();
+
+                    for (const setData of sets) {
+                        const ex = allExercises.find(e => e.id === setData.exerciseId);
+                        const exName = setData.exerciseName || ex?.name || '';
+                        const exCat = ex?.muscleGroup || '';
+
+                        const muscles = getMuscleGroupsForExercise(exName, exCat);
+                        const volume = (Number(setData.weight) || 0) * (Number(setData.reps) || 0);
+
+                        for (const muscle of muscles) {
+                            if (!statsMap.has(muscle)) {
+                                statsMap.set(muscle, { volume: 0, setCount: 0, repCount: 0 });
+                            }
+                            const stat = statsMap.get(muscle);
+                            stat.volume += volume;
+                            stat.setCount += 1;
+                            stat.repCount += (Number(setData.reps) || 0);
+                        }
+                    }
+
+                    if (statsMap.size > 0 && userId) {
+                        const { format } = require('date-fns');
+                        const dateStr = format(new Date(), 'yyyy-MM-dd');
+                        
+                        console.log(`Preparing muscle stats for local date: ${dateStr}`);
+                        
+                        const batch = Array.from(statsMap.entries()).map(([muscle, stat]: [any, any]) => ({
+                            userId: String(userId),
+                            muscleGroup: muscle,
+                            date: dateStr,
+                            volume: stat.volume,
+                            setCount: stat.setCount,
+                            repCount: stat.repCount,
+                            intensity: Math.min(10, stat.volume / 50)
+                        }));
+                        await MuscleRepository.saveMuscleStatsBatch(batch);
+                        console.log(`Saved ${batch.length} muscle stats entries`);
+
+                        // Immediately push fresh data into the Zustand store so UI updates
+                        try {
+                            const useMuscleStore = require('../store/useMuscleStore').default;
+                            const freshStats = await MuscleRepository.getTodaysMuscleStats(String(userId));
+                            const freshWeekly = await MuscleRepository.getWeeklyMuscleStats(String(userId));
+                            useMuscleStore.getState().setMuscleData(freshStats);
+                            useMuscleStore.getState().setWeeklyData(freshWeekly);
+
+                            // Also update the exercise list for the dashboard widget
+                            const exerciseList = Array.from(statsMap.entries()).map(([muscle, stat]: [any, any]) => ({
+                                muscleGroup: muscle as MuscleGroup,
+                                exerciseName: "Workout Session", // We aggregate by muscle for the widget
+                                volume: stat.volume
+                            }));
+                            useMuscleStore.getState().setTodaysExercises(exerciseList);
+                            
+                            console.log('Muscle store updated with fresh data and exercise list');
+                        } catch (refreshErr) {
+                            console.warn('Could not refresh muscle store:', refreshErr);
+                        }
+                    }
+                } catch (statsErr) {
+                    console.error("Failed to calculate and save muscle stats", statsErr);
+                }
+                // --- END NEW ---
+
                 const refreshedHistory = await get().getWorkoutHistory(10);
                 await get().loadStreak();
                 set({ history: refreshedHistory });

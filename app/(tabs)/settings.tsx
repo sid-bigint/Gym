@@ -1,19 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Dimensions, Modal, Alert, Image } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { useUserStore } from '../../src/store/useUserStore';
-import { useAuthStore } from '../../src/store/useAuthStore';
-import { useProgressStore } from '../../src/store/useProgressStore';
-import { useHealthConnectStore } from '../../src/store/useHealthConnectStore';
-import { useTheme } from '../../src/store/useTheme';
-import { useScreenPadding } from '../../src/store/useScreenPadding';
-import { Button } from '../../src/components/Button';
-import { CalorieCalculator } from '../../src/components/CalorieCalculator';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
-import { router } from 'expo-router';
-import { spacing, borderRadius, shadows, accentColors, ThemeType } from '../../src/constants/theme';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { CalorieCalculator } from '../../src/components/CalorieCalculator';
+import { accentColors, shadows, spacing, ThemeType } from '../../src/constants/theme';
+import { useAuthStore } from '../../src/store/useAuthStore';
+import { useHealthConnectStore } from '../../src/store/useHealthConnectStore';
+import { useNotesStore } from '../../src/store/useNotesStore';
+import { useProgressStore } from '../../src/store/useProgressStore';
+import { useScreenPadding } from '../../src/store/useScreenPadding';
+import { useTheme } from '../../src/store/useTheme';
+import { useUserStore } from '../../src/store/useUserStore';
 
 import { useAlertStore } from '../../src/store/useAlertStore';
 
@@ -167,6 +167,17 @@ export default function ProfileScreen() {
     };
 
     const latestWeight = measurements[0]?.weight || user?.weight || 0;
+    const notebookItems = useNotesStore((s) => s.items);
+    const notebookSummary = useMemo(() => {
+        const taskCount = notebookItems.filter(item => item.type === 'task').length;
+        const openTaskCount = notebookItems.filter(item => item.type === 'task' && !item.isDone).length;
+        return {
+            total: notebookItems.length,
+            label: notebookItems.length === 0
+                ? 'Notes, tasks, reminders'
+                : `${notebookItems.length} items · ${openTaskCount}/${taskCount} tasks open`,
+        };
+    }, [notebookItems]);
     const weightChange = measurements.length >= 2
         ? (measurements[0].weight - measurements[1].weight).toFixed(1)
         : 0;

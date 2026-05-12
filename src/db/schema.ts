@@ -1,4 +1,4 @@
-import { sqliteTable, integer, text, real } from 'drizzle-orm/sqlite-core';
+import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 // User Profile Table
 export const users = sqliteTable('users', {
@@ -85,4 +85,32 @@ export const workoutSets = sqliteTable('workout_sets_v2', { // Version 2 to avoi
     reps: integer('reps').notNull(),
     rpe: real('rpe'),
     timestamp: text('timestamp').default('CURRENT_TIMESTAMP'),
+});
+
+// =========================================================
+// MUSCLE VISUALIZATION & TRACKING SCHEMA
+// =========================================================
+
+// Muscle Stats - Daily volume and metrics per muscle group
+export const muscleStats = sqliteTable('muscle_stats', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull(),
+    muscleGroup: text('muscle_group').notNull(), // e.g., 'Chest', 'Back', 'Legs', etc.
+    date: text('date').notNull(), // ISO date YYYY-MM-DD
+    volume: real('volume').default(0), // Total volume (sets x reps x weight)
+    setCount: integer('set_count').default(0), // Number of sets performed
+    repCount: integer('rep_count').default(0), // Total reps
+    intensity: real('intensity').default(0), // Average intensity (1-10 scale)
+});
+
+// Muscle Recovery Status - Track soreness and recovery
+export const muscleRecovery = sqliteTable('muscle_recovery', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull(),
+    muscleGroup: text('muscle_group').notNull(), // e.g., 'Chest', 'Back', etc.
+    date: text('date').notNull(), // ISO date YYYY-MM-DD
+    soreness: integer('soreness').default(0), // 0-10 scale
+    recoveryStatus: text('recovery_status').default('FRESH'), // 'FRESH', 'FATIGUED', 'SORE', 'RECOVERING'
+    lastTrainedDate: text('last_trained_date'), // When was this muscle last trained
+    restDaysSince: integer('rest_days_since').default(0), // Days since last trained
 });

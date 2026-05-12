@@ -16,7 +16,10 @@ export default function CreateRoutineScreen() {
     const { id } = useLocalSearchParams();
     const isEditing = !!id;
 
-    const { loadExercises, createRoutine, updateRoutine, routines } = useWorkoutStore();
+    const loadExercises = useWorkoutStore(state => state.loadExercises);
+    const createRoutine = useWorkoutStore(state => state.createRoutine);
+    const updateRoutine = useWorkoutStore(state => state.updateRoutine);
+    const routines = useWorkoutStore(state => state.routines);
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -24,10 +27,11 @@ export default function CreateRoutineScreen() {
     const [selectedExercises, setSelectedExercises] = useState<{ exercise: Exercise, sets: string, reps: string }[]>([]);
     const [showExerciseSelector, setShowExerciseSelector] = useState(false);
     const [detailExercise, setDetailExercise] = useState<any>(null);
+    const initialSelectedIds = useMemo(() => selectedExercises.map(item => item.exercise.id), [selectedExercises]);
 
     useEffect(() => {
         loadExercises();
-    }, [loadExercises]);
+    }, []); // Only load once on mount
 
     useEffect(() => {
         if (!isEditing) return;
@@ -197,7 +201,7 @@ export default function CreateRoutineScreen() {
                         onClose={() => setShowExerciseSelector(false)}
                         onSelect={handleExerciseSelection}
                         multiSelect={true}
-                        initialSelected={selectedExercises.map(item => item.exercise.id)}
+                        initialSelected={initialSelectedIds}
                         buttonLabel="Add Selected"
                         onExerciseLongPress={setDetailExercise}
                     />

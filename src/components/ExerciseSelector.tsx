@@ -45,7 +45,9 @@ export const ExerciseSelector = ({
     buttonLabel = "Done",
     onExerciseLongPress,
 }: ExerciseSelectorProps) => {
-    const { exercises, loadExercises, deleteExercise } = useWorkoutStore();
+    const loadExercises = useWorkoutStore(state => state.loadExercises);
+    const exercises = useWorkoutStore(state => state.exercises);
+    const deleteExercise = useWorkoutStore(state => state.deleteExercise);
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -60,12 +62,14 @@ export const ExerciseSelector = ({
     const initialSelectedKey = initialSelected.join(',');
 
     useEffect(() => {
-        loadExercises();
-    }, [loadExercises]);
+        if (exercises.length === 0) {
+            loadExercises();
+        }
+    }, []);
 
     useEffect(() => {
         setSelectedIds(initialSelected);
-    }, [initialSelectedKey, initialSelected]);
+    }, [initialSelectedKey]);
 
     useEffect(() => {
         if (!multiSelect) return;

@@ -28,7 +28,9 @@ export async function initDatabase() {
     // Disable foreign keys during setup to avoid constraint issues
     await db.execAsync('PRAGMA foreign_keys = OFF;');
 
-    // Migration: Add program_id to routines if missing
+    // --- MIGRATIONS ---
+
+    // 1. Migration: Add program_id to routines if missing
     try {
       const tableInfo = await db.getAllAsync<any>("PRAGMA table_info(routines)");
       const hasProgramId = tableInfo.some(col => col.name === 'program_id');
@@ -37,9 +39,7 @@ export async function initDatabase() {
         await db.execAsync("ALTER TABLE routines ADD COLUMN program_id TEXT");
       }
 
-      // Backfill Check (run always to catch legacy data)
-      // Groups existing routines by name if they match a bundle
-      console.log("Checking for routines to backfill program_id...");
+      // Backfill Check
       for (const bundle of PREDEFINED_BUNDLES) {
         for (const rTemplate of bundle.routines) {
           await db.runAsync(
@@ -49,14 +49,14 @@ export async function initDatabase() {
         }
       }
     } catch (e) {
-      console.warn("Migration/Backfill failed:", e);
+      console.warn("Routines migration failed:", e);
     }
 
-    // Migration: Add picture column to users if missing
+    // 2. Migration: Add picture column to users if missing
     try {
       const userTableInfo = await db.getAllAsync<any>("PRAGMA table_info(users)");
       const hasPicture = userTableInfo.some(col => col.name === 'picture');
-      if (!hasPicture) {
+      if (!hasPicture && userTableInfo.length > 0) {
         console.log("Migrating users table: Adding picture column");
         await db.execAsync("ALTER TABLE users ADD COLUMN picture TEXT");
       }
@@ -64,11 +64,7 @@ export async function initDatabase() {
       console.warn("User migration failed:", e);
     }
 
-    // ... (rest of function)
-
-    console.log('Database initialization (V7) completed successfully');
-
-    // Migration: Add user_id to relevant tables if missing
+    // 3. Migration: Add user_id to relevant tables if missing
     const tablesToCheck = [
       'routines',
       'workouts',
@@ -80,7 +76,7 @@ export async function initDatabase() {
       try {
         const tableInfo = await db.getAllAsync<any>(`PRAGMA table_info(${tableName})`);
         const hasUserId = tableInfo.some(col => col.name === 'user_id');
-        if (!hasUserId) {
+        if (!hasUserId && tableInfo.length > 0) {
           console.log(`Migrating ${tableName} table: Adding user_id column`);
           await db.execAsync(`ALTER TABLE ${tableName} ADD COLUMN user_id TEXT`);
         }
@@ -89,26 +85,28 @@ export async function initDatabase() {
       }
     }
 
-    // Migration: Update exercises table for Phase 1
+    // 4. Migration: Update exercises table for Phase 1
     try {
       const exTableInfo = await db.getAllAsync<any>("PRAGMA table_info(exercises)");
-      const hasVideoUrl = exTableInfo.some(col => col.name === 'video_url');
-      const hasUserIdEx = exTableInfo.some(col => col.name === 'user_id');
+      if (exTableInfo.length > 0) {
+        const hasVideoUrl = exTableInfo.some(col => col.name === 'video_url');
+        const hasUserIdEx = exTableInfo.some(col => col.name === 'user_id');
 
-      if (!hasVideoUrl) {
-        console.log("Migrating exercises table: Adding video_url column");
-        await db.execAsync("ALTER TABLE exercises ADD COLUMN video_url TEXT");
-      }
-      if (!hasUserIdEx) {
-        console.log("Migrating exercises table: Adding user_id column");
-        await db.execAsync("ALTER TABLE exercises ADD COLUMN user_id INTEGER");
+        if (!hasVideoUrl) {
+          console.log("Migrating exercises table: Adding video_url column");
+          await db.execAsync("ALTER TABLE exercises ADD COLUMN video_url TEXT");
+        }
+        if (!hasUserIdEx) {
+          console.log("Migrating exercises table: Adding user_id column");
+          await db.execAsync("ALTER TABLE exercises ADD COLUMN user_id INTEGER");
+        }
       }
     } catch (e) {
       console.warn("Exercises migration failed:", e);
     }
 
+    // --- TABLE CREATION ---
 
-    // Create all tables
     await db.execAsync(`
             -- Users table
             CREATE TABLE IF NOT EXISTS users (
@@ -128,7 +126,7 @@ export async function initDatabase() {
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
 
-            -- Exercises table (Updated for Phase 1)
+            -- Exercises table
             CREATE TABLE IF NOT EXISTS exercises (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -162,7 +160,7 @@ export async function initDatabase() {
                 order_index INTEGER
             );
 
-            -- Workouts (Legacy/Existing)
+            -- Workouts (Legacy)
             CREATE TABLE IF NOT EXISTS workouts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 routine_id INTEGER,
@@ -173,7 +171,7 @@ export async function initDatabase() {
                 user_id TEXT
             );
 
-            -- Workout Sets (Legacy/Existing)
+            -- Workout Sets (Legacy)
             CREATE TABLE IF NOT EXISTS workout_sets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 workout_id INTEGER NOT NULL,
@@ -188,11 +186,9 @@ export async function initDatabase() {
             );
 
             -- PHASE 1: New Workout Tables
-            
-            -- Workout Sessions
             CREATE TABLE IF NOT EXISTS workout_sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
+                user_id TEXT,
                 name TEXT,
                 date TEXT NOT NULL,
                 duration_seconds INTEGER,
@@ -201,7 +197,6 @@ export async function initDatabase() {
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
 
-            -- Workout Sets V2 (Linked to exercises table)
             CREATE TABLE IF NOT EXISTS workout_sets_v2 (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 session_id INTEGER NOT NULL,
@@ -211,6 +206,32 @@ export async function initDatabase() {
                 reps INTEGER NOT NULL,
                 rpe REAL,
                 timestamp TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+
+            -- Muscle visualization daily stats
+            CREATE TABLE IF NOT EXISTS muscle_stats (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                muscle_group TEXT NOT NULL,
+                date TEXT NOT NULL,
+                volume REAL DEFAULT 0,
+                set_count INTEGER DEFAULT 0,
+                rep_count INTEGER DEFAULT 0,
+                intensity REAL DEFAULT 0,
+                UNIQUE(user_id, muscle_group, date)
+            );
+
+            -- Muscle recovery status
+            CREATE TABLE IF NOT EXISTS muscle_recovery (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                muscle_group TEXT NOT NULL,
+                date TEXT NOT NULL,
+                soreness INTEGER DEFAULT 0,
+                recovery_status TEXT DEFAULT 'FRESH',
+                last_trained_date TEXT,
+                rest_days_since INTEGER DEFAULT 0,
+                UNIQUE(user_id, muscle_group, date)
             );
 
             -- Nutrition logs
@@ -226,10 +247,10 @@ export async function initDatabase() {
                 user_id TEXT
             );
 
-            -- Custom foods (user-defined foods)
+            -- Custom foods
             CREATE TABLE IF NOT EXISTS custom_foods (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
+                user_id TEXT,
                 name TEXT NOT NULL,
                 category TEXT,
                 calories INTEGER DEFAULT 0,
@@ -239,10 +260,10 @@ export async function initDatabase() {
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
 
-            -- Saved meals (reusable grouped meal templates)
+            -- Saved meals
             CREATE TABLE IF NOT EXISTS saved_meals (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
+                user_id TEXT,
                 name TEXT NOT NULL,
                 items_json TEXT NOT NULL,
                 calories INTEGER DEFAULT 0,
@@ -255,13 +276,13 @@ export async function initDatabase() {
             -- User settings
             CREATE TABLE IF NOT EXISTS user_settings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
+                user_id TEXT,
                 theme TEXT DEFAULT 'system',
                 notifications_enabled BOOLEAN DEFAULT 1,
                 sound_enabled BOOLEAN DEFAULT 1
             );
 
-            -- Progress measurements (weight tracking)
+            -- Progress measurements
             CREATE TABLE IF NOT EXISTS progress_measurements (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 weight REAL,
@@ -280,31 +301,51 @@ export async function initDatabase() {
             );
         `);
 
-    console.log('All tables created successfully');
+    // --- UNIQUE INDEXES FOR RECOVERY & STATS ---
+    try {
+      // 1. Cleanup duplicates for muscle_stats (Keep latest ID)
+      await db.execAsync(`
+        DELETE FROM muscle_stats 
+        WHERE id NOT IN (
+          SELECT MAX(id) FROM muscle_stats GROUP BY user_id, muscle_group, date
+        );
+      `);
+
+      // 2. Cleanup duplicates for muscle_recovery (Keep latest ID)
+      await db.execAsync(`
+        DELETE FROM muscle_recovery 
+        WHERE id NOT IN (
+          SELECT MAX(id) FROM muscle_recovery GROUP BY user_id, muscle_group, date
+        );
+      `);
+
+      // 3. Apply Unique Indexes
+      await db.execAsync(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_muscle_stats_unique 
+        ON muscle_stats (user_id, muscle_group, date);
+        
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_muscle_recovery_unique 
+        ON muscle_recovery (user_id, muscle_group, date);
+      `);
+    } catch (e) {
+      console.warn("Muscle index migration failed:", e);
+    }
+
+    console.log('All tables created/verified successfully');
 
     // Seed exercises if table is empty
     try {
       const result = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM exercises');
-      console.log('Current exercise count:', result?.count);
-
       if (result && result.count === 0) {
-        console.log(`Seeding ${exerciseSource.exercises.length} exercises...`);
-
+        console.log(`Seeding exercises...`);
         await db.withTransactionAsync(async () => {
           for (const ex of exerciseSource.exercises) {
-            const safeName = ex.name || 'Unknown Exercise';
-            const safeCategory = ex.category || 'General';
-            const safeType = ex.type || 'General';
-            const safeInst = ex.instructions ? JSON.stringify(ex.instructions) : '[]';
-            const safeImgs = ex.images ? JSON.stringify(ex.images) : '[]';
-
             await db.runAsync(
               'INSERT INTO exercises (name, muscle_group, type, is_custom, instructions, images) VALUES (?, ?, ?, ?, ?, ?)',
-              [safeName, safeCategory, safeType, 0, safeInst, safeImgs]
+              [ex.name || 'Unknown', ex.category || 'General', ex.type || 'General', 0, JSON.stringify(ex.instructions || []), JSON.stringify(ex.images || [])]
             );
           }
         });
-
         console.log('Exercises seeded successfully');
       }
     } catch (seedError) {

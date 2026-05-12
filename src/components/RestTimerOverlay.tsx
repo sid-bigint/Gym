@@ -17,18 +17,36 @@ export const RestTimerOverlay = ({ visible, duration, onClose, onAddSeconds }: R
     const { colors } = useTheme();
     const [timeLeft, setTimeLeft] = useState(duration);
     const progressAnim = useRef(new Animated.Value(1)).current;
+    const isVisibleRef = useRef(false);
+    const prevDurationRef = useRef(duration);
 
     useEffect(() => {
-        if (visible) {
+        if (visible && !isVisibleRef.current) {
             setTimeLeft(duration);
             progressAnim.setValue(1);
             Animated.timing(progressAnim, {
                 toValue: 0,
                 duration: duration * 1000,
-                useNativeDriver: false // width doesn't support native driver
+                useNativeDriver: false
             }).start();
         }
-    }, [visible, duration]);
+        isVisibleRef.current = visible;
+    }, [visible]);
+
+    useEffect(() => {
+        if (visible && duration > prevDurationRef.current) {
+            const delta = duration - prevDurationRef.current;
+            setTimeLeft(prev => prev + delta);
+            
+            // Extend animation
+            Animated.timing(progressAnim, {
+                toValue: 0,
+                duration: (timeLeft + delta) * 1000,
+                useNativeDriver: false
+            }).start();
+        }
+        prevDurationRef.current = duration;
+    }, [duration, visible]);
 
     useEffect(() => {
         if (!visible) return;
@@ -56,13 +74,12 @@ export const RestTimerOverlay = ({ visible, duration, onClose, onAddSeconds }: R
     return (
         <View style={styles.container}>
             <View style={[styles.card, { backgroundColor: colors.background.elevated }]}>
-                {/* Progress Bar Background */}
                 <View style={[styles.progressBg, { backgroundColor: colors.background.secondary }]}>
                     <Animated.View
                         style={[
                             styles.progressFill,
                             {
-                                backgroundColor: colors.accent.primary + '30', // Transparent primary
+                                backgroundColor: colors.accent.primary + '30',
                                 width: progressAnim.interpolate({
                                     inputRange: [0, 1],
                                     outputRange: ['0%', '100%']
@@ -113,7 +130,11 @@ const styles = StyleSheet.create({
         width: '100%',
         borderRadius: borderRadius.lg,
         overflow: 'hidden',
-        ...shadows.lg,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
     },
     progressBg: {
         position: 'absolute',

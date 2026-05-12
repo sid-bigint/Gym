@@ -9,9 +9,14 @@ import { useHealthConnectStore } from '../../src/store/useHealthConnectStore';
 import { useNotesStore } from '../../src/store/useNotesStore';
 import { useTheme } from '../../src/store/useTheme';
 import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { spacing, borderRadius, shadows } from '../../src/constants/theme';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, startOfMonth, endOfMonth, isSameMonth, addMonths, subMonths, isAfter, startOfDay } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MuscleVisualizerCard } from '../../src/components/MuscleVisualizerCard';
+import useMuscleStore from '../../src/store/useMuscleStore';
+import MuscleRepository from '../../src/repositories/MuscleRepository';
+import { useAuthStore } from '../../src/store/useAuthStore';
 
 
 const { width } = Dimensions.get('window');
@@ -435,9 +440,63 @@ const styles = StyleSheet.create({
 export default function Dashboard() {
   const { user, loadUser } = useUserStore();
   const { totals, loadLogs: loadNutrition } = useNutritionStore();
-  const { activeWorkout, history, streak, loadRoutines: loadWorkouts, loadHistory, loadStreak } = useWorkoutStore();
+  const { activeWorkout, history, streak, loadRoutines: loadWorkouts, loadHistory, loadStreak, exercises } = useWorkoutStore();
   const { measurements, loadMeasurements, addMeasurement } = useProgressStore();
   const notebookItems = useNotesStore((s) => s.items);
+  const { user: authUser } = useAuthStore();
+  const muscleStore = useMuscleStore();
+  const { getMuscleGroupsForExercise } = require('@/services/muscleCalculationService');
+  
+  const liveMuscleData = React.useMemo(() => {
+    // Start with persisted data from the store
+    const merged = new Map(muscleStore.muscleData);
+
+    // Apply weekly baseline colors (faded) for muscles worked recently but not today
+    muscleStore.weeklyData.forEach((volumes: number[], muscle: any) => {
+        const weeklyVolume = volumes.reduce((a, b) => a + b, 0);
+        if (weeklyVolume > 0 && !merged.has(muscle)) {
+            const intensity = Math.min(10, weeklyVolume / 100);
+            merged.set(muscle, {
+                group: muscle, volume: 0, setCount: 0, repCount: 0, 
+                intensity, 
+                soreness: 0, recoveryStatus: 'FRESH', 
+                lastTrainedDate: new Date().toISOString(), restDaysSince: 0, 
+                color: muscleStore.getMuscleColor(muscle, intensity, 0)
+            });
+        }
+    });
+
+    // Add LIVE data from the current active workout session (immediate feedback)
+    if (activeWorkout?.activeSets && activeWorkout.activeSets.length > 0) {
+        const completedSets = activeWorkout.activeSets.filter((s: any) => s.completed && Number(s.reps) > 0);
+        
+        completedSets.forEach((setData: any) => {
+            const ex = exercises.find((e: any) => e.id === setData.exerciseId);
+            const muscles = getMuscleGroupsForExercise(setData.exerciseName || ex?.name || '', ex?.muscleGroup || '');
+            const volume = (Number(setData.weight) || 0) * (Number(setData.reps) || 0);
+            
+            muscles.forEach((muscle: any) => {
+                const existing = merged.get(muscle) || {
+                    group: muscle, volume: 0, setCount: 0, repCount: 0, intensity: 0, soreness: 0,
+                    recoveryStatus: 'FRESH', lastTrainedDate: new Date().toISOString(),
+                    restDaysSince: 0, color: '#64748b'
+                };
+                
+                const newVolume = existing.volume + volume;
+                merged.set(muscle, {
+                    ...existing,
+                    volume: newVolume,
+                    setCount: existing.setCount + 1,
+                    repCount: existing.repCount + (Number(setData.reps) || 0),
+                    intensity: Math.min(10, Math.max(existing.intensity, newVolume / 50)),
+                    color: muscleStore.getMuscleColor(muscle, Math.min(10, newVolume / 50), existing.soreness)
+                });
+            });
+        });
+    }
+    return merged;
+  }, [muscleStore.muscleData, muscleStore.weeklyData, activeWorkout, exercises]);
+
   const {
     todaySteps,
     isAvailable: isHealthConnectAvailable,
@@ -449,6 +508,7 @@ export default function Dashboard() {
   } = useHealthConnectStore();
   const { colors, mode } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
+  const [muscleLoading, setMuscleLoading] = useState(false);
   const [showWeightLog, setShowWeightLog] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weightInput, setWeightInput] = useState('');
@@ -514,6 +574,27 @@ export default function Dashboard() {
   const loadData = async () => {
     await loadUser();
     await Promise.all([loadNutrition(), loadWorkouts(), loadHistory(10), loadMeasurements(), loadStreak()]);
+    // Load muscle data for dashboard widget
+    if (user?.id) {
+      try {
+        setMuscleLoading(true);
+        const userIdStr = String(user.id);
+        const todayStats = await MuscleRepository.getTodaysMuscleStats(userIdStr);
+        const weeklyStats = await MuscleRepository.getWeeklyMuscleStats(userIdStr);
+        
+        // Ensure we don't clear the store with empty data if there was already something there
+        if (todayStats.size > 0 || muscleStore.muscleData.size === 0) {
+            muscleStore.setMuscleData(todayStats);
+        }
+        if (weeklyStats.size > 0 || muscleStore.weeklyData.size === 0) {
+            muscleStore.setWeeklyData(weeklyStats);
+        }
+      } catch (err) {
+        console.error("Dashboard failed to load muscle data", err);
+      } finally {
+        setMuscleLoading(false);
+      }
+    }
   };
 
   const onRefresh = async () => {
@@ -553,16 +634,7 @@ export default function Dashboard() {
     return measurements[0]?.weight || user?.weight || '--';
   }, [measurements, user?.weight]);
 
-  const notebookSummary = useMemo(() => {
-    const taskCount = notebookItems.filter(item => item.type === 'task').length;
-    const openTaskCount = notebookItems.filter(item => item.type === 'task' && !item.isDone).length;
-    return {
-      total: notebookItems.length,
-      label: notebookItems.length === 0
-        ? 'Notes, tasks, reminders'
-        : `${notebookItems.length} items · ${openTaskCount}/${taskCount} tasks open`,
-    };
-  }, [notebookItems]);
+
 
   const handleSaveWeight = async () => {
     if (!weightInput) return;
@@ -869,26 +941,15 @@ export default function Dashboard() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.notebookCard, { backgroundColor: colors.background.card }]}
-          onPress={() => router.push('/notes' as any)}
-        >
-          <View style={[styles.notebookIcon, { backgroundColor: colors.accent.primary + '18' }]}>
-            <Ionicons name="book-outline" size={24} color={colors.accent.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.notebookTitle, { color: colors.text.primary }]}>Notebook Tracker</Text>
-            <Text style={[styles.notebookMeta, { color: colors.text.tertiary }]}>{notebookSummary.label}</Text>
-          </View>
-          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            {notebookSummary.total > 0 && (
-              <Text style={{ color: colors.accent.primary, fontSize: 13, fontWeight: '900', marginBottom: 2 }}>
-                {notebookSummary.total}
-              </Text>
-            )}
-            <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
-          </View>
-        </TouchableOpacity>
+
+
+        {/* Muscle Visualizer Widget - Stats reflect DONE sessions only */}
+        <MuscleVisualizerCard
+          muscleData={muscleStore.muscleData} 
+          loading={muscleLoading}
+          onPress={() => router.push('/muscles' as any)}
+          todaysExercises={muscleStore.todaysExercises}
+        />
 
         {/* Action Buttons */}
         <View style={styles.actionGrid}>

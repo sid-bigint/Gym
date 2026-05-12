@@ -10,3 +10,7 @@ export const expoDb = openDatabaseSync(DB_NAME);
 
 // Export the Drizzle instance with schema support
 export const db = drizzle(expoDb, { schema });
+
+export async function getDatabase() {
+    return db;
+}
