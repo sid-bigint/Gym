@@ -21,6 +21,16 @@ export const users = sqliteTable('users', {
     targetFats: integer('target_fats'),
 
     picture: text('picture'),
+    
+    // Enhanced calculator fields
+    bodyFatPercent: real('body_fat_percent'),
+    sleepHours: text('sleep_hours'),
+    mealsPerDay: integer('meals_per_day'),
+    goalIntensity: text('goal_intensity'),
+    workoutType: text('workout_type'),
+    workoutDuration: integer('workout_duration'),
+    workoutFrequency: integer('workout_frequency'),
+
     createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
 });
 

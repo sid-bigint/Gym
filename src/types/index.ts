@@ -13,6 +13,15 @@ export interface UserProfile {
     targetCarbs: number;
     targetFats: number;
     picture?: string | null;
+
+    // Enhanced calculator fields
+    bodyFatPercent?: number | null;
+    sleepHours?: string | null;       // '<5' | '5-6' | '7-8' | '9+'
+    mealsPerDay?: number | null;
+    goalIntensity?: string | null;    // 'conservative' | 'moderate' | 'aggressive' | 'extreme'
+    workoutType?: string | null;      // 'weightlifting' | 'cardio' | 'hiit' | 'yoga' | 'sports'
+    workoutDuration?: number | null;  // minutes per session
+    workoutFrequency?: number | null; // days per week
 }
 
 export type ActivityLevel =
@@ -38,6 +47,8 @@ export interface Routine {
     id: number;
     name: string;
     programId?: string;
+    isPinned?: boolean;
+    orderIndex?: number;
     description?: string;
     exercises: RoutineExercise[];
 }

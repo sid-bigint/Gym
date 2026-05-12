@@ -19,6 +19,15 @@ export const UserSchema = z.object({
     targetFats: z.number().nonnegative(),
 
     picture: z.string().nullable().optional(),
+
+    // Enhanced calculator fields
+    bodyFatPercent: z.number().min(3).max(60).nullable().optional(),
+    sleepHours: z.string().nullable().optional(),
+    mealsPerDay: z.number().int().min(1).max(8).nullable().optional(),
+    goalIntensity: z.string().nullable().optional(),
+    workoutType: z.string().nullable().optional(),
+    workoutDuration: z.number().int().min(10).max(180).nullable().optional(),
+    workoutFrequency: z.number().int().min(1).max(7).nullable().optional(),
 });
 
 // Partial schema for updates

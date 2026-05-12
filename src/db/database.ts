@@ -64,6 +64,31 @@ export async function initDatabase() {
       console.warn("User migration failed:", e);
     }
 
+    // 2b. Migration: Add enhanced calculator columns to users if missing
+    try {
+      const userTableInfo2 = await db.getAllAsync<any>("PRAGMA table_info(users)");
+      const existingCols = new Set(userTableInfo2.map((col: any) => col.name));
+
+      const newColumns = [
+        { name: 'body_fat_percent', type: 'REAL' },
+        { name: 'sleep_hours', type: 'TEXT' },
+        { name: 'meals_per_day', type: 'INTEGER' },
+        { name: 'goal_intensity', type: 'TEXT' },
+        { name: 'workout_type', type: 'TEXT' },
+        { name: 'workout_duration', type: 'INTEGER' },
+        { name: 'workout_frequency', type: 'INTEGER' },
+      ];
+
+      for (const col of newColumns) {
+        if (!existingCols.has(col.name)) {
+          console.log(`Migrating users table: Adding ${col.name} column`);
+          await db.execAsync(`ALTER TABLE users ADD COLUMN ${col.name} ${col.type}`);
+        }
+      }
+    } catch (e) {
+      console.warn("Enhanced calculator migration failed:", e);
+    }
+
     // 3. Migration: Add user_id to relevant tables if missing
     const tablesToCheck = [
       'routines',
@@ -74,15 +99,36 @@ export async function initDatabase() {
 
     for (const tableName of tablesToCheck) {
       try {
-        const tableInfo = await db.getAllAsync<any>(`PRAGMA table_info(${tableName})`);
-        const hasUserId = tableInfo.some(col => col.name === 'user_id');
-        if (!hasUserId && tableInfo.length > 0) {
+        const tInfo = await db.getAllAsync<any>(`PRAGMA table_info(${tableName})`);
+        const hasUserId = tInfo.some(col => col.name === 'user_id');
+        if (!hasUserId && tInfo.length > 0) {
           console.log(`Migrating ${tableName} table: Adding user_id column`);
           await db.execAsync(`ALTER TABLE ${tableName} ADD COLUMN user_id TEXT`);
         }
       } catch (e) {
-        console.warn(`Migration failed for ${tableName}:`, e);
+        console.warn(`User ID migration failed for ${tableName}:`, e);
       }
+    }
+
+    // 4. Migration: Add folders and pinning support to routines
+    try {
+      const routinesInfo = await db.getAllAsync<any>("PRAGMA table_info(routines)");
+      const existingCols = new Set(routinesInfo.map((col: any) => col.name));
+      
+      const newCols = [
+        { name: 'folder_id', type: 'INTEGER' },
+        { name: 'is_pinned', type: 'INTEGER DEFAULT 0' },
+        { name: 'order_index', type: 'INTEGER DEFAULT 0' }
+      ];
+
+      for (const col of newCols) {
+        if (!existingCols.has(col.name)) {
+          console.log(`Migrating routines table: Adding ${col.name} column`);
+          await db.execAsync(`ALTER TABLE routines ADD COLUMN ${col.name} ${col.type}`);
+        }
+      }
+    } catch (e) {
+      console.warn("Folder migration failed:", e);
     }
 
     // 4. Migration: Update exercises table for Phase 1
@@ -123,6 +169,13 @@ export async function initDatabase() {
                 target_carbs INTEGER,
                 target_fats INTEGER,
                 picture TEXT,
+                body_fat_percent REAL,
+                sleep_hours TEXT,
+                meals_per_day INTEGER,
+                goal_intensity TEXT,
+                workout_type TEXT,
+                workout_duration INTEGER,
+                workout_frequency INTEGER,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -139,12 +192,23 @@ export async function initDatabase() {
                 user_id INTEGER
             );
 
+            -- Folders table
+            CREATE TABLE IF NOT EXISTS folders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                user_id TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+
             -- Routines table
             CREATE TABLE IF NOT EXISTS routines (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 program_id TEXT,
+                folder_id INTEGER,
                 description TEXT,
+                is_pinned INTEGER DEFAULT 0,
+                order_index INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 user_id TEXT
             );

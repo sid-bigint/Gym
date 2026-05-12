@@ -15,6 +15,13 @@ export interface User {
     targetCarbs: number | null;
     targetFats: number | null;
     picture: string | null;
+    bodyFatPercent: number | null;
+    sleepHours: string | null;
+    mealsPerDay: number | null;
+    goalIntensity: string | null;
+    workoutType: string | null;
+    workoutDuration: number | null;
+    workoutFrequency: number | null;
     createdAt?: string | null;
 }
 
@@ -32,6 +39,13 @@ export interface NewUser {
     targetCarbs?: number | null;
     targetFats?: number | null;
     picture?: string | null;
+    bodyFatPercent?: number | null;
+    sleepHours?: string | null;
+    mealsPerDay?: number | null;
+    goalIntensity?: string | null;
+    workoutType?: string | null;
+    workoutDuration?: number | null;
+    workoutFrequency?: number | null;
 }
 
 function mapDbUser(row: any): User {
@@ -49,6 +63,13 @@ function mapDbUser(row: any): User {
         targetCarbs: row.target_carbs,
         targetFats: row.target_fats,
         picture: row.picture,
+        bodyFatPercent: row.body_fat_percent,
+        sleepHours: row.sleep_hours,
+        mealsPerDay: row.meals_per_day,
+        goalIntensity: row.goal_intensity,
+        workoutType: row.workout_type,
+        workoutDuration: row.workout_duration,
+        workoutFrequency: row.workout_frequency,
         createdAt: row.created_at,
     };
 }
@@ -72,8 +93,10 @@ export const UserRepository = {
             const result = await db.runAsync(
                 `INSERT INTO users (
                     name, gender, age, height, weight, activity_level, goal,
-                    target_calories, target_protein, target_carbs, target_fats, picture
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    target_calories, target_protein, target_carbs, target_fats, picture,
+                    body_fat_percent, sleep_hours, meals_per_day, goal_intensity,
+                    workout_type, workout_duration, workout_frequency
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     validatedData.name ?? null,
                     validatedData.gender ?? null,
@@ -87,6 +110,13 @@ export const UserRepository = {
                     validatedData.targetCarbs ?? null,
                     validatedData.targetFats ?? null,
                     validatedData.picture ?? null,
+                    validatedData.bodyFatPercent ?? null,
+                    validatedData.sleepHours ?? null,
+                    validatedData.mealsPerDay ?? null,
+                    validatedData.goalIntensity ?? null,
+                    validatedData.workoutType ?? null,
+                    validatedData.workoutDuration ?? null,
+                    validatedData.workoutFrequency ?? null,
                 ]
             );
             const created = await db.getFirstAsync<any>('SELECT * FROM users WHERE id = ?', [result.lastInsertRowId]);
@@ -117,6 +147,13 @@ export const UserRepository = {
                 targetCarbs: 'target_carbs',
                 targetFats: 'target_fats',
                 picture: 'picture',
+                bodyFatPercent: 'body_fat_percent',
+                sleepHours: 'sleep_hours',
+                mealsPerDay: 'meals_per_day',
+                goalIntensity: 'goal_intensity',
+                workoutType: 'workout_type',
+                workoutDuration: 'workout_duration',
+                workoutFrequency: 'workout_frequency',
             };
 
             Object.entries(validatedUpdates).forEach(([key, value]) => {

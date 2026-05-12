@@ -43,7 +43,14 @@ export const useUserStore = create<UserState>((set, get) => ({
                         targetProtein: dbUser.targetProtein ?? 150,
                         targetCarbs: dbUser.targetCarbs ?? 300,
                         targetFats: dbUser.targetFats ?? 80,
-                        picture: dbUser.picture
+                        picture: dbUser.picture,
+                        bodyFatPercent: dbUser.bodyFatPercent,
+                        sleepHours: dbUser.sleepHours,
+                        mealsPerDay: dbUser.mealsPerDay,
+                        goalIntensity: dbUser.goalIntensity,
+                        workoutType: dbUser.workoutType,
+                        workoutDuration: dbUser.workoutDuration,
+                        workoutFrequency: dbUser.workoutFrequency,
                     }
                 });
             } else {
@@ -78,7 +85,14 @@ export const useUserStore = create<UserState>((set, get) => ({
                             targetProtein: newUser.targetProtein ?? 150,
                             targetCarbs: newUser.targetCarbs ?? 300,
                             targetFats: newUser.targetFats ?? 80,
-                            picture: newUser.picture
+                            picture: newUser.picture,
+                            bodyFatPercent: newUser.bodyFatPercent,
+                            sleepHours: newUser.sleepHours,
+                            mealsPerDay: newUser.mealsPerDay,
+                            goalIntensity: newUser.goalIntensity,
+                            workoutType: newUser.workoutType,
+                            workoutDuration: newUser.workoutDuration,
+                            workoutFrequency: newUser.workoutFrequency,
                         }
                     });
                 }
@@ -111,7 +125,14 @@ export const useUserStore = create<UserState>((set, get) => ({
                 targetProtein: Number(updatedUser.targetProtein),
                 targetCarbs: Number(updatedUser.targetCarbs),
                 targetFats: Number(updatedUser.targetFats),
-                picture: updatedUser.picture
+                picture: updatedUser.picture,
+                bodyFatPercent: updatedUser.bodyFatPercent != null ? Number(updatedUser.bodyFatPercent) : null,
+                sleepHours: updatedUser.sleepHours ?? null,
+                mealsPerDay: updatedUser.mealsPerDay != null ? Number(updatedUser.mealsPerDay) : null,
+                goalIntensity: updatedUser.goalIntensity ?? null,
+                workoutType: updatedUser.workoutType ?? null,
+                workoutDuration: updatedUser.workoutDuration != null ? Number(updatedUser.workoutDuration) : null,
+                workoutFrequency: updatedUser.workoutFrequency != null ? Number(updatedUser.workoutFrequency) : null,
             });
 
             // 2. Cloud Sync (Background Backup)

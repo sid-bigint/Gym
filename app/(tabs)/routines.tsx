@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ScrollView, Modal, ImageBackground } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ScrollView, Modal, ImageBackground, TextInput } from 'react-native';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { useAlertStore } from '../../src/store/useAlertStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,9 +12,11 @@ import { spacing, borderRadius, shadows } from '../../src/constants/theme';
 import { format } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PREDEFINED_BUNDLES } from '../../src/data/exploreBundles';
+import { RoutineCard } from '../../src/components/RoutineCard';
+import { ProgramCard } from '../../src/components/ProgramCard';
 
 export default function RoutinesScreen() {
-    const { routines, loadRoutines, isLoading, startWorkout, activeWorkout, deleteRoutine } = useWorkoutStore();
+    const { routines, routineAnalytics, loadRoutines, isLoading, startWorkout, activeWorkout, deleteRoutine, togglePinRoutine } = useWorkoutStore();
     const { colors } = useTheme();
     const { contentTop } = useScreenPadding();
     const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -59,24 +61,41 @@ export default function RoutinesScreen() {
     // Group routines by program
     const displayedItems = React.useMemo(() => {
         const groups: Record<string, any[]> = {};
-        const standalone: any[] = [];
+        const standaloneRoutines: any[] = [];
 
         routines.forEach(r => {
             if (r.programId) {
                 if (!groups[r.programId]) groups[r.programId] = [];
                 groups[r.programId].push(r);
             } else {
-                standalone.push({ type: 'routine', data: r });
+                standaloneRoutines.push(r);
             }
         });
 
         const result: any[] = [];
-
-        // Add Program Groups
         const usedImages = new Set<string>();
 
+        // 1. Add Pinned Routines
+        const pinned = standaloneRoutines.filter(r => r.isPinned).sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+        if (pinned.length > 0) {
+            result.push({ type: 'section_header', title: 'Pinned' });
+            pinned.forEach(r => result.push({ type: 'routine', data: r }));
+        }
+
+        // 2. Add Uncategorized Standalone Routines
+        const uncategorized = standaloneRoutines.filter(r => !r.isPinned).sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+        if (uncategorized.length > 0) {
+            result.push({ type: 'section_header', title: 'Routines' });
+            uncategorized.forEach(r => result.push({ type: 'routine', data: r }));
+        }
+
         // Add Program Groups
-        Object.keys(groups).forEach(pid => {
+        const programKeys = Object.keys(groups);
+        if (programKeys.length > 0) {
+            result.push({ type: 'section_header', title: 'Programs' });
+        }
+        
+        programKeys.forEach(pid => {
             const bundle = PREDEFINED_BUNDLES.find((b: any) => b.id === pid);
             let name = 'Unknown Program';
             let programBundle = bundle;
@@ -164,8 +183,7 @@ export default function RoutinesScreen() {
             });
         });
 
-        // Add Standalone
-        return [...result, ...standalone];
+        return result;
     }, [routines]);
 
     useEffect(() => {
@@ -223,137 +241,35 @@ export default function RoutinesScreen() {
         }
     };
 
-    // Card Renderer for Standalone Routine
-    const renderRoutineData = (item: any, styleOverride?: any, isSelectable: boolean = false) => {
-        const isSelected = selectedRoutineIds.has(item.id);
-
-        return (
-            <TouchableOpacity
-                activeOpacity={0.9}
-                onLongPress={() => {
-                    if (isSelectable) {
-                        toggleSelection(item.id);
-                    }
-                }}
-                onPress={() => {
-                    if (isSelectionMode && isSelectable) {
-                        toggleSelection(item.id);
-                    }
-                }}
-                style={[
-                    styles.card,
-                    {
-                        backgroundColor: colors.background.card,
-                        borderColor: isSelected ? colors.status.error : colors.border.primary,
-                        borderWidth: isSelected ? 2 : 1
-                    },
-                    styleOverride
-                ]}
-            >
-                <View style={[styles.cardContent, { opacity: (isSelectionMode && !isSelected) ? 0.6 : 1 }]}>
-                    <View style={styles.cardHeaderRow}>
-                        <View style={{ flex: 1, marginLeft: 10 }}>
-                            <Text style={[styles.cardTitle, { color: colors.text.primary }]}>{item.name}</Text>
-                            <Text style={[styles.cardSubtitle, { color: colors.text.tertiary }]} numberOfLines={1}>
-                                {item.exercises?.length > 0
-                                    ? item.exercises.map((e: any) => e.exercise?.name).join(', ')
-                                    : 'No exercises'}
-                            </Text>
-                        </View>
-                        {isSelected && (
-                            <View style={{ backgroundColor: colors.status.error + '20', borderRadius: 12, padding: 4 }}>
-                                <Ionicons name="checkmark-circle" size={24} color={colors.status.error} />
-                            </View>
-                        )}
-                    </View>
-
-                    <View style={[styles.actionRow, { opacity: isSelectionMode ? 0.3 : 1 }]} pointerEvents={isSelectionMode ? "none" : "auto"}>
-                        <TouchableOpacity
-                            style={[styles.iconButton, { backgroundColor: colors.background.elevated, marginRight: 8 }]}
-                            onPress={() => router.push({ pathname: '/programs/create', params: { id: item.id } })}
-                        >
-                            <Ionicons name="pencil" size={18} color={colors.text.primary} />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.iconButton, { backgroundColor: 'rgba(255, 59, 48, 0.1)', marginRight: 'auto' }]}
-                            onPress={() => setDeleteId(item.id)}
-                        >
-                            <Ionicons name="trash" size={18} color={colors.status.error} />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.startBtn, { backgroundColor: colors.accent.primary }]}
-                            onPress={() => handleStartWorkout(item.id)}
-                        >
-                            <Text style={[styles.startBtnText, { color: colors.text.inverse }]}>Start</Text>
-                            <Ionicons name="play" size={16} color={colors.text.inverse} style={{ marginLeft: 4 }} />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </TouchableOpacity>
-        );
-    };
-
-    // Card Renderer for Program Group
-    const renderProgramCard = (item: any) => (
-        <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => setSelectedProgram(item)}
-            style={[styles.card, { backgroundColor: colors.background.card, borderColor: colors.border.primary, height: 160 }]}
-        >
-            {item.bundle?.image ? (
-                <ImageBackground
-                    source={{ uri: item.bundle.image }}
-                    style={StyleSheet.absoluteFill}
-                >
-                    <LinearGradient
-                        colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.8)']}
-                        style={StyleSheet.absoluteFill}
-                    />
-                </ImageBackground>
-            ) : (
-                <LinearGradient
-                    colors={item.bundle?.gradient || [colors.accent.primary, colors.accent.secondary]}
-                    style={StyleSheet.absoluteFill}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                />
-            )}
-
-            <View style={[styles.cardContent, { justifyContent: 'flex-end', height: '100%' }]}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'auto' }}>
-                    <View style={styles.officialBadge}>
-                        <Ionicons name="albums" size={12} color="#fff" />
-                        <Text style={styles.officialText}>PROGRAM</Text>
-                    </View>
-
-                    {/* Program Delete Button */}
-                    <TouchableOpacity
-                        style={[styles.programDeleteBtn, { backgroundColor: 'rgba(0,0,0,0.4)' }]}
-                        onPress={() => setDeleteProgramId(item.id)}
-                    >
-                        <Ionicons name="trash-outline" size={18} color="#FF3B30" />
-                    </TouchableOpacity>
-                </View>
-
-                <Text style={[styles.cardTitle, { color: '#fff', fontSize: 22 }]}>{item.name}</Text>
-                <Text style={[styles.cardSubtitle, { color: 'rgba(255,255,255,0.8)' }]}>
-                    {item.routines.length} Workouts Inside
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-                    <Text style={{ color: colors.accent.primary, fontWeight: '600', marginRight: 4 }}>View Workouts</Text>
-                    <Ionicons name="arrow-forward" size={16} color={colors.accent.primary} />
-                </View>
-            </View>
-        </TouchableOpacity>
-    );
-
     const renderItem = ({ item }: { item: any }) => {
-        if (item.type === 'program') {
-            return renderProgramCard(item);
+        if (item.type === 'section_header') {
+            return <Text style={[styles.sectionTitle, { color: colors.text.primary, marginTop: 12, marginBottom: 8 }]}>{item.title}</Text>;
         }
-        return renderRoutineData(item.data);
+
+        if (item.type === 'program') {
+            return (
+                <ProgramCard 
+                    item={item} 
+                    onSelect={setSelectedProgram} 
+                    onDelete={setDeleteProgramId} 
+                />
+            );
+        }
+        return (
+            <View>
+                <RoutineCard 
+                    item={item.data}
+                    analytics={routineAnalytics[item.data.name]}
+                    isSelectable={true}
+                    isSelectionMode={isSelectionMode}
+                    isSelected={selectedRoutineIds.has(item.data.id)}
+                    onToggleSelection={toggleSelection}
+                    onDelete={setDeleteId} 
+                    onPin={togglePinRoutine}
+                    onStartWorkout={handleStartWorkout} 
+                />
+            </View>
+        );
     };
 
     // Safe derived routines for the modal to ensure UI updates on delete
@@ -365,111 +281,130 @@ export default function RoutinesScreen() {
     return (
         <View style={[styles.container, { backgroundColor: colors.background.primary, paddingTop: contentTop }]}>
             <View style={styles.header}>
-                <View>
-                    <Text style={[styles.title, { color: colors.text.primary }]}>Workouts</Text>
-                    <Text style={[styles.subtitle, { color: colors.text.secondary }]}>{"Let's get moving"}</Text>
-                </View>
-                <TouchableOpacity
-                    style={[styles.addButton, { backgroundColor: colors.accent.secondary }]}
-                    onPress={() => router.push('/programs/create')}
-                >
-                    <Ionicons name="add" size={24} color={colors.text.inverse} />
-                </TouchableOpacity>
+                {isSelectionMode ? (
+                    <>
+                        <View>
+                            <Text style={[styles.title, { color: colors.text.primary }]}>{selectedRoutineIds.size} Selected</Text>
+                            <TouchableOpacity onPress={() => setSelectedRoutineIds(new Set())}>
+                                <Text style={[styles.subtitle, { color: colors.accent.primary, fontWeight: 'bold' }]}>Cancel Selection</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <TouchableOpacity
+                            style={[styles.addButton, { backgroundColor: colors.status.error }]}
+                            onPress={handleBulkDelete}
+                        >
+                            <Ionicons name="trash" size={24} color={colors.text.inverse} />
+                        </TouchableOpacity>
+                    </>
+                ) : (
+                    <>
+                        <View>
+                            <Text style={[styles.title, { color: colors.text.primary }]}>Workouts</Text>
+                            <Text style={[styles.subtitle, { color: colors.text.secondary }]}>{"Let's get moving"}</Text>
+                        </View>
+                        <TouchableOpacity
+                            style={[styles.addButton, { backgroundColor: colors.accent.secondary }]}
+                            onPress={() => router.push('/programs/create')}
+                        >
+                            <Ionicons name="add" size={24} color={colors.text.inverse} />
+                        </TouchableOpacity>
+                    </>
+                )}
             </View>
 
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <FlatList
+                data={displayedItems}
+                renderItem={renderItem}
+                keyExtractor={(item) => {
+                    if (item.type === 'section_header') return `header-${item.title}`;
+                    if (item.type === 'program') return `prog-${item.id}`;
+                    return `rout-${item.data?.id || item.id}`;
+                }}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.content}
+                ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
+                ListEmptyComponent={() => (
+                    <View style={styles.emptyContainer}>
+                        <Ionicons name="fitness-outline" size={64} color={colors.text.disabled} />
+                        <Text style={[styles.emptyText, { color: colors.text.secondary }]}>No routines yet</Text>
+                        <Text style={[styles.emptySubtext, { color: colors.text.tertiary }]}>
+                            Create a routine to track your progress efficiently.
+                        </Text>
+                    </View>
+                )}
+                ListHeaderComponent={() => (
+                    <View>
+                        {/* Quick Actions */}
+                        <View style={styles.quickActions}>
+                            <TouchableOpacity
+                                style={[styles.actionCard, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
+                                onPress={() => router.push('/programs/generate')}
+                            >
+                                <View style={[styles.actionIcon, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+                                    <Ionicons name="sparkles" size={24} color="#8B5CF6" />
+                                </View>
+                                <Text style={[styles.actionTitle, { color: colors.text.primary }]}>AI Generate</Text>
+                                <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Smart plans</Text>
+                            </TouchableOpacity>
 
-
-                {/* Quick Actions */}
-                <View style={styles.quickActions}>
-                    <TouchableOpacity
-                        style={[styles.actionCard, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
-                        onPress={() => router.push('/programs/generate')}
-                    >
-                        <View style={[styles.actionIcon, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
-                            <Ionicons name="sparkles" size={24} color="#8B5CF6" />
+                            <TouchableOpacity
+                                style={[styles.actionCard, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
+                                onPress={() => router.push('/programs/explore')}
+                            >
+                                <View style={[styles.actionIcon, { backgroundColor: 'rgba(255, 45, 85, 0.1)' }]}>
+                                    <Ionicons name="compass" size={24} color="#FF2D55" />
+                                </View>
+                                <Text style={[styles.actionTitle, { color: colors.text.primary }]}>Explore</Text>
+                                <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Find plans</Text>
+                            </TouchableOpacity>
                         </View>
-                        <Text style={[styles.actionTitle, { color: colors.text.primary }]}>AI Generate</Text>
-                        <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Smart plans</Text>
-                    </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={[styles.actionCard, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
-                        onPress={() => router.push('/programs/explore')}
-                    >
-                        <View style={[styles.actionIcon, { backgroundColor: 'rgba(255, 45, 85, 0.1)' }]}>
-                            <Ionicons name="compass" size={24} color="#FF2D55" />
-                        </View>
-                        <Text style={[styles.actionTitle, { color: colors.text.primary }]}>Explore</Text>
-                        <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Find plans</Text>
-                    </TouchableOpacity>
-                </View>
+                        {/* Create New Button */}
+                        <TouchableOpacity
+                            style={[styles.createBanner, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
+                            onPress={() => router.push('/programs/create')}
+                        >
+                            <View style={[styles.actionIcon, { backgroundColor: 'rgba(0, 122, 255, 0.1)', marginBottom: 0 }]}>
+                                <Ionicons name="create" size={24} color="#007AFF" />
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 16 }}>
+                                <Text style={[styles.actionTitle, { color: colors.text.primary, marginBottom: 2 }]}>Create Custom Routine</Text>
+                                <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Build your own workout</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.text.disabled} />
+                        </TouchableOpacity>
 
-                {/* Create New Button */}
-                <TouchableOpacity
-                    style={[styles.createBanner, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
-                    onPress={() => router.push('/programs/create')}
-                >
-                    <View style={[styles.actionIcon, { backgroundColor: 'rgba(0, 122, 255, 0.1)', marginBottom: 0 }]}>
-                        <Ionicons name="create" size={24} color="#007AFF" />
+                        {/* Quick Start Feature */}
+                        <TouchableOpacity
+                            style={[
+                                styles.quickStartBanner,
+                                { backgroundColor: colors.background.card, borderColor: colors.border.primary },
+                                activeWorkout && styles.disabledAction
+                            ]}
+                            onPress={() => handleStartWorkout(null)}
+                            disabled={!!activeWorkout}
+                        >
+                            <LinearGradient
+                                colors={[colors.accent.primary + '20', 'transparent']}
+                                style={StyleSheet.absoluteFill}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                            />
+                            <View style={[styles.actionIcon, { backgroundColor: colors.accent.primary + '20', marginBottom: 0 }]}>
+                                <Ionicons name="flash" size={24} color={colors.accent.primary} />
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 16 }}>
+                                <Text style={[styles.actionTitle, { color: colors.text.primary, marginBottom: 2 }]}>Quick Start</Text>
+                                <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Start an empty workout now</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.text.disabled} />
+                        </TouchableOpacity>
+
+                        {/* My Routines Section */}
+                        <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>My Routines</Text>
                     </View>
-                    <View style={{ flex: 1, marginLeft: 16 }}>
-                        <Text style={[styles.actionTitle, { color: colors.text.primary, marginBottom: 2 }]}>Create Custom Routine</Text>
-                        <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Build your own workout</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={colors.text.disabled} />
-                </TouchableOpacity>
-
-                {/* Quick Start Feature */}
-                <TouchableOpacity
-                    style={[
-                        styles.quickStartBanner,
-                        { backgroundColor: colors.background.card, borderColor: colors.border.primary },
-                        activeWorkout && styles.disabledAction
-                    ]}
-                    onPress={() => handleStartWorkout(null)}
-                    disabled={!!activeWorkout}
-                >
-                    <LinearGradient
-                        colors={[colors.accent.primary + '20', 'transparent']}
-                        style={StyleSheet.absoluteFill}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                    />
-                    <View style={[styles.actionIcon, { backgroundColor: colors.accent.primary + '20', marginBottom: 0 }]}>
-                        <Ionicons name="flash" size={24} color={colors.accent.primary} />
-                    </View>
-                    <View style={{ flex: 1, marginLeft: 16 }}>
-                        <Text style={[styles.actionTitle, { color: colors.text.primary, marginBottom: 2 }]}>Quick Start</Text>
-                        <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Start an empty workout now</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={colors.text.disabled} />
-                </TouchableOpacity>
-
-                {/* My Routines Section */}
-                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>My Routines</Text>
-
-                {
-                    displayedItems.length === 0 ? (
-                        <View style={styles.emptyContainer}>
-                            <Ionicons name="fitness-outline" size={64} color={colors.text.disabled} />
-                            <Text style={[styles.emptyText, { color: colors.text.secondary }]}>No routines yet</Text>
-                            <Text style={[styles.emptySubtext, { color: colors.text.tertiary }]}>
-                                Create a routine to track your progress efficiently.
-                            </Text>
-                        </View>
-                    ) : (
-                        <FlatList
-                            data={displayedItems}
-                            renderItem={renderItem}
-                            keyExtractor={(item) => item.type === 'program' ? `prog-${item.id}` : `rout-${item.data.id}`}
-                            scrollEnabled={false}
-                            contentContainerStyle={styles.listContainer}
-                            ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
-                        />
-                    )
-                }
-            </ScrollView>
+                )}
+            />
 
             {/* Program Details Modal */}
             <Modal
@@ -522,7 +457,17 @@ export default function RoutinesScreen() {
                     <ScrollView contentContainerStyle={{ padding: 20 }}>
                         {modalRoutines.map((routine, index) => (
                             <View key={routine.id} style={{ marginBottom: 16 }}>
-                                {renderRoutineData(routine, undefined, true)}
+                                <RoutineCard 
+                                    item={routine}
+                                    analytics={routineAnalytics[routine.name]}
+                                    isSelectable={true}
+                                    isSelectionMode={isSelectionMode}
+                                    isSelected={selectedRoutineIds.has(routine.id)}
+                                    onToggleSelection={toggleSelection}
+                                    onDelete={setDeleteId}
+                                    onPin={togglePinRoutine}
+                                    onStartWorkout={handleStartWorkout}
+                                />
                             </View>
                         ))}
                     </ScrollView>

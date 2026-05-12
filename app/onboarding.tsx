@@ -53,8 +53,11 @@ function calculateUserTargets(profile: Partial<UserProfile>): Partial<UserProfil
     targetProtein = Math.min(targetProtein, maxProtein);
     targetProtein = Math.max(targetProtein, 50);
 
-    const targetFats = Math.max(Math.round((calorieGoal * 0.25) / 9), 30);
-    const targetCarbs = Math.max(Math.round((calorieGoal - (targetProtein * 4) - (targetFats * 9)) / 4), 50);
+    let targetFats = Math.round((calorieGoal * 0.25) / 9);
+    targetFats = Math.max(targetFats, 30);
+    
+    let targetCarbs = Math.round((calorieGoal - (targetProtein * 4) - (targetFats * 9)) / 4);
+    targetCarbs = Math.max(targetCarbs, 50);
 
     return {
         ...profile,

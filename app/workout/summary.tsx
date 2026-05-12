@@ -62,7 +62,7 @@ export default function WorkoutSummaryScreen() {
 
                 // Compare with previous session (not just any set, but the last SESSION's sets)
                 // Filter out CURRENT workout sets
-                const prevHistory = fullHistory.filter((h: any) => h.workout_id !== currentWorkout.id);
+                const prevHistory = fullHistory.filter((h: any) => h.session_id !== currentWorkout.id);
 
                 let improvement = null; // 'weight', 'reps', 'volume', or null
                 let isPR = false;
@@ -76,8 +76,8 @@ export default function WorkoutSummaryScreen() {
 
                     // Compare vs Last Session
                     // Group by workout_id to find last session
-                    const lastSessionId = prevHistory[prevHistory.length - 1].workout_id;
-                    const lastSessionSets = prevHistory.filter((h: any) => h.workout_id === lastSessionId);
+                    const lastSessionId = prevHistory[prevHistory.length - 1].session_id;
+                    const lastSessionSets = prevHistory.filter((h: any) => h.session_id === lastSessionId);
                     const lastMax = Math.max(...lastSessionSets.map((s: any) => s.weight));
 
                     if (currentMax > lastMax) improvement = 'Heavier';
@@ -131,7 +131,7 @@ export default function WorkoutSummaryScreen() {
         // But I can import `getDatabase` from `../../src/db/database`.
         const { getDatabase } = require('../../src/db/database');
         const db = await getDatabase();
-        return await db.getAllAsync('SELECT * FROM workout_sets WHERE workout_id = ?', [wid]);
+        return await db.getAllAsync('SELECT * FROM workout_sets_v2 WHERE session_id = ?', [wid]);
     };
 
     const handleDone = () => {

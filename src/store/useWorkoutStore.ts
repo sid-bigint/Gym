@@ -83,8 +83,14 @@ function buildStreakStats(dates: string[]): WorkoutStreak {
     };
 }
 
+interface RoutineAnalytics {
+    lastPerformed: string;
+    avgDuration: number;
+}
+
 interface WorkoutState {
     routines: Routine[];
+    routineAnalytics: Record<string, RoutineAnalytics>;
     exercises: Exercise[];
     history: WorkoutLog[];
     streak: WorkoutStreak;
@@ -98,6 +104,7 @@ interface WorkoutState {
     createRoutine: (name: string, exercises: { exerciseId: number; sets: number; reps: number }[], programId?: string) => Promise<void>;
     updateRoutine: (id: number, name: string, exercises: { exerciseId: number; sets: number; reps: number }[]) => Promise<void>;
     deleteRoutine: (id: number) => Promise<void>;
+    togglePinRoutine: (id: number) => Promise<void>;
     deleteExercise: (id: number) => Promise<void>;
 
     saveWorkoutLog: (routineId: number | null, routineName: string, duration: number, notes: string, sets: any[]) => Promise<number>;
@@ -119,6 +126,7 @@ interface WorkoutState {
 
 export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     routines: [],
+    routineAnalytics: {},
     exercises: [],
     history: [],
     streak: DEFAULT_STREAK,
@@ -254,12 +262,33 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                 })
             }));
 
+            // Load Analytics
+            const analyticsResults = await db.getAllAsync<any>(
+                `SELECT name, MAX(date) as lastPerformed, AVG(duration_seconds) as avgDuration 
+                 FROM workout_sessions 
+                 WHERE status = 'COMPLETED' AND name IS NOT NULL 
+                 GROUP BY name`
+            );
+
+            const analyticsMap: Record<string, RoutineAnalytics> = {};
+            for (const row of analyticsResults) {
+                if (row.name) {
+                    analyticsMap[row.name] = {
+                        lastPerformed: row.lastPerformed,
+                        avgDuration: row.avgDuration
+                    };
+                }
+            }
+
             set({
+                routineAnalytics: analyticsMap,
                 routines: routinesWithExercises.map(r => ({
                     ...r,
-                    // Map snake_case DB column to camelCase property if needed, 
-                    // though if we typed it as any it's fine, but let's be safe
-                    programId: (r as any).program_id
+                    // Map snake_case DB column to camelCase property
+                    programId: (r as any).program_id,
+                    folderId: (r as any).folder_id || null,
+                    isPinned: !!(r as any).is_pinned,
+                    orderIndex: (r as any).order_index || 0
                 }))
             });
         } catch (e) {
@@ -377,6 +406,21 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             CloudSyncService.scheduleBackup('routine-deleted');
         } catch (e) {
             console.error("Failed to delete routine", e);
+            throw e;
+        }
+    },
+
+    togglePinRoutine: async (id) => {
+        try {
+            const db = await getDatabase();
+            const routine = get().routines.find(r => r.id === id);
+            if (!routine) return;
+            
+            const newPinnedStatus = routine.isPinned ? 0 : 1;
+            await db.runAsync('UPDATE routines SET is_pinned = ? WHERE id = ?', [newPinnedStatus, id]);
+            await get().loadRoutines();
+        } catch (e) {
+            console.error("Failed to toggle pin on routine", e);
             throw e;
         }
     },

@@ -88,22 +88,192 @@ export const ExerciseSelector = ({
     );
 
     const filteredList = useMemo(() => {
-        const terms = getTerms(searchQuery);
+        let normalizedQuery = searchQuery.toLowerCase().trim();
+        
+        // Fix common user misspellings/misnomers before processing
+        normalizedQuery = normalizedQuery.replace('lateral pulldown', 'lat pulldown');
+        normalizedQuery = normalizedQuery.replace('rdl', 'romanian deadlift');
+        normalizedQuery = normalizedQuery.replace('ohp', 'overhead press');
+        normalizedQuery = normalizedQuery.replace(/^db\s/g, 'dumbbell ');
+        normalizedQuery = normalizedQuery.replace(/^bb\s/g, 'barbell ');
+        
+        const terms = getTerms(normalizedQuery);
 
-        return exercises.filter(ex => {
-            const searchable = [
+        // Fundamental exercises that should bubble to the top
+        const commonKeywords = [
+            'bench press', 'squat', 'deadlift', 'pull up', 'push up', 
+            'overhead press', 'bicep curl', 'tricep extension', 'leg press',
+            'lunge', 'lat pulldown', 'barbell row', 'dumbbell row', 'crunch', 'plank', 'dip', 'shrug'
+        ];
+
+        // Map rigid DB names to common aliases so users can find them easily
+        const EXERCISE_ALIASES: Record<string, string[]> = {
+            // Back
+            "Wide-Grip Lat Pulldown": ["lat pulldown", "pulldown", "back pulldown"],
+            "Close-Grip Front Lat Pulldown": ["lat pulldown", "close grip pulldown"],
+            "Seated Cable Rows": ["seated cable row", "cable row", "low row", "machine row"],
+            "One-Arm Dumbbell Row": ["dumbbell row", "single arm row"],
+            "Bent Over Two-Dumbbell Row": ["dumbbell row", "db row"],
+            "Bent Over Barbell Row": ["barbell row", "bent over row"],
+            "Pullups": ["pull up", "pullup", "pull-up", "chin up", "chinup"],
+            "Face Pull": ["face pull", "face pulls", "cable face pull"],
+            "Barbell Shrug": ["shrug", "shrugs", "barbell shrug"],
+            "Dumbbell Shrug": ["shrug", "db shrug"],
+            
+            // Chest
+            "Barbell Bench Press - Medium Grip": ["bench press", "flat bench", "chest press", "barbell bench"],
+            "Barbell Incline Bench Press - Medium Grip": ["incline bench", "incline bench press", "incline press"],
+            "Dumbbell Bench Press": ["dumbbell bench", "db bench press"],
+            "Incline Dumbbell Press": ["incline dumbbell press", "incline db press"],
+            "Cable Crossover": ["cable fly", "chest fly", "cable crossovers"],
+            "Dumbbell Flyes": ["dumbbell fly", "db fly"],
+            "Butterfly": ["pec deck", "chest fly machine", "machine fly"],
+            "Pushups": ["push up", "pushup", "push-up", "press up"],
+            "Dips - Chest Version": ["dips", "chest dips"],
+
+            // Shoulders
+            "Standing Military Press": ["overhead press", "shoulder press", "military press", "standing press"],
+            "Arnold Dumbbell Press": ["arnold press"],
+            "Side Lateral Raise": ["lateral raise", "side raise", "shoulder raise", "dumbbell lateral raise"],
+            "Front Dumbbell Raise": ["front raise", "front shoulder raise"],
+            "Reverse Machine Flyes": ["reverse fly", "rear delt fly", "machine reverse fly"],
+            "Standing Dumbbell Upright Row": ["upright row", "db upright row"],
+
+            // Legs
+            "Barbell Full Squat": ["squat", "back squat", "barbell squat"],
+            "Barbell Squat": ["squat", "back squat"],
+            "Front Barbell Squat": ["front squat"],
+            "Leg Press": ["leg press", "machine leg press"],
+            "Leg Extensions": ["leg extension", "quad extension"],
+            "Seated Leg Curl": ["leg curl", "hamstring curl", "seated curl"],
+            "Lying Leg Curls": ["leg curl", "hamstring curl", "lying curl"],
+            "Romanian Deadlift": ["stiff leg deadlift", "rdl"],
+            "Barbell Deadlift": ["deadlift", "conventional deadlift", "dl"],
+            "Barbell Hip Thrust": ["hip thrust", "glute bridge", "barbell hip thrust"],
+            "Dumbbell Lunges": ["lunges", "dumbbell lunge", "walking lunge"],
+            "Split Squats": ["split squat", "bulgarian split squat"],
+            "Standing Calf Raises": ["calf raise", "standing calf raise", "calf raises"],
+            "Seated Calf Raise": ["calf raise", "seated calf raise"],
+            "Thigh Abductor": ["hip abductor", "abductor machine", "outer thigh"],
+            "Thigh Adductor": ["hip adductor", "adductor machine", "inner thigh"],
+            "Glute Kickback": ["glute kickback", "donkey kick"],
+
+            // Arms
+            "Barbell Curl": ["bicep curl", "biceps curl", "straight bar curl"],
+            "Dumbbell Alternate Bicep Curl": ["dumbbell curl", "db curl", "bicep curl"],
+            "Alternate Hammer Curl": ["hammer curl", "dumbbell hammer curl"],
+            "Preacher Curl": ["preacher curl", "ez bar curl"],
+            "Triceps Pushdown": ["tricep pushdown", "straight bar pushdown", "cable pushdown"],
+            "Triceps Pushdown - Rope Attachment": ["tricep pushdown", "rope pushdown", "rope extension"],
+            "Lying Triceps Press": ["skullcrusher", "skull crusher", "french press", "lying tricep extension"],
+            "Dips - Triceps Version": ["dips", "tricep dips"],
+
+            // Core & Other
+            "Crunches": ["crunch", "ab crunch"],
+            "Cable Crunch": ["cable crunch", "kneeling cable crunch"],
+            "Plank": ["plank", "planks"],
+            "Russian Twist": ["russian twist"],
+            "Farmer's Walk": ["farmers walk", "farmer carry"]
+        };
+
+        const resultsWithScores = exercises.map(ex => {
+            const aliases = EXERCISE_ALIASES[ex.name] || [];
+            
+            const searchableText = [
                 ex.name,
-                ex.muscleGroup,
-                ex.type,
-                ...(ex.instructions || []),
+                ...aliases
             ].join(' ').toLowerCase();
 
-            const matchesSearch = terms.length === 0 || terms.every(term => searchable.includes(term));
+            // Broad searchable includes muscle group and type for wider matching
+            const broadSearchable = [
+                searchableText,
+                ex.muscleGroup,
+                ex.type
+            ].join(' ').toLowerCase();
+
+            let score = 0;
+
             const matchesCategory = selectedCategory === "All" || ex.muscleGroup === selectedCategory;
             const matchesType = selectedType === "All" || ex.type === selectedType;
 
-            return matchesSearch && matchesCategory && matchesType;
+            if (!matchesCategory || !matchesType) return { ex, score: -1 };
+
+            if (terms.length === 0) {
+                score = 1; // Default visibility
+            } else {
+                // 1. Massive points for full exact match (either in name or alias)
+                if (searchableText.includes(normalizedQuery)) {
+                    score += 500;
+                }
+
+                // 2. High points if ALL search terms are found (strict AND match)
+                const hasAllTerms = terms.every(term => broadSearchable.includes(term));
+                if (hasAllTerms) score += 100;
+
+                // 3. Partial points for EACH matched term (resilient OR match for typos)
+                let matchedTerms = 0;
+                terms.forEach(term => {
+                    if (broadSearchable.includes(term)) {
+                        score += 15;
+                        matchedTerms++;
+                    }
+                });
+
+                // Fail if absolutely nothing matches
+                if (matchedTerms === 0 && !hasAllTerms && !searchableText.includes(normalizedQuery)) {
+                    score = 0;
+                }
+            }
+
+            return { ex, score };
+        }).filter(item => item.score > 0);
+
+        // Sort by our intelligent score first, then by relevance fallbacks
+        resultsWithScores.sort((aItem, bItem) => {
+            // 1. Primary Sort: Algorithm Score (Desc)
+            if (aItem.score !== bItem.score) {
+                return bItem.score - aItem.score;
+            }
+
+            const a = aItem.ex;
+            const b = bItem.ex;
+            const aNameLower = a.name.toLowerCase();
+            const bNameLower = b.name.toLowerCase();
+            
+            if (searchQuery) {
+                const queryLower = normalizedQuery;
+                
+                // 2. Exact match gets ultimate priority
+                if (aNameLower === queryLower && bNameLower !== queryLower) return -1;
+                if (bNameLower === queryLower && aNameLower !== queryLower) return 1;
+
+                // 3. Starts-with match gets high priority
+                const aStartsWith = aNameLower.startsWith(queryLower);
+                const bStartsWith = bNameLower.startsWith(queryLower);
+                if (aStartsWith && !bStartsWith) return -1;
+                if (bStartsWith && !aStartsWith) return 1;
+            }
+
+            // 4. User's custom exercises get prioritized
+            if (a.isCustom && !b.isCustom) return -1;
+            if (b.isCustom && !a.isCustom) return 1;
+
+            // 5. Common/Fundamental exercises get prioritized over obscure ones
+            const aIsCommon = commonKeywords.some(k => aNameLower.includes(k));
+            const bIsCommon = commonKeywords.some(k => bNameLower.includes(k));
+            if (aIsCommon && !bIsCommon) return -1;
+            if (bIsCommon && !aIsCommon) return 1;
+
+            // 6. Shorter names generally imply a more fundamental exercise
+            if (a.name.length !== b.name.length) {
+                return a.name.length - b.name.length;
+            }
+
+            // 7. Alphabetical fallback
+            return a.name.localeCompare(b.name);
         });
+
+        return resultsWithScores.map(item => item.ex);
     }, [exercises, searchQuery, selectedCategory, selectedType]);
 
     const hasFilters = selectedCategory !== "All" || selectedType !== "All" || searchQuery.length > 0;

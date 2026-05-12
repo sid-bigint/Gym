@@ -631,7 +631,14 @@ export default function ProfileScreen() {
                     age: user?.age,
                     gender: user?.gender,
                     activityLevel: user?.activityLevel,
-                    goal: user?.goal
+                    goal: user?.goal,
+                    bodyFatPercent: user?.bodyFatPercent,
+                    sleepHours: user?.sleepHours,
+                    mealsPerDay: user?.mealsPerDay,
+                    goalIntensity: user?.goalIntensity,
+                    workoutType: user?.workoutType,
+                    workoutDuration: user?.workoutDuration,
+                    workoutFrequency: user?.workoutFrequency
                 }}
                 onSave={async (results) => {
                     try {
@@ -649,6 +656,13 @@ export default function ProfileScreen() {
                                 targetProtein: results.protein,
                                 targetCarbs: results.carbs,
                                 targetFats: results.fats,
+                                bodyFatPercent: results.bodyFatPercent,
+                                sleepHours: results.sleepHours,
+                                mealsPerDay: results.mealsPerDay,
+                                goalIntensity: results.goalIntensity,
+                                workoutType: results.workoutType,
+                                workoutDuration: results.workoutDuration,
+                                workoutFrequency: results.workoutFrequency,
                             });
 
                             // Reload user data to show updated values
