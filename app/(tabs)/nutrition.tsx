@@ -1,24 +1,39 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Alert, Animated, Share } from 'react-native';
 import { useNutritionStore, NutritionLog } from '../../src/store/useNutritionStore';
 import { useUserStore } from '../../src/store/useUserStore';
 import { useTheme } from '../../src/store/useTheme';
 import { useScreenPadding } from '../../src/store/useScreenPadding';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-
+import * as Haptics from 'expo-haptics';
 import { format, addDays, isSameDay } from 'date-fns';
+import { UndoToast } from '../../src/components/nutrition/UndoToast';
+import { useUndoDelete } from '../../src/hooks/useUndoDelete';
+
+const AnimatedView = Animated.createAnimatedComponent(View);
 
 export default function NutritionScreen() {
-    const { logs, totals, loadLogs, deleteLog, updateLog, selectedDate, setDate } = useNutritionStore();
+    const { logs, totals, loadLogs, deleteLog, updateLog, addLog, selectedDate, setDate } = useNutritionStore();
     const { user, loadUser } = useUserStore();
     const { colors } = useTheme();
     const { contentTop } = useScreenPadding();
 
     const [editingLog, setEditingLog] = useState<NutritionLog | null>(null);
-    const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [showUndo, setShowUndo] = useState(false);
+    const [repeatFlash, setRepeatFlash] = useState<string | null>(null);
+    const [showQuickAdd, setShowQuickAdd] = useState(false);
+    const [recentHistory, setRecentHistory] = useState<any[]>([]);
+    const [isFabExpanded, setIsFabExpanded] = useState(false);
+    const fabAnim = useRef(new Animated.Value(0)).current;
+    const { lastDeletedItem, storeDeletedItem, clearLastDeleted } = useUndoDelete<NutritionLog>();
 
-    // Form state for editing
+    // Progress animations
+    const calAnim = useRef(new Animated.Value(0)).current;
+    const protAnim = useRef(new Animated.Value(0)).current;
+    const carbAnim = useRef(new Animated.Value(0)).current;
+    const fatAnim = useRef(new Animated.Value(0)).current;
+
     const [editForm, setEditForm] = useState({
         foodName: '',
         calories: '',
@@ -32,6 +47,16 @@ export default function NutritionScreen() {
         loadLogs();
         if (!user) loadUser();
     }, []);
+
+    useEffect(() => {
+        const getVal = (curr: number, target: number) => target > 0 ? Math.min(curr / target, 1) : 0;
+        Animated.parallel([
+            Animated.timing(calAnim, { toValue: getVal(totals.calories, user?.calorieGoal || 2000), duration: 800, useNativeDriver: false }),
+            Animated.timing(protAnim, { toValue: getVal(totals.protein, user?.targetProtein || 150), duration: 800, useNativeDriver: false }),
+            Animated.timing(carbAnim, { toValue: getVal(totals.carbs, user?.targetCarbs || 200), duration: 800, useNativeDriver: false }),
+            Animated.timing(fatAnim, { toValue: getVal(totals.fats, user?.targetFats || 70), duration: 800, useNativeDriver: false }),
+        ]).start();
+    }, [totals, user]);
 
     const handleEdit = (log: NutritionLog) => {
         setEditingLog(log);
@@ -57,112 +82,333 @@ export default function NutritionScreen() {
                 fats: Number(editForm.fats),
                 mealType: editForm.mealType
             });
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setEditingLog(null);
         } catch (error) {
             console.error("Failed to update log", error);
         }
     };
 
-    const handleDelete = (id: number) => {
-        setDeleteId(id);
+    const handleDelete = (log: NutritionLog) => {
+        Alert.alert("Delete", `Remove "${log.foodName}"?`, [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Delete",
+                style: "destructive",
+                onPress: async () => {
+                    storeDeletedItem(log);
+                    await deleteLog(log.id);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setShowUndo(true);
+                }
+            }
+        ]);
     };
 
-    const confirmDelete = async () => {
-        if (deleteId) {
-            await deleteLog(deleteId);
-            setDeleteId(null);
+    const handleUndo = async () => {
+        if (lastDeletedItem) {
+            await addLog({
+                foodName: lastDeletedItem.foodName,
+                calories: lastDeletedItem.calories,
+                protein: lastDeletedItem.protein,
+                carbs: lastDeletedItem.carbs,
+                fats: lastDeletedItem.fats,
+                mealType: lastDeletedItem.mealType
+            });
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setShowUndo(false);
+            clearLastDeleted();
         }
     };
 
-    const getProgress = (current: number, target: number) => {
-        if (!target) return 0;
-        return Math.min(current / target, 1);
+    const handleRepeat = async (log: NutritionLog) => {
+        await addLog({
+            foodName: log.foodName,
+            calories: log.calories,
+            protein: log.protein,
+            carbs: log.carbs,
+            fats: log.fats,
+            mealType: log.mealType
+        });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setRepeatFlash(log.foodName);
+        setTimeout(() => setRepeatFlash(null), 1500);
     };
 
-    const renderProgressBar = (label: string, current: number, target: number, colorKey: 'protein' | 'carbs' | 'fats' | 'calories') => (
+    const handleExport = async () => {
+        const dateStr = format(selectedDate, 'yyyy-MM-dd');
+        const summary = `📅 ${dateStr} Summary\n🔥 ${totals.calories} / ${user?.calorieGoal || 2000} kcal\n🥩 P: ${totals.protein}g | 🍚 C: ${totals.carbs}g | 🧈 F: ${totals.fats}g\n\n` +
+            logs.map(l => `- ${l.foodName} (${l.calories} kcal)`).join('\n');
+        try {
+            await Share.share({ message: summary });
+        } catch (e) {
+            console.error("Export failed", e);
+        }
+    };
+
+    const openQuickAdd = async () => {
+        const { getRecentLogs } = useNutritionStore.getState();
+        const history = await getRecentLogs(10);
+        setRecentHistory(history);
+        setShowQuickAdd(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    };
+
+    const handleQuickLog = async (item: any) => {
+        await addLog({
+            foodName: item.foodName,
+            calories: item.calories,
+            protein: item.protein,
+            carbs: item.carbs,
+            fats: item.fats,
+            mealType: item.mealType
+        });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setRepeatFlash(item.foodName);
+        setShowQuickAdd(false);
+        toggleFab();
+        setTimeout(() => setRepeatFlash(null), 1500);
+    };
+
+    const toggleFab = () => {
+        const toValue = isFabExpanded ? 0 : 1;
+        Animated.spring(fabAnim, {
+            toValue,
+            useNativeDriver: true,
+            friction: 5,
+            tension: 40
+        }).start();
+        setIsFabExpanded(!isFabExpanded);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    };
+
+    const renderProgressBar = (label: string, current: number, target: number, anim: Animated.Value, color: string) => (
         <View style={styles.progressContainer}>
             <View style={styles.progressHeader}>
                 <Text style={[styles.progressLabel, { color: colors.text.primary }]}>{label}</Text>
-                <Text style={[styles.progressValue, { color: colors.text.tertiary }]}>{current} / {target} {label === 'Calories' ? 'kcal' : 'g'}</Text>
+                <Text style={[styles.progressValue, { color: colors.text.tertiary }]}>
+                    {current} / {target} {label === 'Calories' ? 'kcal' : 'g'}
+                </Text>
             </View>
             <View style={[styles.track, { backgroundColor: colors.background.secondary }]}>
-                <View style={[styles.fill, { width: `${getProgress(current, target) * 100}%`, backgroundColor: colors.nutrition[colorKey] }]} />
+                <AnimatedView style={[styles.fill, {
+                    width: anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                    backgroundColor: color
+                }]} />
             </View>
         </View>
     );
 
+    const renderLogItem = ({ item }: { item: NutritionLog }) => (
+        <TouchableOpacity
+            style={[styles.logItem, { backgroundColor: colors.background.card }]}
+            onPress={() => handleEdit(item)}
+            onLongPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                handleDelete(item);
+            }}
+        >
+            <View style={styles.logLeft}>
+                <Text style={[styles.logName, { color: colors.text.primary }]}>{item.foodName}</Text>
+                <Text style={[styles.logMacros, { color: colors.text.tertiary }]}>
+                    P: {item.protein}g • C: {item.carbs}g • F: {item.fats}g
+                </Text>
+            </View>
+            <View style={styles.logRight}>
+                <Text style={[styles.logCal, { color: colors.nutrition.calories }]}>{item.calories}</Text>
+                <Text style={[styles.logCalUnit, { color: colors.text.tertiary }]}>kcal</Text>
+            </View>
+            <TouchableOpacity
+                style={[styles.repeatBtn, { backgroundColor: colors.accent.primary + '15' }]}
+                onPress={(e) => {
+                    e.stopPropagation?.();
+                    handleRepeat(item);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+                <Ionicons name="add" size={18} color={colors.accent.primary} />
+            </TouchableOpacity>
+        </TouchableOpacity>
+    );
+
     return (
         <View style={[styles.container, { backgroundColor: colors.background.primary, paddingTop: contentTop }]}>
+            {/* Header */}
             <View style={styles.header}>
-                <Text style={[styles.title, { color: colors.text.primary }]}>Nutrition</Text>
-                <TouchableOpacity onPress={() => router.push('/nutrition/add')}>
-                    <Ionicons name="add-circle" size={40} color={colors.accent.primary} />
+                <View>
+                    <Text style={[styles.title, { color: colors.text.primary }]}>Nutrition</Text>
+                    <Text style={[styles.subtitle, { color: colors.text.tertiary }]}>Track your macros & fuel</Text>
+                </View>
+                <TouchableOpacity onPress={handleExport} style={[styles.shareBtn, { backgroundColor: colors.background.elevated }]}>
+                    <Ionicons name="share-outline" size={22} color={colors.accent.primary} />
                 </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
-                {/* Summary Card */}
-                <View style={[styles.card, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}>
-                    {renderProgressBar('Calories', totals.calories, user?.calorieGoal || 2000, 'calories')}
-                    <View style={{ height: 16 }} />
-                    {renderProgressBar('Protein', totals.protein, user?.targetProtein || 150, 'protein')}
-                    <View style={{ height: 12 }} />
-                    {renderProgressBar('Carbs', totals.carbs, user?.targetCarbs || 200, 'carbs')}
-                    <View style={{ height: 12 }} />
-                    {renderProgressBar('Fats', totals.fats, user?.targetFats || 70, 'fats')}
-                </View>
-
-                <View style={[styles.dateNavigator, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}>
-                    <TouchableOpacity onPress={() => setDate(addDays(selectedDate, -1))}>
-                        <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
-                    </TouchableOpacity>
-                    <View style={styles.dateInfo}>
-                        <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
-                        <Text style={[styles.dateText, { color: colors.text.primary }]}>
-                            {isSameDay(selectedDate, new Date())
-                                ? "Today"
-                                : isSameDay(selectedDate, addDays(new Date(), -1))
-                                    ? "Yesterday"
-                                    : format(selectedDate, 'MMMM do, yyyy')}
-                        </Text>
-                    </View>
-                    <TouchableOpacity onPress={() => setDate(addDays(selectedDate, 1))}>
-                        <Ionicons name="chevron-forward" size={24} color={colors.text.primary} />
-                    </TouchableOpacity>
-                </View>
-
-                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
-                    {isSameDay(selectedDate, new Date()) ? "Today's Logs" : `Logs for ${format(selectedDate, 'MMM do')}`}
-                </Text>
-                {logs.length === 0 ? (
-                    <Text style={[styles.emptyText, { color: colors.text.disabled }]}>No meals logged yet today.</Text>
-                ) : (
-                    logs.map(log => (
-                        <View key={log.id} style={[styles.logItem, { backgroundColor: colors.background.card, borderLeftColor: colors.nutrition[log.mealType === 'breakfast' ? 'protein' : log.mealType === 'lunch' ? 'carbs' : log.mealType === 'dinner' ? 'fats' : 'calories'] || colors.accent.primary }]}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.logName, { color: colors.text.primary }]}>{log.foodName}</Text>
-                                <Text style={[styles.logSub, { color: colors.text.tertiary }]}>{log.mealType.charAt(0).toUpperCase() + log.mealType.slice(1)} • {log.calories} kcal</Text>
+            <FlatList
+                data={logs}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={renderLogItem}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+                ListHeaderComponent={
+                    <>
+                        {/* Macro Dashboard */}
+                        <View style={[styles.card, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}>
+                            {renderProgressBar('Calories', totals.calories, user?.calorieGoal || 2000, calAnim, colors.nutrition.calories)}
+                            <View style={styles.macroRow}>
+                                <View style={{ flex: 1 }}>
+                                    {renderProgressBar('Protein', totals.protein, user?.targetProtein || 150, protAnim, colors.nutrition.protein)}
+                                </View>
+                                <View style={{ width: 12 }} />
+                                <View style={{ flex: 1 }}>
+                                    {renderProgressBar('Carbs', totals.carbs, user?.targetCarbs || 200, carbAnim, colors.nutrition.carbs)}
+                                </View>
                             </View>
-                            <View style={styles.logActions}>
-                                <TouchableOpacity onPress={() => handleEdit(log)} style={[styles.actionButton, { backgroundColor: colors.background.elevated }]}>
-                                    <Ionicons name="pencil" size={18} color={colors.text.secondary} />
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={() => handleDelete(log.id)} style={[styles.actionButton, { backgroundColor: colors.background.elevated, marginLeft: 8 }]}>
-                                    <Ionicons name="trash-outline" size={18} color={colors.accent.warning} />
-                                </TouchableOpacity>
-                            </View>
+                            {renderProgressBar('Fats', totals.fats, user?.targetFats || 70, fatAnim, colors.nutrition.fats)}
                         </View>
-                    ))
-                )}
-            </ScrollView>
+
+                        {/* Date Navigator */}
+                        <View style={[styles.dateNav, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}>
+                            <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDate(addDays(selectedDate, -1)); }}>
+                                <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+                            </TouchableOpacity>
+                            <View style={styles.dateInfo}>
+                                <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
+                                <Text style={[styles.dateText, { color: colors.text.primary }]}>
+                                    {isSameDay(selectedDate, new Date())
+                                        ? "Today"
+                                        : isSameDay(selectedDate, addDays(new Date(), -1))
+                                            ? "Yesterday"
+                                            : format(selectedDate, 'MMM do, yyyy')}
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDate(addDays(selectedDate, 1)); }}>
+                                <Ionicons name="chevron-forward" size={24} color={colors.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Repeat Flash */}
+                        {repeatFlash && (
+                            <View style={[styles.flashBanner, { backgroundColor: colors.accent.primary + '20' }]}> 
+                                <Ionicons name="checkmark-circle" size={16} color={colors.accent.primary} />
+                                <Text style={[styles.flashText, { color: colors.accent.primary }]}>
+                                    {repeatFlash} added again!
+                                </Text>
+                            </View>
+                        )}
+
+                        {/* Section Label */}
+                        <Text style={[styles.sectionLabel, { color: colors.text.tertiary }]}>
+                            {logs.length > 0 ? `${logs.length} item${logs.length > 1 ? 's' : ''} logged` : 'No meals logged yet'}
+                        </Text>
+                    </>
+                }
+                ListEmptyComponent={
+                    <View style={styles.emptyState}>
+                        <Ionicons name="restaurant-outline" size={48} color={colors.text.disabled} />
+                        <Text style={[styles.emptyTitle, { color: colors.text.secondary }]}>No food logged</Text>
+                        <Text style={[styles.emptySubtitle, { color: colors.text.disabled }]}>Tap the button below to add your first meal</Text>
+                    </View>
+                }
+                ListFooterComponent={<View style={{ height: 100 }} />}
+            />
+
+            {/* Expanding FAB Menu */}
+            <View style={styles.fabContainer}>
+                {/* Search / Add New */}
+                <AnimatedView style={[styles.subFabContainer, { 
+                    opacity: fabAnim,
+                    transform: [{ translateY: fabAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }]
+                }]}>
+                    <Text style={[styles.fabLabel, { color: colors.text.primary }]}>Search & New</Text>
+                    <TouchableOpacity
+                        style={[styles.miniFab, { backgroundColor: colors.background.elevated, borderColor: colors.border.primary }]}
+                        onPress={() => { toggleFab(); router.push('/nutrition/add'); }}
+                    >
+                        <Ionicons name="search" size={22} color={colors.accent.primary} />
+                    </TouchableOpacity>
+                </AnimatedView>
+
+                {/* Recent History */}
+                <AnimatedView style={[styles.subFabContainer, { 
+                    opacity: fabAnim,
+                    transform: [{ translateY: fabAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }]
+                }]}>
+                    <Text style={[styles.fabLabel, { color: colors.text.primary }]}>Recent History</Text>
+                    <TouchableOpacity
+                        style={[styles.miniFab, { backgroundColor: colors.background.elevated, borderColor: colors.border.primary }]}
+                        onPress={() => { toggleFab(); openQuickAdd(); }}
+                    >
+                        <Ionicons name="time-outline" size={24} color={colors.accent.primary} />
+                    </TouchableOpacity>
+                </AnimatedView>
+
+                {/* Main Toggle Button */}
+                <TouchableOpacity
+                    style={[styles.mainFab, { backgroundColor: colors.accent.primary }]}
+                    onPress={toggleFab}
+                    activeOpacity={0.9}
+                >
+                    <AnimatedView style={{ transform: [{ rotate: fabAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '45deg'] }) }] }}>
+                        <Ionicons name="add" size={32} color={colors.text.inverse} />
+                    </AnimatedView>
+                </TouchableOpacity>
+            </View>
+
+            {/* Undo Toast */}
+            <UndoToast
+                visible={showUndo}
+                message="Meal deleted"
+                onUndo={handleUndo}
+                onDismiss={() => setShowUndo(false)}
+            />
+
+            {/* Quick Add Modal */}
+            <Modal visible={showQuickAdd} animationType="slide" transparent onRequestClose={() => setShowQuickAdd(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.background.primary, height: '60%' }]}>
+                        <View style={[styles.modalHeader, { borderBottomColor: colors.border.secondary }]}>
+                            <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Quick Add</Text>
+                            <TouchableOpacity onPress={() => setShowQuickAdd(false)}>
+                                <Ionicons name="close" size={24} color={colors.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        <FlatList
+                            data={recentHistory}
+                            keyExtractor={(item, index) => index.toString()}
+                            contentContainerStyle={{ padding: 20 }}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity 
+                                    style={[styles.quickItem, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
+                                    onPress={() => handleQuickLog(item)}
+                                >
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.quickName, { color: colors.text.primary }]}>{item.foodName}</Text>
+                                        <Text style={[styles.quickMacros, { color: colors.text.tertiary }]}>{item.calories} kcal • P:{item.protein}g</Text>
+                                    </View>
+                                    <Ionicons name="add-circle" size={24} color={colors.accent.primary} />
+                                </TouchableOpacity>
+                            )}
+                            ListHeaderComponent={
+                                <TouchableOpacity 
+                                    style={[styles.searchNewBtn, { backgroundColor: colors.accent.primary + '15' }]}
+                                    onPress={() => { setShowQuickAdd(false); router.push('/nutrition/add'); }}
+                                >
+                                    <Ionicons name="search" size={20} color={colors.accent.primary} />
+                                    <Text style={[styles.searchNewText, { color: colors.accent.primary }]}>Search or Add New Food</Text>
+                                </TouchableOpacity>
+                            }
+                            ListFooterComponent={<View style={{ height: 40 }} />}
+                            ListEmptyComponent={
+                                <Text style={{ textAlign: 'center', color: colors.text.disabled, marginTop: 40 }}>No recent items found</Text>
+                            }
+                        />
+                    </View>
+                </View>
+            </Modal>
 
             {/* Edit Modal */}
-            <Modal
-                visible={!!editingLog}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setEditingLog(null)}
-            >
+            <Modal visible={!!editingLog} animationType="slide" transparent onRequestClose={() => setEditingLog(null)}>
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor: colors.background.primary }]}>
                         <View style={[styles.modalHeader, { borderBottomColor: colors.border.secondary }]}>
@@ -171,14 +417,13 @@ export default function NutritionScreen() {
                                 <Ionicons name="close" size={24} color={colors.text.primary} />
                             </TouchableOpacity>
                         </View>
-                        <ScrollView style={styles.modalBody}>
+                        <View style={styles.modalBody}>
                             <Text style={[styles.inputLabel, { color: colors.text.secondary }]}>Food Name</Text>
                             <TextInput
                                 style={[styles.input, { backgroundColor: colors.background.elevated, color: colors.text.primary, borderColor: colors.border.primary }]}
                                 value={editForm.foodName}
                                 onChangeText={(t) => setEditForm(prev => ({ ...prev, foodName: t }))}
                             />
-
                             <View style={styles.row}>
                                 <View style={styles.col}>
                                     <Text style={[styles.inputLabel, { color: colors.text.secondary }]}>Calories</Text>
@@ -199,7 +444,6 @@ export default function NutritionScreen() {
                                     />
                                 </View>
                             </View>
-
                             <View style={styles.row}>
                                 <View style={styles.col}>
                                     <Text style={[styles.inputLabel, { color: colors.text.secondary }]}>Carbs (g)</Text>
@@ -220,40 +464,8 @@ export default function NutritionScreen() {
                                     />
                                 </View>
                             </View>
-
-                            <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.accent.primary }]} onPress={handleSaveEdit}>
-                                <Text style={[styles.saveButtonText, { color: colors.text.inverse }]}>Save Changes</Text>
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* Delete Confirmation Modal */}
-            <Modal
-                visible={!!deleteId}
-                animationType="fade"
-                transparent={true}
-                onRequestClose={() => setDeleteId(null)}
-            >
-                <View style={[styles.modalOverlay, { justifyContent: 'center' }]}>
-                    <View style={[styles.confirmModal, { backgroundColor: colors.background.elevated }]}>
-                        <Text style={[styles.confirmTitle, { color: colors.text.primary }]}>Delete Log?</Text>
-                        <Text style={[styles.confirmText, { color: colors.text.secondary }]}>
-                            Are you sure you want to remove this entry?
-                        </Text>
-                        <View style={styles.confirmButtons}>
-                            <TouchableOpacity
-                                style={[styles.confirmButton, { backgroundColor: colors.background.card }]}
-                                onPress={() => setDeleteId(null)}
-                            >
-                                <Text style={[styles.confirmButtonText, { color: colors.text.primary }]}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.confirmButton, { backgroundColor: colors.accent.warning }]}
-                                onPress={confirmDelete}
-                            >
-                                <Text style={[styles.confirmButtonText, { color: colors.text.inverse }]}>Delete</Text>
+                            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.accent.primary }]} onPress={handleSaveEdit}>
+                                <Text style={[styles.saveBtnText, { color: colors.text.inverse }]}>Save Changes</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -264,199 +476,58 @@ export default function NutritionScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        marginBottom: 20,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-    },
-    content: {
-        paddingHorizontal: 20,
-        paddingBottom: 40,
-    },
-    card: {
-        padding: 20,
-        borderRadius: 20,
-        marginBottom: 24,
-        borderWidth: 1,
-    },
-    progressContainer: {
-        width: '100%',
-    },
-    progressHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 8,
-    },
-    progressLabel: {
-        fontWeight: 'bold',
-    },
-    progressValue: {},
-    track: {
-        height: 10,
-        borderRadius: 5,
-        overflow: 'hidden',
-    },
-    fill: {
-        height: '100%',
-        borderRadius: 5,
-    },
-    sectionTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 16,
-    },
-    dateNavigator: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-        borderRadius: 16,
-        marginBottom: 24,
-        borderWidth: 1,
-    },
-    dateInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    dateText: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    logItem: {
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 12,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderLeftWidth: 4,
-    },
-    logName: {
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    logSub: {
-        marginTop: 4,
-    },
-    macrosBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 6,
-    },
-    macroText: {
-        fontWeight: 'bold',
-    },
-    emptyText: {
-        fontStyle: 'italic',
-        textAlign: 'center',
-        marginTop: 20,
-    },
-    logActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    actionButton: {
-        padding: 8,
-        borderRadius: 8,
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        height: '80%',
-        paddingBottom: 40,
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 24,
-        borderBottomWidth: 1,
-    },
-    modalTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    modalBody: {
-        padding: 24,
-    },
-    inputLabel: {
-        fontSize: 14,
-        marginBottom: 8,
-        fontWeight: '600',
-    },
-    input: {
-        height: 50,
-        borderRadius: 12,
-        borderWidth: 1,
-        paddingHorizontal: 16,
-        marginBottom: 16,
-        fontSize: 16,
-    },
-    row: {
-        flexDirection: 'row',
-        gap: 16,
-    },
-    col: {
-        flex: 1,
-    },
-    saveButton: {
-        height: 56,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 24,
-    },
-    saveButtonText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    confirmModal: {
-        width: '80%',
-        padding: 24,
-        borderRadius: 20,
-        alignSelf: 'center',
-        marginBottom: 'auto',
-        marginTop: 'auto',
-    },
-    confirmTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 8,
-        textAlign: 'center',
-    },
-    confirmText: {
-        fontSize: 14,
-        textAlign: 'center',
-        marginBottom: 24,
-        lineHeight: 20,
-    },
-    confirmButtons: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    confirmButton: {
-        flex: 1,
-        paddingVertical: 12,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-    confirmButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-    },
+    container: { flex: 1 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 8, marginTop: 8 },
+    title: { fontSize: 32, fontWeight: 'bold' },
+    subtitle: { fontSize: 14, fontWeight: '500', marginTop: 2 },
+    shareBtn: { padding: 10, borderRadius: 12 },
+    listContent: { paddingHorizontal: 20 },
+    card: { padding: 20, borderRadius: 24, marginBottom: 16, borderWidth: 1 },
+    macroRow: { flexDirection: 'row', marginVertical: 12 },
+    progressContainer: { width: '100%' },
+    progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+    progressLabel: { fontWeight: '700', fontSize: 13 },
+    progressValue: { fontSize: 12 },
+    track: { height: 8, borderRadius: 4, overflow: 'hidden' },
+    fill: { height: '100%', borderRadius: 4 },
+    dateNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 16, marginBottom: 16, borderWidth: 1 },
+    dateInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    dateText: { fontSize: 15, fontWeight: '600' },
+    sectionLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
+    logItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderRadius: 16, marginBottom: 10 },
+    logLeft: { flex: 1, marginRight: 16 },
+    logName: { fontSize: 16, fontWeight: '600' },
+    logMacros: { fontSize: 12, marginTop: 4 },
+    logRight: { alignItems: 'flex-end', marginRight: 12 },
+    logCal: { fontSize: 20, fontWeight: 'bold' },
+    logCalUnit: { fontSize: 11 },
+    repeatBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+    flashBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, marginBottom: 12 },
+    flashText: { fontSize: 14, fontWeight: '600' },
+    emptyState: { alignItems: 'center', paddingVertical: 48, gap: 12 },
+    emptyTitle: { fontSize: 18, fontWeight: '600' },
+    emptySubtitle: { fontSize: 13, textAlign: 'center', paddingHorizontal: 32 },
+    addBtn: { position: 'absolute', bottom: 32, left: 20, right: 20, height: 56, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+    addBtnText: { fontSize: 16, fontWeight: 'bold' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1 },
+    modalTitle: { fontSize: 20, fontWeight: 'bold' },
+    modalBody: { padding: 20 },
+    inputLabel: { fontSize: 13, marginBottom: 6, fontWeight: '600' },
+    input: { height: 48, borderRadius: 12, borderWidth: 1, paddingHorizontal: 16, marginBottom: 14, fontSize: 16 },
+    row: { flexDirection: 'row', gap: 12 },
+    col: { flex: 1 },
+    saveBtn: { height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 20 },
+    saveBtnText: { fontSize: 16, fontWeight: 'bold' },
+    quickItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, marginBottom: 10, borderWidth: 1 },
+    quickName: { fontSize: 15, fontWeight: '600' },
+    quickMacros: { fontSize: 12, marginTop: 2 },
+    searchNewBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, borderRadius: 12, marginBottom: 20 },
+    searchNewText: { fontSize: 15, fontWeight: 'bold' },
+    fabContainer: { position: 'absolute', bottom: 32, right: 20, alignItems: 'flex-end', gap: 12 },
+    subFabContainer: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    fabLabel: { fontSize: 14, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+    mainFab: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+    miniFab: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 1, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
 });

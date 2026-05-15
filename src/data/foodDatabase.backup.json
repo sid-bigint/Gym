@@ -1,0 +1,3583 @@
+[
+    {
+        "id": "aam_panna",
+        "name": "Aam Panna",
+        "category": "beverages",
+        "per100g": {
+            "calories": 45,
+            "protein": 0.3,
+            "carbs": 11,
+            "fats": 0.1
+        }
+    },
+    {
+        "id": "aloe_vera_juice",
+        "name": "Aloe Vera Juice",
+        "category": "beverages",
+        "per100g": {
+            "calories": 20,
+            "protein": 0.1,
+            "carbs": 4.5,
+            "fats": 0.1
+        }
+    },
+    {
+        "id": "ashwagandha_milk",
+        "name": "Ashwagandha Milk",
+        "category": "beverages",
+        "per100g": {
+            "calories": 65,
+            "protein": 3.2,
+            "carbs": 7.5,
+            "fats": 2.5
+        }
+    },
+    {
+        "id": "bcaa_drink",
+        "name": "BCAA Drink",
+        "category": "beverages",
+        "per100g": {
+            "calories": 10,
+            "protein": 2,
+            "carbs": 1,
+            "fats": 0
+        }
+    },
+    {
+        "id": "beer_light",
+        "name": "Beer (light / low-cal)",
+        "category": "beverages",
+        "per100g": {
+            "calories": 29,
+            "protein": 0.5,
+            "carbs": 1.6,
+            "fats": 0
+        },
+        "servingOptions": [
+            {
+                "label": "Can (330ml)",
+                "grams": 330
+            }
+        ]
+    },
+    {
+        "id": "beer_regular",
+        "name": "Beer (regular, ~5% ABV)",
+        "category": "beverages",
+        "notes": "Alcoholic. Per 100ml.",
+        "per100g": {
+            "calories": 43,
+            "protein": 0.5,
+            "carbs": 3.6,
+            "fats": 0
+        },
+        "servingOptions": [
+            {
+                "label": "Can (330ml)",
+                "grams": 330
+            },
+            {
+                "label": "Pint (500ml)",
+                "grams": 500
+            }
+        ]
+    },
+    {
+        "id": "sharbat_bel",
+        "name": "Bel Sharbat",
+        "category": "beverages",
+        "per100g": {
+            "calories": 55,
+            "protein": 0.5,
+            "carbs": 14,
+            "fats": 0.1
+        }
+    },
+    {
+        "id": "chai_latte",
+        "name": "Chai Latte (café-style)",
+        "category": "beverages",
+        "notes": "Spiced tea concentrate + steamed milk. Higher sugar.",
+        "per100g": {
+            "calories": 65,
+            "protein": 2.5,
+            "carbs": 10,
+            "fats": 2
+        },
+        "servingOptions": [
+            {
+                "label": "Regular (300ml)",
+                "grams": 300
+            },
+            {
+                "label": "Large (400ml)",
+                "grams": 400
+            }
+        ]
+    },
+    {
+        "id": "electrolyte_drink",
+        "name": "Electrolyte / Sports Drink (Gatorade-type)",
+        "category": "beverages",
+        "per100g": {
+            "calories": 26,
+            "protein": 0,
+            "carbs": 7,
+            "fats": 0
+        }
+    },
+    {
+        "id": "mocktail_fruit",
+        "name": "Fruit Mocktail",
+        "category": "beverages",
+        "per100g": {
+            "calories": 52,
+            "protein": 0.3,
+            "carbs": 13,
+            "fats": 0.1
+        }
+    },
+    {
+        "id": "iced_coffee",
+        "name": "Iced Coffee (with milk)",
+        "category": "beverages",
+        "per100g": {
+            "calories": 45,
+            "protein": 1.5,
+            "carbs": 6.5,
+            "fats": 1.5
+        },
+        "servingOptions": [
+            {
+                "label": "Glass (300ml)",
+                "grams": 300
+            }
+        ]
+    },
+    {
+        "id": "iced_tea_lemon",
+        "name": "Iced Lemon Tea",
+        "category": "beverages",
+        "per100g": {
+            "calories": 40,
+            "protein": 0.1,
+            "carbs": 10.5,
+            "fats": 0
+        },
+        "servingOptions": [
+            {
+                "label": "Glass (300ml)",
+                "grams": 300
+            }
+        ]
+    },
+    {
+        "id": "jaljeera",
+        "name": "Jal Jeera",
+        "category": "beverages",
+        "per100g": {
+            "calories": 18,
+            "protein": 0.3,
+            "carbs": 4,
+            "fats": 0.1
+        }
+    },
+    {
+        "id": "kombucha",
+        "name": "Kombucha (plain)",
+        "category": "beverages",
+        "per100g": {
+            "calories": 13,
+            "protein": 0,
+            "carbs": 2.7,
+            "fats": 0
+        }
+    },
+    {
+        "id": "mass_gainer_mixed",
+        "name": "Mass Gainer Shake (mixed)",
+        "category": "beverages",
+        "per100g": {
+            "calories": 110,
+            "protein": 7,
+            "carbs": 20,
+            "fats": 2
+        },
+        "servingOptions": [
+            {
+                "label": "Shaker (~400ml)",
+                "grams": 400
+            }
+        ]
+    },
+    {
+        "id": "matcha_latte",
+        "name": "Matcha Latte",
+        "category": "beverages",
+        "notes": "Matcha powder + steamed milk + sweetener",
+        "per100g": {
+            "calories": 52,
+            "protein": 2.5,
+            "carbs": 7.5,
+            "fats": 1.5
+        },
+        "servingOptions": [
+            {
+                "label": "Small (250ml)",
+                "grams": 250
+            },
+            {
+                "label": "Regular (350ml)",
+                "grams": 350
+            }
+        ]
+    },
+    {
+        "id": "pomegranate_juice",
+        "name": "Pomegranate Juice (fresh)",
+        "category": "beverages",
+        "per100g": {
+            "calories": 54,
+            "protein": 0.2,
+            "carbs": 13.1,
+            "fats": 0.3
+        }
+    },
+    {
+        "id": "pre_workout",
+        "name": "Pre-Workout Drink",
+        "category": "beverages",
+        "per100g": {
+            "calories": 35,
+            "protein": 1.5,
+            "carbs": 8,
+            "fats": 0
+        }
+    },
+    {
+        "id": "wine_red",
+        "name": "Red Wine",
+        "category": "beverages",
+        "notes": "Alcoholic. Per 100ml.",
+        "per100g": {
+            "calories": 85,
+            "protein": 0.1,
+            "carbs": 2.6,
+            "fats": 0
+        },
+        "servingOptions": [
+            {
+                "label": "Glass (150ml)",
+                "grams": 150
+            }
+        ]
+    },
+    {
+        "id": "rose_milk",
+        "name": "Rose Milk (Rooh Afza with milk)",
+        "category": "beverages",
+        "per100g": {
+            "calories": 75,
+            "protein": 2.5,
+            "carbs": 12,
+            "fats": 2
+        },
+        "servingOptions": [
+            {
+                "label": "Glass (250ml)",
+                "grams": 250
+            }
+        ]
+    },
+    {
+        "id": "sattu_drink",
+        "name": "Sattu Drink",
+        "category": "beverages",
+        "per100g": {
+            "calories": 40,
+            "protein": 3,
+            "carbs": 6.5,
+            "fats": 0.6
+        },
+        "servingOptions": [
+            {
+                "label": "Glass (300ml)",
+                "grams": 300
+            }
+        ]
+    },
+    {
+        "id": "soda_water_lemon",
+        "name": "Soda Water with Lemon",
+        "category": "beverages",
+        "per100g": {
+            "calories": 8,
+            "protein": 0,
+            "carbs": 2,
+            "fats": 0
+        }
+    },
+    {
+        "id": "sparkling_water",
+        "name": "Sparkling Water",
+        "category": "beverages",
+        "per100g": {
+            "calories": 0,
+            "protein": 0,
+            "carbs": 0,
+            "fats": 0
+        }
+    },
+    {
+        "id": "thandai",
+        "name": "Thandai",
+        "category": "beverages",
+        "per100g": {
+            "calories": 90,
+            "protein": 3,
+            "carbs": 12,
+            "fats": 3.5
+        },
+        "servingOptions": [
+            {
+                "label": "Glass (250ml)",
+                "grams": 250
+            }
+        ]
+    },
+    {
+        "id": "turmeric_latte",
+        "name": "Turmeric Latte / Golden Milk",
+        "category": "beverages",
+        "per100g": {
+            "calories": 55,
+            "protein": 2.5,
+            "carbs": 6,
+            "fats": 2.5
+        },
+        "servingOptions": [
+            {
+                "label": "Cup (250ml)",
+                "grams": 250
+            }
+        ]
+    },
+    {
+        "id": "vodka",
+        "name": "Vodka",
+        "category": "beverages",
+        "notes": "Alcoholic. Per 100ml.",
+        "per100g": {
+            "calories": 231,
+            "protein": 0,
+            "carbs": 0,
+            "fats": 0
+        },
+        "servingOptions": [
+            {
+                "label": "Shot (30ml)",
+                "grams": 30
+            }
+        ]
+    },
+    {
+        "id": "watermelon_juice",
+        "name": "Watermelon Juice",
+        "category": "beverages",
+        "per100g": {
+            "calories": 30,
+            "protein": 0.6,
+            "carbs": 7.5,
+            "fats": 0.2
+        }
+    },
+    {
+        "id": "wheatgrass_juice",
+        "name": "Wheatgrass Juice",
+        "category": "beverages",
+        "per100g": {
+            "calories": 25,
+            "protein": 1.3,
+            "carbs": 4,
+            "fats": 0.4
+        }
+    },
+    {
+        "id": "whiskey",
+        "name": "Whiskey / Scotch",
+        "category": "beverages",
+        "notes": "Alcoholic. Per 100ml.",
+        "per100g": {
+            "calories": 250,
+            "protein": 0,
+            "carbs": 0.1,
+            "fats": 0
+        },
+        "servingOptions": [
+            {
+                "label": "Peg (30ml)",
+                "grams": 30
+            },
+            {
+                "label": "Large peg (60ml)",
+                "grams": 60
+            }
+        ]
+    },
+    {
+        "id": "wine_white",
+        "name": "White Wine",
+        "category": "beverages",
+        "notes": "Alcoholic. Per 100ml.",
+        "per100g": {
+            "calories": 82,
+            "protein": 0.1,
+            "carbs": 2.6,
+            "fats": 0
+        },
+        "servingOptions": [
+            {
+                "label": "Glass (150ml)",
+                "grams": 150
+            }
+        ]
+    },
+    {
+        "id": "agave_syrup",
+        "name": "Agave Syrup",
+        "category": "condiments",
+        "per100g": {
+            "calories": 310,
+            "protein": 0.1,
+            "carbs": 76,
+            "fats": 0.2
+        }
+    },
+    {
+        "id": "almond_butter",
+        "name": "Almond Butter",
+        "category": "condiments",
+        "per100g": {
+            "calories": 614,
+            "protein": 21,
+            "carbs": 19,
+            "fats": 56
+        }
+    },
+    {
+        "id": "apple_cider_vinegar",
+        "name": "Apple Cider Vinegar",
+        "category": "condiments",
+        "per100g": {
+            "calories": 22,
+            "protein": 0,
+            "carbs": 0.9,
+            "fats": 0
+        }
+    },
+    {
+        "id": "baba_ganoush",
+        "name": "Baba Ganoush",
+        "category": "condiments",
+        "per100g": {
+            "calories": 90,
+            "protein": 2.5,
+            "carbs": 8.5,
+            "fats": 5.5
+        }
+    },
+    {
+        "id": "balsamic_vinegar",
+        "name": "Balsamic Vinegar",
+        "category": "condiments",
+        "per100g": {
+            "calories": 88,
+            "protein": 0.5,
+            "carbs": 17.3,
+            "fats": 0
+        }
+    },
+    {
+        "id": "pesto",
+        "name": "Basil Pesto",
+        "category": "condiments",
+        "per100g": {
+            "calories": 466,
+            "protein": 7,
+            "carbs": 8.7,
+            "fats": 47
+        }
+    },
+    {
+        "id": "buffalo_sauce",
+        "name": "Buffalo Sauce",
+        "category": "condiments",
+        "per100g": {
+            "calories": 110,
+            "protein": 0.8,
+            "carbs": 3,
+            "fats": 11
+        }
+    },
+    {
+        "id": "caesar_dressing",
+        "name": "Caesar Dressing",
+        "category": "condiments",
+        "per100g": {
+            "calories": 353,
+            "protein": 3,
+            "carbs": 7,
+            "fats": 35
+        }
+    },
+    {
+        "id": "chocolate_spread",
+        "name": "Chocolate Hazelnut Spread (Nutella)",
+        "category": "condiments",
+        "per100g": {
+            "calories": 539,
+            "protein": 6,
+            "carbs": 57.5,
+            "fats": 31
+        }
+    },
+    {
+        "id": "coconut_aminos",
+        "name": "Coconut Aminos",
+        "category": "condiments",
+        "per100g": {
+            "calories": 60,
+            "protein": 1,
+            "carbs": 14,
+            "fats": 0
+        }
+    },
+    {
+        "id": "fish_sauce",
+        "name": "Fish Sauce",
+        "category": "condiments",
+        "per100g": {
+            "calories": 35,
+            "protein": 5,
+            "carbs": 3.7,
+            "fats": 0
+        }
+    },
+    {
+        "id": "guacamole",
+        "name": "Guacamole",
+        "category": "condiments",
+        "per100g": {
+            "calories": 155,
+            "protein": 2,
+            "carbs": 8.5,
+            "fats": 13.5
+        }
+    },
+    {
+        "id": "hoisin_sauce",
+        "name": "Hoisin Sauce",
+        "category": "condiments",
+        "per100g": {
+            "calories": 220,
+            "protein": 3.8,
+            "carbs": 44,
+            "fats": 2
+        }
+    },
+    {
+        "id": "maple_syrup",
+        "name": "Maple Syrup",
+        "category": "condiments",
+        "per100g": {
+            "calories": 260,
+            "protein": 0,
+            "carbs": 67,
+            "fats": 0.1
+        }
+    },
+    {
+        "id": "miso_paste",
+        "name": "Miso Paste",
+        "category": "condiments",
+        "per100g": {
+            "calories": 199,
+            "protein": 12,
+            "carbs": 26,
+            "fats": 6
+        }
+    },
+    {
+        "id": "nutritional_yeast",
+        "name": "Nutritional Yeast",
+        "category": "condiments",
+        "per100g": {
+            "calories": 325,
+            "protein": 46,
+            "carbs": 37,
+            "fats": 4
+        }
+    },
+    {
+        "id": "oyster_sauce",
+        "name": "Oyster Sauce",
+        "category": "condiments",
+        "per100g": {
+            "calories": 51,
+            "protein": 1.5,
+            "carbs": 10.5,
+            "fats": 0.5
+        }
+    },
+    {
+        "id": "ranch_dressing",
+        "name": "Ranch Dressing",
+        "category": "condiments",
+        "per100g": {
+            "calories": 428,
+            "protein": 1.5,
+            "carbs": 4,
+            "fats": 45
+        }
+    },
+    {
+        "id": "hummus_roasted_red",
+        "name": "Roasted Red Pepper Hummus",
+        "category": "condiments",
+        "per100g": {
+            "calories": 172,
+            "protein": 7.5,
+            "carbs": 15,
+            "fats": 10
+        }
+    },
+    {
+        "id": "salsa",
+        "name": "Salsa (tomato)",
+        "category": "condiments",
+        "per100g": {
+            "calories": 36,
+            "protein": 1.5,
+            "carbs": 7,
+            "fats": 0.5
+        }
+    },
+    {
+        "id": "sriracha",
+        "name": "Sriracha Sauce",
+        "category": "condiments",
+        "per100g": {
+            "calories": 93,
+            "protein": 1.5,
+            "carbs": 19,
+            "fats": 1
+        }
+    },
+    {
+        "id": "sunflower_butter",
+        "name": "Sunflower Seed Butter",
+        "category": "condiments",
+        "per100g": {
+            "calories": 597,
+            "protein": 20,
+            "carbs": 22,
+            "fats": 53
+        }
+    },
+    {
+        "id": "tahini",
+        "name": "Tahini (sesame paste)",
+        "category": "condiments",
+        "per100g": {
+            "calories": 595,
+            "protein": 17,
+            "carbs": 21,
+            "fats": 53
+        }
+    },
+    {
+        "id": "teriyaki_sauce",
+        "name": "Teriyaki Sauce",
+        "category": "condiments",
+        "per100g": {
+            "calories": 89,
+            "protein": 4.9,
+            "carbs": 17.6,
+            "fats": 0.5
+        }
+    },
+    {
+        "id": "tomato_puree",
+        "name": "Tomato Puree",
+        "category": "condiments",
+        "per100g": {
+            "calories": 38,
+            "protein": 1.7,
+            "carbs": 8,
+            "fats": 0.4
+        }
+    },
+    {
+        "id": "tzatziki",
+        "name": "Tzatziki",
+        "category": "condiments",
+        "per100g": {
+            "calories": 90,
+            "protein": 3.5,
+            "carbs": 5,
+            "fats": 7
+        }
+    },
+    {
+        "id": "vinaigrette",
+        "name": "Vinaigrette (Italian)",
+        "category": "condiments",
+        "per100g": {
+            "calories": 308,
+            "protein": 0,
+            "carbs": 3.5,
+            "fats": 33
+        }
+    },
+    {
+        "id": "cream_sauce",
+        "name": "White Sauce / Béchamel",
+        "category": "condiments",
+        "per100g": {
+            "calories": 120,
+            "protein": 3,
+            "carbs": 8,
+            "fats": 8.5
+        }
+    },
+    {
+        "id": "cheese_brie",
+        "name": "Brie Cheese",
+        "category": "dairy",
+        "per100g": {
+            "calories": 334,
+            "protein": 21,
+            "carbs": 0.5,
+            "fats": 28
+        }
+    },
+    {
+        "id": "coconut_milk_thick",
+        "name": "Coconut Milk (thick / canned)",
+        "category": "dairy",
+        "per100g": {
+            "calories": 230,
+            "protein": 2.3,
+            "carbs": 5.5,
+            "fats": 24
+        }
+    },
+    {
+        "id": "coconut_milk_thin",
+        "name": "Coconut Milk (thin / beverage)",
+        "category": "dairy",
+        "per100g": {
+            "calories": 45,
+            "protein": 0.5,
+            "carbs": 6.4,
+            "fats": 2
+        }
+    },
+    {
+        "id": "cheese_cream",
+        "name": "Cream Cheese",
+        "category": "dairy",
+        "per100g": {
+            "calories": 342,
+            "protein": 6,
+            "carbs": 4.1,
+            "fats": 34
+        }
+    },
+    {
+        "id": "evaporated_milk",
+        "name": "Evaporated Milk",
+        "category": "dairy",
+        "per100g": {
+            "calories": 134,
+            "protein": 6.8,
+            "carbs": 10,
+            "fats": 7.6
+        }
+    },
+    {
+        "id": "cheese_feta",
+        "name": "Feta Cheese",
+        "category": "dairy",
+        "per100g": {
+            "calories": 264,
+            "protein": 14,
+            "carbs": 4,
+            "fats": 21
+        }
+    },
+    {
+        "id": "cheese_gouda",
+        "name": "Gouda Cheese",
+        "category": "dairy",
+        "per100g": {
+            "calories": 356,
+            "protein": 25,
+            "carbs": 2.2,
+            "fats": 27.4
+        }
+    },
+    {
+        "id": "kefir",
+        "name": "Kefir (plain)",
+        "category": "dairy",
+        "per100g": {
+            "calories": 61,
+            "protein": 3.5,
+            "carbs": 7.8,
+            "fats": 1.5
+        }
+    },
+    {
+        "id": "oat_milk",
+        "name": "Oat Milk",
+        "category": "dairy",
+        "per100g": {
+            "calories": 50,
+            "protein": 1,
+            "carbs": 9,
+            "fats": 1.5
+        }
+    },
+    {
+        "id": "cheese_parmesan",
+        "name": "Parmesan Cheese",
+        "category": "dairy",
+        "per100g": {
+            "calories": 431,
+            "protein": 38,
+            "carbs": 4.1,
+            "fats": 29
+        }
+    },
+    {
+        "id": "cheese_processed",
+        "name": "Processed Cheese Slice",
+        "category": "dairy",
+        "per100g": {
+            "calories": 316,
+            "protein": 18,
+            "carbs": 7.5,
+            "fats": 24
+        },
+        "servingOptions": [
+            {
+                "label": "1 slice (~20g)",
+                "grams": 20
+            }
+        ]
+    },
+    {
+        "id": "cheese_ricotta",
+        "name": "Ricotta Cheese",
+        "category": "dairy",
+        "per100g": {
+            "calories": 174,
+            "protein": 11.3,
+            "carbs": 3,
+            "fats": 13
+        }
+    },
+    {
+        "id": "avocado_toast",
+        "name": "Avocado Toast (1 slice)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 205,
+            "protein": 5,
+            "carbs": 18,
+            "fats": 12
+        },
+        "servingOptions": [
+            {
+                "label": "1 slice (~120g)",
+                "grams": 120
+            }
+        ]
+    },
+    {
+        "id": "bibimbap",
+        "name": "Bibimbap (Korean rice bowl)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 148,
+            "protein": 7,
+            "carbs": 22,
+            "fats": 4
+        }
+    },
+    {
+        "id": "kebab_boti",
+        "name": "Boti Kebab",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 240,
+            "protein": 20,
+            "carbs": 3,
+            "fats": 16
+        }
+    },
+    {
+        "id": "bulgogi",
+        "name": "Bulgogi (Korean beef)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 195,
+            "protein": 17,
+            "carbs": 9,
+            "fats": 10
+        }
+    },
+    {
+        "id": "burrito",
+        "name": "Burrito (chicken & rice)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 215,
+            "protein": 11,
+            "carbs": 28,
+            "fats": 6.5
+        },
+        "servingOptions": [
+            {
+                "label": "1 burrito (~300g)",
+                "grams": 300
+            }
+        ]
+    },
+    {
+        "id": "sushi_california_roll",
+        "name": "California Roll (sushi)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 150,
+            "protein": 6,
+            "carbs": 25,
+            "fats": 3
+        },
+        "servingOptions": [
+            {
+                "label": "6-piece (~150g)",
+                "grams": 150
+            }
+        ]
+    },
+    {
+        "id": "quesadilla_cheese",
+        "name": "Cheese Quesadilla",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 300,
+            "protein": 12,
+            "carbs": 28,
+            "fats": 15
+        }
+    },
+    {
+        "id": "shawarma_chicken",
+        "name": "Chicken Shawarma",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 210,
+            "protein": 14,
+            "carbs": 18,
+            "fats": 9
+        },
+        "servingOptions": [
+            {
+                "label": "1 wrap (~250g)",
+                "grams": 250
+            }
+        ]
+    },
+    {
+        "id": "chicken_shawarma_rice",
+        "name": "Chicken Shawarma Rice Bowl",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 175,
+            "protein": 12,
+            "carbs": 20,
+            "fats": 5.5
+        }
+    },
+    {
+        "id": "spring_rolls_chicken",
+        "name": "Chicken Spring Rolls (fried)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 245,
+            "protein": 8,
+            "carbs": 24,
+            "fats": 13
+        }
+    },
+    {
+        "id": "corn_dog",
+        "name": "Corn Dog",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 295,
+            "protein": 9,
+            "carbs": 32,
+            "fats": 14
+        }
+    },
+    {
+        "id": "crispy_fried_fish",
+        "name": "Crispy Fried Fish",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 270,
+            "protein": 16,
+            "carbs": 15,
+            "fats": 16
+        }
+    },
+    {
+        "id": "chaat_dahi_bhalla",
+        "name": "Dahi Bhalla",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 180,
+            "protein": 7,
+            "carbs": 25,
+            "fats": 5.5
+        }
+    },
+    {
+        "id": "dim_sum_har_gow",
+        "name": "Dim Sum - Har Gow (shrimp dumpling)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 121,
+            "protein": 8,
+            "carbs": 15,
+            "fats": 2.5
+        }
+    },
+    {
+        "id": "noodles_egg",
+        "name": "Egg Noodles (cooked)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 138,
+            "protein": 5,
+            "carbs": 25,
+            "fats": 2.2
+        }
+    },
+    {
+        "id": "eggs_benedict",
+        "name": "Eggs Benedict",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 231,
+            "protein": 11,
+            "carbs": 15,
+            "fats": 14
+        }
+    },
+    {
+        "id": "falafel_plate",
+        "name": "Falafel Plate (with hummus & pita)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 240,
+            "protein": 9,
+            "carbs": 28,
+            "fats": 11
+        }
+    },
+    {
+        "id": "falafel_wrap",
+        "name": "Falafel Wrap",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 225,
+            "protein": 8,
+            "carbs": 30,
+            "fats": 9
+        }
+    },
+    {
+        "id": "fish_chips",
+        "name": "Fish and Chips",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 250,
+            "protein": 12,
+            "carbs": 26,
+            "fats": 11
+        }
+    },
+    {
+        "id": "frankie",
+        "name": "Frankie / Kati Roll (chicken)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 220,
+            "protein": 10,
+            "carbs": 27,
+            "fats": 8
+        }
+    },
+    {
+        "id": "fried_chicken",
+        "name": "Fried Chicken (fast-food style)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 320,
+            "protein": 21,
+            "carbs": 15,
+            "fats": 20
+        }
+    },
+    {
+        "id": "gyro",
+        "name": "Gyro (chicken, with pita)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 225,
+            "protein": 13,
+            "carbs": 19,
+            "fats": 10
+        }
+    },
+    {
+        "id": "hot_dog",
+        "name": "Hot Dog (with bun)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 270,
+            "protein": 11,
+            "carbs": 23,
+            "fats": 15
+        }
+    },
+    {
+        "id": "kothu_parotta",
+        "name": "Kothu Parotta",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 230,
+            "protein": 7,
+            "carbs": 30,
+            "fats": 9
+        }
+    },
+    {
+        "id": "kung_pao_chicken",
+        "name": "Kung Pao Chicken",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 175,
+            "protein": 13,
+            "carbs": 8,
+            "fats": 10
+        }
+    },
+    {
+        "id": "lasagna",
+        "name": "Lasagna (beef)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 166,
+            "protein": 9.5,
+            "carbs": 13,
+            "fats": 8
+        }
+    },
+    {
+        "id": "mac_and_cheese",
+        "name": "Mac and Cheese",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 164,
+            "protein": 6,
+            "carbs": 22,
+            "fats": 6
+        }
+    },
+    {
+        "id": "mango_sticky_rice",
+        "name": "Mango Sticky Rice",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 192,
+            "protein": 2.5,
+            "carbs": 38,
+            "fats": 4
+        }
+    },
+    {
+        "id": "risotto_mushroom",
+        "name": "Mushroom Risotto",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 152,
+            "protein": 4.5,
+            "carbs": 22,
+            "fats": 5
+        }
+    },
+    {
+        "id": "shawarma_mutton",
+        "name": "Mutton Shawarma",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 235,
+            "protein": 13,
+            "carbs": 17,
+            "fats": 12
+        }
+    },
+    {
+        "id": "onion_rings",
+        "name": "Onion Rings (fried)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 276,
+            "protein": 4,
+            "carbs": 32,
+            "fats": 15
+        }
+    },
+    {
+        "id": "pad_thai",
+        "name": "Pad Thai (chicken)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 170,
+            "protein": 9,
+            "carbs": 22,
+            "fats": 5
+        },
+        "servingOptions": [
+            {
+                "label": "Plate (~350g)",
+                "grams": 350
+            }
+        ]
+    },
+    {
+        "id": "pasta_arrabiata",
+        "name": "Pasta Arrabiata (tomato sauce)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 138,
+            "protein": 5,
+            "carbs": 22,
+            "fats": 4
+        }
+    },
+    {
+        "id": "pasta_bolognese",
+        "name": "Pasta Bolognese",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 175,
+            "protein": 11,
+            "carbs": 20,
+            "fats": 6
+        }
+    },
+    {
+        "id": "pasta_carbonara",
+        "name": "Pasta Carbonara",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 195,
+            "protein": 10,
+            "carbs": 22,
+            "fats": 8
+        }
+    },
+    {
+        "id": "tempura_prawn",
+        "name": "Prawn Tempura",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 230,
+            "protein": 10,
+            "carbs": 22,
+            "fats": 12
+        }
+    },
+    {
+        "id": "ramen_bowl",
+        "name": "Ramen Bowl (chicken)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 115,
+            "protein": 7,
+            "carbs": 14,
+            "fats": 4
+        },
+        "servingOptions": [
+            {
+                "label": "Bowl (~500ml, ~450g)",
+                "grams": 450
+            }
+        ]
+    },
+    {
+        "id": "sushi_salmon_nigiri",
+        "name": "Salmon Nigiri",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 160,
+            "protein": 10,
+            "carbs": 23,
+            "fats": 3
+        },
+        "servingOptions": [
+            {
+                "label": "2-piece (~70g)",
+                "grams": 70
+            }
+        ]
+    },
+    {
+        "id": "kebab_seekh",
+        "name": "Seekh Kebab",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 220,
+            "protein": 18,
+            "carbs": 5,
+            "fats": 14
+        }
+    },
+    {
+        "id": "kebab_shami",
+        "name": "Shami Kebab",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 230,
+            "protein": 16,
+            "carbs": 12,
+            "fats": 13
+        }
+    },
+    {
+        "id": "sweet_sour_chicken",
+        "name": "Sweet & Sour Chicken",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 190,
+            "protein": 12,
+            "carbs": 22,
+            "fats": 6
+        }
+    },
+    {
+        "id": "fries_sweet_potato",
+        "name": "Sweet Potato Fries",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 270,
+            "protein": 3,
+            "carbs": 38,
+            "fats": 12
+        }
+    },
+    {
+        "id": "taco",
+        "name": "Taco (beef, hard shell)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 218,
+            "protein": 10,
+            "carbs": 20,
+            "fats": 11
+        }
+    },
+    {
+        "id": "green_curry",
+        "name": "Thai Green Curry (with chicken)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 125,
+            "protein": 10,
+            "carbs": 5,
+            "fats": 8
+        }
+    },
+    {
+        "id": "tom_yum",
+        "name": "Tom Yum Soup",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 45,
+            "protein": 4,
+            "carbs": 4.5,
+            "fats": 1.5
+        }
+    },
+    {
+        "id": "spring_rolls_veg",
+        "name": "Veg Spring Rolls (fried)",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 228,
+            "protein": 4,
+            "carbs": 25,
+            "fats": 12
+        }
+    },
+    {
+        "id": "wonton_soup",
+        "name": "Wonton Soup",
+        "category": "fast_food",
+        "per100g": {
+            "calories": 70,
+            "protein": 5.5,
+            "carbs": 8,
+            "fats": 2
+        }
+    },
+    {
+        "id": "apricot_fresh",
+        "name": "Apricot (fresh)",
+        "category": "fruits",
+        "per100g": {
+            "calories": 48,
+            "protein": 1.4,
+            "carbs": 11.1,
+            "fats": 0.4
+        }
+    },
+    {
+        "id": "blackberry",
+        "name": "Blackberry",
+        "category": "fruits",
+        "per100g": {
+            "calories": 43,
+            "protein": 1.4,
+            "carbs": 9.6,
+            "fats": 0.5
+        }
+    },
+    {
+        "id": "melon_cantaloupe",
+        "name": "Cantaloupe Melon",
+        "category": "fruits",
+        "per100g": {
+            "calories": 34,
+            "protein": 0.8,
+            "carbs": 8.2,
+            "fats": 0.2
+        }
+    },
+    {
+        "id": "cranberry",
+        "name": "Cranberry (fresh)",
+        "category": "fruits",
+        "per100g": {
+            "calories": 46,
+            "protein": 0.4,
+            "carbs": 12.2,
+            "fats": 0.1
+        }
+    },
+    {
+        "id": "coconut_dried",
+        "name": "Desiccated Coconut (dried)",
+        "category": "fruits",
+        "per100g": {
+            "calories": 592,
+            "protein": 5.6,
+            "carbs": 23.7,
+            "fats": 57
+        }
+    },
+    {
+        "id": "elderberry",
+        "name": "Elderberry",
+        "category": "fruits",
+        "per100g": {
+            "calories": 73,
+            "protein": 0.7,
+            "carbs": 18.4,
+            "fats": 0.5
+        }
+    },
+    {
+        "id": "fig_fresh",
+        "name": "Fig (fresh)",
+        "category": "fruits",
+        "per100g": {
+            "calories": 74,
+            "protein": 0.8,
+            "carbs": 19.2,
+            "fats": 0.3
+        }
+    },
+    {
+        "id": "gooseberry",
+        "name": "Gooseberry (Amla)",
+        "category": "fruits",
+        "per100g": {
+            "calories": 44,
+            "protein": 0.9,
+            "carbs": 10.2,
+            "fats": 0.6
+        }
+    },
+    {
+        "id": "honeydew_melon",
+        "name": "Honeydew Melon",
+        "category": "fruits",
+        "per100g": {
+            "calories": 36,
+            "protein": 0.5,
+            "carbs": 9.1,
+            "fats": 0.1
+        }
+    },
+    {
+        "id": "mulberry",
+        "name": "Mulberry",
+        "category": "fruits",
+        "per100g": {
+            "calories": 43,
+            "protein": 1.4,
+            "carbs": 9.8,
+            "fats": 0.4
+        }
+    },
+    {
+        "id": "passion_fruit",
+        "name": "Passion Fruit",
+        "category": "fruits",
+        "per100g": {
+            "calories": 97,
+            "protein": 2.2,
+            "carbs": 23.4,
+            "fats": 0.7
+        }
+    },
+    {
+        "id": "plum",
+        "name": "Plum",
+        "category": "fruits",
+        "per100g": {
+            "calories": 46,
+            "protein": 0.7,
+            "carbs": 11.4,
+            "fats": 0.3
+        }
+    },
+    {
+        "id": "raspberry",
+        "name": "Raspberry",
+        "category": "fruits",
+        "per100g": {
+            "calories": 52,
+            "protein": 1.2,
+            "carbs": 11.9,
+            "fats": 0.7
+        }
+    },
+    {
+        "id": "star_fruit",
+        "name": "Star Fruit (Carambola)",
+        "category": "fruits",
+        "per100g": {
+            "calories": 31,
+            "protein": 1,
+            "carbs": 6.7,
+            "fats": 0.3
+        }
+    },
+    {
+        "id": "tamarind_fresh",
+        "name": "Tamarind (fresh)",
+        "category": "fruits",
+        "per100g": {
+            "calories": 239,
+            "protein": 2.8,
+            "carbs": 62.5,
+            "fats": 0.6
+        }
+    },
+    {
+        "id": "appam",
+        "name": "Appam",
+        "category": "grains",
+        "per100g": {
+            "calories": 120,
+            "protein": 3,
+            "carbs": 24,
+            "fats": 1.5
+        }
+    },
+    {
+        "id": "bagel_plain",
+        "name": "Bagel (Plain)",
+        "category": "grains",
+        "per100g": {
+            "calories": 250,
+            "protein": 10,
+            "carbs": 49,
+            "fats": 1.5
+        },
+        "servingOptions": [
+            {
+                "label": "1 Bagel (~98g)",
+                "grams": 98
+            }
+        ]
+    },
+    {
+        "id": "bagel_whole_wheat",
+        "name": "Bagel (Whole Wheat)",
+        "category": "grains",
+        "per100g": {
+            "calories": 235,
+            "protein": 10,
+            "carbs": 47,
+            "fats": 1.5
+        }
+    },
+    {
+        "id": "barley_cooked",
+        "name": "Barley (cooked)",
+        "category": "grains",
+        "per100g": {
+            "calories": 123,
+            "protein": 2.3,
+            "carbs": 28,
+            "fats": 0.4
+        }
+    },
+    {
+        "id": "tortilla_corn",
+        "name": "Corn Tortilla",
+        "category": "grains",
+        "per100g": {
+            "calories": 218,
+            "protein": 5.7,
+            "carbs": 46,
+            "fats": 2.5
+        }
+    },
+    {
+        "id": "couscous_cooked",
+        "name": "Couscous (cooked)",
+        "category": "grains",
+        "per100g": {
+            "calories": 112,
+            "protein": 3.8,
+            "carbs": 23.2,
+            "fats": 0.2
+        }
+    },
+    {
+        "id": "croissant",
+        "name": "Croissant",
+        "category": "grains",
+        "per100g": {
+            "calories": 406,
+            "protein": 8.2,
+            "carbs": 45.8,
+            "fats": 21
+        }
+    },
+    {
+        "id": "english_muffin",
+        "name": "English Muffin",
+        "category": "grains",
+        "per100g": {
+            "calories": 227,
+            "protein": 9,
+            "carbs": 44,
+            "fats": 2
+        },
+        "servingOptions": [
+            {
+                "label": "1 Muffin (~57g)",
+                "grams": 57
+            }
+        ]
+    },
+    {
+        "id": "tortilla_wheat",
+        "name": "Flour Tortilla",
+        "category": "grains",
+        "per100g": {
+            "calories": 312,
+            "protein": 8,
+            "carbs": 52,
+            "fats": 7
+        },
+        "servingOptions": [
+            {
+                "label": "Small (25g)",
+                "grams": 25
+            },
+            {
+                "label": "Medium (40g)",
+                "grams": 40
+            },
+            {
+                "label": "Large (65g)",
+                "grams": 65
+            }
+        ]
+    },
+    {
+        "id": "focaccia",
+        "name": "Focaccia",
+        "category": "grains",
+        "per100g": {
+            "calories": 282,
+            "protein": 8,
+            "carbs": 38,
+            "fats": 10
+        }
+    },
+    {
+        "id": "french_toast",
+        "name": "French Toast",
+        "category": "grains",
+        "per100g": {
+            "calories": 229,
+            "protein": 8.5,
+            "carbs": 26,
+            "fats": 10
+        }
+    },
+    {
+        "id": "glass_noodles",
+        "name": "Glass Noodles / Vermicelli (cooked)",
+        "category": "grains",
+        "per100g": {
+            "calories": 84,
+            "protein": 0.1,
+            "carbs": 21,
+            "fats": 0
+        }
+    },
+    {
+        "id": "noodles_instant",
+        "name": "Instant Noodles (cooked)",
+        "category": "grains",
+        "per100g": {
+            "calories": 140,
+            "protein": 3.5,
+            "carbs": 22,
+            "fats": 5
+        }
+    },
+    {
+        "id": "kachori",
+        "name": "Kachori",
+        "category": "grains",
+        "per100g": {
+            "calories": 340,
+            "protein": 7,
+            "carbs": 38,
+            "fats": 17
+        }
+    },
+    {
+        "id": "makki_roti",
+        "name": "Makki di Roti",
+        "category": "grains",
+        "per100g": {
+            "calories": 264,
+            "protein": 8,
+            "carbs": 48,
+            "fats": 5
+        }
+    },
+    {
+        "id": "millet_cooked",
+        "name": "Millet (cooked)",
+        "category": "grains",
+        "per100g": {
+            "calories": 119,
+            "protein": 3.5,
+            "carbs": 23.7,
+            "fats": 1
+        }
+    },
+    {
+        "id": "missi_roti",
+        "name": "Missi Roti",
+        "category": "grains",
+        "per100g": {
+            "calories": 275,
+            "protein": 10,
+            "carbs": 43,
+            "fats": 7
+        }
+    },
+    {
+        "id": "onigiri",
+        "name": "Onigiri (Rice Ball)",
+        "category": "grains",
+        "per100g": {
+            "calories": 171,
+            "protein": 4,
+            "carbs": 36,
+            "fats": 1
+        },
+        "servingOptions": [
+            {
+                "label": "1 piece (~100g)",
+                "grams": 100
+            }
+        ]
+    },
+    {
+        "id": "pancake",
+        "name": "Pancake",
+        "category": "grains",
+        "per100g": {
+            "calories": 227,
+            "protein": 6,
+            "carbs": 34,
+            "fats": 8
+        },
+        "servingOptions": [
+            {
+                "label": "1 medium pancake (~50g)",
+                "grams": 50
+            }
+        ]
+    },
+    {
+        "id": "pita_bread",
+        "name": "Pita Bread",
+        "category": "grains",
+        "per100g": {
+            "calories": 275,
+            "protein": 9,
+            "carbs": 55,
+            "fats": 1.2
+        },
+        "servingOptions": [
+            {
+                "label": "1 Pita (~60g)",
+                "grams": 60
+            }
+        ]
+    },
+    {
+        "id": "puttu",
+        "name": "Puttu",
+        "category": "grains",
+        "per100g": {
+            "calories": 170,
+            "protein": 3.5,
+            "carbs": 36,
+            "fats": 1
+        }
+    },
+    {
+        "id": "ragi_cooked",
+        "name": "Ragi / Finger Millet (cooked)",
+        "category": "grains",
+        "per100g": {
+            "calories": 103,
+            "protein": 3.4,
+            "carbs": 22,
+            "fats": 0.7
+        }
+    },
+    {
+        "id": "ramen_cooked",
+        "name": "Ramen Noodles (cooked)",
+        "category": "grains",
+        "per100g": {
+            "calories": 138,
+            "protein": 5,
+            "carbs": 26,
+            "fats": 2
+        }
+    },
+    {
+        "id": "rice_cake",
+        "name": "Rice Cake",
+        "category": "grains",
+        "per100g": {
+            "calories": 387,
+            "protein": 8,
+            "carbs": 80,
+            "fats": 2.8
+        },
+        "servingOptions": [
+            {
+                "label": "1 cake (~9g)",
+                "grams": 9
+            }
+        ]
+    },
+    {
+        "id": "rice_noodles",
+        "name": "Rice Noodles (cooked)",
+        "category": "grains",
+        "per100g": {
+            "calories": 109,
+            "protein": 1.8,
+            "carbs": 25,
+            "fats": 0.2
+        }
+    },
+    {
+        "id": "roti_whole_wheat",
+        "name": "Roti (Whole Wheat)",
+        "category": "grains",
+        "per100g": {
+            "calories": 264,
+            "protein": 9,
+            "carbs": 56,
+            "fats": 1
+        },
+        "servingOptions": [
+            {
+                "label": "1 Roti (~35g)",
+                "grams": 35
+            }
+        ]
+    },
+    {
+        "id": "sabudana_khichdi",
+        "name": "Sabudana Khichdi",
+        "category": "grains",
+        "per100g": {
+            "calories": 183,
+            "protein": 2.5,
+            "carbs": 33,
+            "fats": 5
+        }
+    },
+    {
+        "id": "sorghum_cooked",
+        "name": "Sorghum / Jowar (cooked)",
+        "category": "grains",
+        "per100g": {
+            "calories": 111,
+            "protein": 3.5,
+            "carbs": 22,
+            "fats": 1.1
+        }
+    },
+    {
+        "id": "sourdough_bread",
+        "name": "Sourdough Bread",
+        "category": "grains",
+        "per100g": {
+            "calories": 254,
+            "protein": 9,
+            "carbs": 46,
+            "fats": 2.2
+        }
+    },
+    {
+        "id": "thalipeeth",
+        "name": "Thalipeeth",
+        "category": "grains",
+        "per100g": {
+            "calories": 258,
+            "protein": 8,
+            "carbs": 40,
+            "fats": 8
+        }
+    },
+    {
+        "id": "udon_cooked",
+        "name": "Udon (cooked)",
+        "category": "grains",
+        "per100g": {
+            "calories": 105,
+            "protein": 2.8,
+            "carbs": 22,
+            "fats": 0.6
+        }
+    },
+    {
+        "id": "waffle",
+        "name": "Waffle",
+        "category": "grains",
+        "per100g": {
+            "calories": 291,
+            "protein": 8,
+            "carbs": 37,
+            "fats": 13
+        }
+    },
+    {
+        "id": "meal_avocado_egg_toast",
+        "name": "Avocado + Egg Toast (2 slices)",
+        "category": "meals",
+        "per100g": {
+            "calories": 210,
+            "protein": 9,
+            "carbs": 16,
+            "fats": 13
+        },
+        "servingOptions": [
+            {
+                "label": "Serving (~220g)",
+                "grams": 220
+            }
+        ]
+    },
+    {
+        "id": "meal_buddha_bowl",
+        "name": "Buddha Bowl (quinoa, chickpeas, veggies, tahini)",
+        "category": "meals",
+        "per100g": {
+            "calories": 150,
+            "protein": 6.5,
+            "carbs": 18,
+            "fats": 6
+        },
+        "servingOptions": [
+            {
+                "label": "Bowl (400g)",
+                "grams": 400
+            }
+        ]
+    },
+    {
+        "id": "meal_chia_pudding",
+        "name": "Chia Pudding (with almond milk)",
+        "category": "meals",
+        "per100g": {
+            "calories": 105,
+            "protein": 4,
+            "carbs": 11,
+            "fats": 5.5
+        },
+        "servingOptions": [
+            {
+                "label": "Jar (~250g)",
+                "grams": 250
+            }
+        ]
+    },
+    {
+        "id": "meal_chicken_salad_sandwich",
+        "name": "Chicken Salad Sandwich (2 slices WW bread)",
+        "category": "meals",
+        "per100g": {
+            "calories": 218,
+            "protein": 14,
+            "carbs": 22,
+            "fats": 8
+        },
+        "servingOptions": [
+            {
+                "label": "Sandwich (~200g)",
+                "grams": 200
+            }
+        ]
+    },
+    {
+        "id": "meal_chicken_tikka_wrap",
+        "name": "Chicken Tikka Wrap",
+        "category": "meals",
+        "per100g": {
+            "calories": 215,
+            "protein": 13,
+            "carbs": 23,
+            "fats": 8
+        },
+        "servingOptions": [
+            {
+                "label": "1 wrap (~220g)",
+                "grams": 220
+            }
+        ]
+    },
+    {
+        "id": "meal_dal_tadka_rice",
+        "name": "Dal Tadka + Rice",
+        "category": "meals",
+        "per100g": {
+            "calories": 128,
+            "protein": 5.5,
+            "carbs": 23,
+            "fats": 2.5
+        },
+        "servingOptions": [
+            {
+                "label": "Plate (350g)",
+                "grams": 350
+            }
+        ]
+    },
+    {
+        "id": "meal_egg_curry_rice",
+        "name": "Egg Curry + Rice",
+        "category": "meals",
+        "per100g": {
+            "calories": 165,
+            "protein": 8.5,
+            "carbs": 20,
+            "fats": 6
+        },
+        "servingOptions": [
+            {
+                "label": "Plate (350g)",
+                "grams": 350
+            }
+        ]
+    },
+    {
+        "id": "meal_fish_curry_rice",
+        "name": "Fish Curry + Rice",
+        "category": "meals",
+        "per100g": {
+            "calories": 148,
+            "protein": 9,
+            "carbs": 20,
+            "fats": 4
+        },
+        "servingOptions": [
+            {
+                "label": "Plate (350g)",
+                "grams": 350
+            }
+        ]
+    },
+    {
+        "id": "meal_greek_bowl",
+        "name": "Greek Salad Bowl (feta, olives, veggies)",
+        "category": "meals",
+        "per100g": {
+            "calories": 115,
+            "protein": 4.5,
+            "carbs": 7.5,
+            "fats": 8
+        },
+        "servingOptions": [
+            {
+                "label": "Bowl (300g)",
+                "grams": 300
+            }
+        ]
+    },
+    {
+        "id": "meal_greek_yogurt_bowl",
+        "name": "Greek Yogurt Bowl (with granola & berries)",
+        "category": "meals",
+        "per100g": {
+            "calories": 115,
+            "protein": 7,
+            "carbs": 13,
+            "fats": 3.5
+        },
+        "servingOptions": [
+            {
+                "label": "Bowl (300g)",
+                "grams": 300
+            }
+        ]
+    },
+    {
+        "id": "meal_veg_sandwich_grilled",
+        "name": "Grilled Veg Sandwich",
+        "category": "meals",
+        "per100g": {
+            "calories": 200,
+            "protein": 7,
+            "carbs": 29,
+            "fats": 6.5
+        },
+        "servingOptions": [
+            {
+                "label": "Sandwich (~180g)",
+                "grams": 180
+            }
+        ]
+    },
+    {
+        "id": "meal_masala_omelette",
+        "name": "Masala Omelette (2 eggs, veggies, spices)",
+        "category": "meals",
+        "per100g": {
+            "calories": 165,
+            "protein": 12,
+            "carbs": 4,
+            "fats": 12
+        },
+        "servingOptions": [
+            {
+                "label": "Serving (~130g)",
+                "grams": 130
+            }
+        ]
+    },
+    {
+        "id": "meal_matar_rice",
+        "name": "Matar Pulao (Green Peas Rice)",
+        "category": "meals",
+        "per100g": {
+            "calories": 135,
+            "protein": 4,
+            "carbs": 24,
+            "fats": 2.8
+        },
+        "servingOptions": [
+            {
+                "label": "Plate (300g)",
+                "grams": 300
+            }
+        ]
+    },
+    {
+        "id": "meal_miso_soup",
+        "name": "Miso Soup (with tofu & seaweed)",
+        "category": "meals",
+        "per100g": {
+            "calories": 35,
+            "protein": 2.8,
+            "carbs": 3.5,
+            "fats": 1.2
+        },
+        "servingOptions": [
+            {
+                "label": "Bowl (300ml)",
+                "grams": 300
+            }
+        ]
+    },
+    {
+        "id": "meal_mutton_curry_rice",
+        "name": "Mutton Curry + Rice",
+        "category": "meals",
+        "per100g": {
+            "calories": 190,
+            "protein": 10,
+            "carbs": 20,
+            "fats": 8
+        },
+        "servingOptions": [
+            {
+                "label": "Plate (350g)",
+                "grams": 350
+            }
+        ]
+    },
+    {
+        "id": "meal_overnight_oats",
+        "name": "Overnight Oats (with milk, banana, PB)",
+        "category": "meals",
+        "per100g": {
+            "calories": 125,
+            "protein": 6,
+            "carbs": 18,
+            "fats": 4
+        },
+        "servingOptions": [
+            {
+                "label": "Jar (~350g)",
+                "grams": 350
+            }
+        ]
+    },
+    {
+        "id": "meal_palak_dal_rice",
+        "name": "Palak Dal + Rice",
+        "category": "meals",
+        "per100g": {
+            "calories": 120,
+            "protein": 5.5,
+            "carbs": 21,
+            "fats": 2
+        },
+        "servingOptions": [
+            {
+                "label": "Plate (350g)",
+                "grams": 350
+            }
+        ]
+    },
+    {
+        "id": "meal_paneer_salad",
+        "name": "Paneer Salad Bowl",
+        "category": "meals",
+        "per100g": {
+            "calories": 130,
+            "protein": 10,
+            "carbs": 7,
+            "fats": 8
+        },
+        "servingOptions": [
+            {
+                "label": "Bowl (300g)",
+                "grams": 300
+            }
+        ]
+    },
+    {
+        "id": "meal_prawn_fried_rice",
+        "name": "Prawn Fried Rice",
+        "category": "meals",
+        "per100g": {
+            "calories": 155,
+            "protein": 7.5,
+            "carbs": 23,
+            "fats": 4
+        },
+        "servingOptions": [
+            {
+                "label": "Plate (350g)",
+                "grams": 350
+            }
+        ]
+    },
+    {
+        "id": "meal_protein_oats",
+        "name": "Protein Oats (oats + whey + banana)",
+        "category": "meals",
+        "per100g": {
+            "calories": 118,
+            "protein": 9,
+            "carbs": 17,
+            "fats": 2
+        },
+        "servingOptions": [
+            {
+                "label": "Bowl (~350g)",
+                "grams": 350
+            }
+        ]
+    },
+    {
+        "id": "meal_egg_oats",
+        "name": "Savoury Oats with Egg",
+        "category": "meals",
+        "per100g": {
+            "calories": 105,
+            "protein": 7,
+            "carbs": 13,
+            "fats": 3
+        },
+        "servingOptions": [
+            {
+                "label": "Bowl (~300g)",
+                "grams": 300
+            }
+        ]
+    },
+    {
+        "id": "meal_scrambled_toast",
+        "name": "Scrambled Eggs on Toast (2 eggs + 2 slices)",
+        "category": "meals",
+        "per100g": {
+            "calories": 198,
+            "protein": 12,
+            "carbs": 17,
+            "fats": 9
+        },
+        "servingOptions": [
+            {
+                "label": "Serving (~200g)",
+                "grams": 200
+            }
+        ]
+    },
+    {
+        "id": "meal_shahi_paneer_roti",
+        "name": "Shahi Paneer + 2 Roti",
+        "category": "meals",
+        "per100g": {
+            "calories": 248,
+            "protein": 9,
+            "carbs": 22,
+            "fats": 13.5
+        },
+        "servingOptions": [
+            {
+                "label": "Serving (~280g)",
+                "grams": 280
+            }
+        ]
+    },
+    {
+        "id": "meal_smoothie_bowl",
+        "name": "Smoothie Bowl (acai or berry base, toppings)",
+        "category": "meals",
+        "per100g": {
+            "calories": 120,
+            "protein": 4,
+            "carbs": 18,
+            "fats": 4
+        },
+        "servingOptions": [
+            {
+                "label": "Bowl (~350g)",
+                "grams": 350
+            }
+        ]
+    },
+    {
+        "id": "meal_tuna_rice",
+        "name": "Tuna Rice Bowl",
+        "category": "meals",
+        "per100g": {
+            "calories": 140,
+            "protein": 14,
+            "carbs": 17,
+            "fats": 2
+        },
+        "servingOptions": [
+            {
+                "label": "Bowl (350g)",
+                "grams": 350
+            }
+        ]
+    },
+    {
+        "id": "fish_catfish",
+        "name": "Catfish (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 144,
+            "protein": 19,
+            "carbs": 0,
+            "fats": 7
+        }
+    },
+    {
+        "id": "chicken_breast",
+        "name": "Chicken Breast (Grilled)",
+        "category": "protein",
+        "per100g": {
+            "calories": 165,
+            "protein": 31,
+            "carbs": 0,
+            "fats": 3.6
+        }
+    },
+    {
+        "id": "chicken_drumstick",
+        "name": "Chicken Drumstick (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 216,
+            "protein": 28,
+            "carbs": 0,
+            "fats": 11
+        }
+    },
+    {
+        "id": "chicken_wings",
+        "name": "Chicken Wings (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 290,
+            "protein": 27,
+            "carbs": 0,
+            "fats": 19
+        }
+    },
+    {
+        "id": "duck_breast",
+        "name": "Duck Breast (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 201,
+            "protein": 28,
+            "carbs": 0,
+            "fats": 10
+        }
+    },
+    {
+        "id": "edamame",
+        "name": "Edamame (shelled, cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 121,
+            "protein": 11,
+            "carbs": 8.9,
+            "fats": 5.2
+        }
+    },
+    {
+        "id": "egg_whole",
+        "name": "Egg (Whole)",
+        "category": "protein",
+        "per100g": {
+            "calories": 155,
+            "protein": 13,
+            "carbs": 1.1,
+            "fats": 11
+        },
+        "servingOptions": [
+            {
+                "label": "1 Large Egg (~50g)",
+                "grams": 50
+            }
+        ]
+    },
+    {
+        "id": "egg_sunny_side",
+        "name": "Egg Sunny Side Up (fried)",
+        "category": "protein",
+        "per100g": {
+            "calories": 196,
+            "protein": 13.6,
+            "carbs": 0.5,
+            "fats": 15.5
+        },
+        "servingOptions": [
+            {
+                "label": "1 egg (~46g)",
+                "grams": 46
+            }
+        ]
+    },
+    {
+        "id": "egg_white",
+        "name": "Egg White",
+        "category": "protein",
+        "per100g": {
+            "calories": 52,
+            "protein": 11,
+            "carbs": 0.7,
+            "fats": 0.2
+        },
+        "servingOptions": [
+            {
+                "label": "1 Large Egg White (~33g)",
+                "grams": 33
+            }
+        ]
+    },
+    {
+        "id": "lentils_green",
+        "name": "Green Lentils (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 116,
+            "protein": 9,
+            "carbs": 20,
+            "fats": 0.4
+        }
+    },
+    {
+        "id": "egg_boiled",
+        "name": "Hard Boiled Egg",
+        "category": "protein",
+        "per100g": {
+            "calories": 155,
+            "protein": 13,
+            "carbs": 1.1,
+            "fats": 11
+        },
+        "servingOptions": [
+            {
+                "label": "1 large (~50g)",
+                "grams": 50
+            }
+        ]
+    },
+    {
+        "id": "fish_hilsa",
+        "name": "Hilsa / Ilish (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 273,
+            "protein": 22,
+            "carbs": 0,
+            "fats": 20
+        }
+    },
+    {
+        "id": "lamb_chops",
+        "name": "Lamb Chops (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 294,
+            "protein": 25,
+            "carbs": 0,
+            "fats": 21
+        }
+    },
+    {
+        "id": "fish_mackerel",
+        "name": "Mackerel (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 262,
+            "protein": 24,
+            "carbs": 0,
+            "fats": 18
+        }
+    },
+    {
+        "id": "mussels",
+        "name": "Mussels (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 172,
+            "protein": 24,
+            "carbs": 7.4,
+            "fats": 4.5
+        }
+    },
+    {
+        "id": "octopus",
+        "name": "Octopus (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 164,
+            "protein": 30,
+            "carbs": 4.4,
+            "fats": 2.1
+        }
+    },
+    {
+        "id": "egg_omelette",
+        "name": "Omelette (plain, 2 eggs)",
+        "category": "protein",
+        "per100g": {
+            "calories": 154,
+            "protein": 11,
+            "carbs": 1,
+            "fats": 12
+        },
+        "servingOptions": [
+            {
+                "label": "2-egg omelette (~120g)",
+                "grams": 120
+            }
+        ]
+    },
+    {
+        "id": "oysters",
+        "name": "Oysters (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 79,
+            "protein": 9,
+            "carbs": 4.7,
+            "fats": 2.3
+        }
+    },
+    {
+        "id": "paneer_bhurji",
+        "name": "Paneer Bhurji",
+        "category": "protein",
+        "per100g": {
+            "calories": 230,
+            "protein": 12,
+            "carbs": 4,
+            "fats": 18
+        }
+    },
+    {
+        "id": "egg_poached",
+        "name": "Poached Egg",
+        "category": "protein",
+        "per100g": {
+            "calories": 143,
+            "protein": 12.5,
+            "carbs": 0.7,
+            "fats": 9.5
+        },
+        "servingOptions": [
+            {
+                "label": "1 large (~50g)",
+                "grams": 50
+            }
+        ]
+    },
+    {
+        "id": "protein_bar",
+        "name": "Protein Bar (avg)",
+        "category": "protein",
+        "per100g": {
+            "calories": 390,
+            "protein": 28,
+            "carbs": 40,
+            "fats": 12
+        },
+        "servingOptions": [
+            {
+                "label": "1 bar (~60g)",
+                "grams": 60
+            }
+        ]
+    },
+    {
+        "id": "quail",
+        "name": "Quail (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 234,
+            "protein": 25,
+            "carbs": 0,
+            "fats": 14
+        }
+    },
+    {
+        "id": "fish_rohu",
+        "name": "Rohu (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 97,
+            "protein": 17,
+            "carbs": 0,
+            "fats": 2.9
+        }
+    },
+    {
+        "id": "fish_sardine",
+        "name": "Sardines (canned in oil)",
+        "category": "protein",
+        "per100g": {
+            "calories": 208,
+            "protein": 25,
+            "carbs": 0,
+            "fats": 11
+        }
+    },
+    {
+        "id": "egg_scrambled",
+        "name": "Scrambled Eggs (with butter)",
+        "category": "protein",
+        "per100g": {
+            "calories": 168,
+            "protein": 11,
+            "carbs": 1.6,
+            "fats": 13
+        },
+        "servingOptions": [
+            {
+                "label": "2-egg serving (~110g)",
+                "grams": 110
+            }
+        ]
+    },
+    {
+        "id": "fish_sea_bass",
+        "name": "Sea Bass (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 124,
+            "protein": 24,
+            "carbs": 0,
+            "fats": 2.5
+        }
+    },
+    {
+        "id": "seitan",
+        "name": "Seitan (wheat gluten)",
+        "category": "protein",
+        "per100g": {
+            "calories": 370,
+            "protein": 75,
+            "carbs": 14,
+            "fats": 1.9
+        }
+    },
+    {
+        "id": "soybeans_cooked",
+        "name": "Soybeans (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 173,
+            "protein": 17,
+            "carbs": 10,
+            "fats": 9
+        }
+    },
+    {
+        "id": "squid",
+        "name": "Squid / Calamari (cooked)",
+        "category": "protein",
+        "per100g": {
+            "calories": 175,
+            "protein": 18,
+            "carbs": 7,
+            "fats": 7
+        }
+    },
+    {
+        "id": "bhel_puri",
+        "name": "Bhel Puri",
+        "category": "snacks",
+        "per100g": {
+            "calories": 220,
+            "protein": 5,
+            "carbs": 38,
+            "fats": 6
+        },
+        "servingOptions": [
+            {
+                "label": "Plate (~150g)",
+                "grams": 150
+            }
+        ]
+    },
+    {
+        "id": "muffin_blueberry",
+        "name": "Blueberry Muffin",
+        "category": "snacks",
+        "per100g": {
+            "calories": 368,
+            "protein": 5.6,
+            "carbs": 55,
+            "fats": 14
+        },
+        "servingOptions": [
+            {
+                "label": "1 muffin (~120g)",
+                "grams": 120
+            }
+        ]
+    },
+    {
+        "id": "bread_roll",
+        "name": "Bread Roll",
+        "category": "snacks",
+        "per100g": {
+            "calories": 290,
+            "protein": 7,
+            "carbs": 38,
+            "fats": 12
+        }
+    },
+    {
+        "id": "brownie",
+        "name": "Brownie (chocolate)",
+        "category": "snacks",
+        "per100g": {
+            "calories": 415,
+            "protein": 5,
+            "carbs": 55,
+            "fats": 20
+        }
+    },
+    {
+        "id": "popcorn_caramel",
+        "name": "Caramel Popcorn",
+        "category": "snacks",
+        "per100g": {
+            "calories": 429,
+            "protein": 3,
+            "carbs": 84,
+            "fats": 9
+        }
+    },
+    {
+        "id": "cheesecake",
+        "name": "Cheesecake",
+        "category": "snacks",
+        "per100g": {
+            "calories": 321,
+            "protein": 5.5,
+            "carbs": 25,
+            "fats": 22.5
+        }
+    },
+    {
+        "id": "churros",
+        "name": "Churros",
+        "category": "snacks",
+        "per100g": {
+            "calories": 353,
+            "protein": 5,
+            "carbs": 49,
+            "fats": 16
+        }
+    },
+    {
+        "id": "dahi_puri",
+        "name": "Dahi Puri",
+        "category": "snacks",
+        "per100g": {
+            "calories": 250,
+            "protein": 7,
+            "carbs": 35,
+            "fats": 9
+        }
+    },
+    {
+        "id": "energy_bar",
+        "name": "Energy Bar (avg)",
+        "category": "snacks",
+        "per100g": {
+            "calories": 380,
+            "protein": 10,
+            "carbs": 62,
+            "fats": 11
+        },
+        "servingOptions": [
+            {
+                "label": "1 bar (~50g)",
+                "grams": 50
+            }
+        ]
+    },
+    {
+        "id": "fruit_cake",
+        "name": "Fruit Cake",
+        "category": "snacks",
+        "per100g": {
+            "calories": 386,
+            "protein": 4.5,
+            "carbs": 65,
+            "fats": 12
+        }
+    },
+    {
+        "id": "donut_glazed",
+        "name": "Glazed Donut",
+        "category": "snacks",
+        "per100g": {
+            "calories": 380,
+            "protein": 5.5,
+            "carbs": 52,
+            "fats": 17
+        },
+        "servingOptions": [
+            {
+                "label": "1 donut (~60g)",
+                "grams": 60
+            }
+        ]
+    },
+    {
+        "id": "granola_bar",
+        "name": "Granola Bar",
+        "category": "snacks",
+        "per100g": {
+            "calories": 393,
+            "protein": 7,
+            "carbs": 64,
+            "fats": 13
+        },
+        "servingOptions": [
+            {
+                "label": "1 bar (~40g)",
+                "grams": 40
+            }
+        ]
+    },
+    {
+        "id": "medu_vada",
+        "name": "Medu Vada",
+        "category": "snacks",
+        "per100g": {
+            "calories": 255,
+            "protein": 7,
+            "carbs": 28,
+            "fats": 13
+        },
+        "servingOptions": [
+            {
+                "label": "1 piece (~50g)",
+                "grams": 50
+            }
+        ]
+    },
+    {
+        "id": "meetha_paan",
+        "name": "Meetha Paan",
+        "category": "snacks",
+        "per100g": {
+            "calories": 128,
+            "protein": 2,
+            "carbs": 28,
+            "fats": 2
+        }
+    },
+    {
+        "id": "misal_pav",
+        "name": "Misal Pav",
+        "category": "snacks",
+        "per100g": {
+            "calories": 265,
+            "protein": 9,
+            "carbs": 37,
+            "fats": 9
+        }
+    },
+    {
+        "id": "nachos_loaded",
+        "name": "Nachos (loaded with cheese & sour cream)",
+        "category": "snacks",
+        "per100g": {
+            "calories": 350,
+            "protein": 10,
+            "carbs": 35,
+            "fats": 19
+        }
+    },
+    {
+        "id": "nachos",
+        "name": "Nachos (plain)",
+        "category": "snacks",
+        "per100g": {
+            "calories": 489,
+            "protein": 6.8,
+            "carbs": 63,
+            "fats": 23
+        }
+    },
+    {
+        "id": "pani_puri",
+        "name": "Pani Puri / Gol Gappe",
+        "category": "snacks",
+        "per100g": {
+            "calories": 335,
+            "protein": 7,
+            "carbs": 50,
+            "fats": 12
+        },
+        "servingOptions": [
+            {
+                "label": "6 pieces (~80g)",
+                "grams": 80
+            }
+        ]
+    },
+    {
+        "id": "roasted_chickpeas",
+        "name": "Roasted Chickpeas",
+        "category": "snacks",
+        "per100g": {
+            "calories": 364,
+            "protein": 19,
+            "carbs": 45,
+            "fats": 13
+        }
+    },
+    {
+        "id": "sev_puri",
+        "name": "Sev Puri",
+        "category": "snacks",
+        "per100g": {
+            "calories": 280,
+            "protein": 6,
+            "carbs": 38,
+            "fats": 11
+        }
+    },
+    {
+        "id": "vermicelli_kheer",
+        "name": "Seviyan / Vermicelli Kheer",
+        "category": "snacks",
+        "per100g": {
+            "calories": 152,
+            "protein": 4.5,
+            "carbs": 22,
+            "fats": 5
+        }
+    },
+    {
+        "id": "tiramisu",
+        "name": "Tiramisu",
+        "category": "snacks",
+        "per100g": {
+            "calories": 283,
+            "protein": 5.4,
+            "carbs": 28,
+            "fats": 17
+        }
+    },
+    {
+        "id": "trail_mix",
+        "name": "Trail Mix (nuts, seeds, raisins)",
+        "category": "snacks",
+        "per100g": {
+            "calories": 462,
+            "protein": 12,
+            "carbs": 43,
+            "fats": 28
+        }
+    },
+    {
+        "id": "wafer",
+        "name": "Wafer Biscuit (cream filled)",
+        "category": "snacks",
+        "per100g": {
+            "calories": 500,
+            "protein": 5.5,
+            "carbs": 63,
+            "fats": 25
+        }
+    },
+    {
+        "id": "casein_protein",
+        "name": "Casein Protein Powder (dry)",
+        "category": "supplements",
+        "per100g": {
+            "calories": 370,
+            "protein": 78,
+            "carbs": 10,
+            "fats": 4
+        },
+        "servingOptions": [
+            {
+                "label": "1 scoop (~30g)",
+                "grams": 30
+            }
+        ]
+    },
+    {
+        "id": "collagen_powder",
+        "name": "Collagen Peptides (dry)",
+        "category": "supplements",
+        "per100g": {
+            "calories": 380,
+            "protein": 90,
+            "carbs": 0,
+            "fats": 0
+        },
+        "servingOptions": [
+            {
+                "label": "1 scoop (~10g)",
+                "grams": 10
+            }
+        ]
+    },
+    {
+        "id": "creatine",
+        "name": "Creatine Monohydrate (dry)",
+        "category": "supplements",
+        "notes": "Typically 5g per serving. Zero calories.",
+        "per100g": {
+            "calories": 0,
+            "protein": 0,
+            "carbs": 0,
+            "fats": 0
+        },
+        "servingOptions": [
+            {
+                "label": "1 scoop (~5g)",
+                "grams": 5
+            }
+        ]
+    },
+    {
+        "id": "mass_gainer_powder",
+        "name": "Mass Gainer Powder (dry)",
+        "category": "supplements",
+        "per100g": {
+            "calories": 380,
+            "protein": 20,
+            "carbs": 68,
+            "fats": 4
+        },
+        "servingOptions": [
+            {
+                "label": "1 serving (~150g)",
+                "grams": 150
+            }
+        ]
+    },
+    {
+        "id": "moringa_powder",
+        "name": "Moringa Powder",
+        "category": "supplements",
+        "per100g": {
+            "calories": 305,
+            "protein": 29,
+            "carbs": 38,
+            "fats": 6
+        },
+        "servingOptions": [
+            {
+                "label": "1 tsp (~3g)",
+                "grams": 3
+            }
+        ]
+    },
+    {
+        "id": "multivitamin_gummy",
+        "name": "Multivitamin Gummy",
+        "category": "supplements",
+        "per100g": {
+            "calories": 330,
+            "protein": 3,
+            "carbs": 74,
+            "fats": 2
+        },
+        "servingOptions": [
+            {
+                "label": "2 gummies (~6g)",
+                "grams": 6
+            }
+        ]
+    },
+    {
+        "id": "plant_protein_powder",
+        "name": "Plant Protein Powder (pea/soy blend, dry)",
+        "category": "supplements",
+        "per100g": {
+            "calories": 360,
+            "protein": 72,
+            "carbs": 15,
+            "fats": 5
+        },
+        "servingOptions": [
+            {
+                "label": "1 scoop (~30g)",
+                "grams": 30
+            }
+        ]
+    },
+    {
+        "id": "spirulina",
+        "name": "Spirulina Powder",
+        "category": "supplements",
+        "per100g": {
+            "calories": 290,
+            "protein": 57,
+            "carbs": 24,
+            "fats": 8
+        },
+        "servingOptions": [
+            {
+                "label": "1 tbsp (~7g)",
+                "grams": 7
+            }
+        ]
+    },
+    {
+        "id": "whey_protein_powder",
+        "name": "Whey Protein Powder (dry)",
+        "category": "supplements",
+        "per100g": {
+            "calories": 395,
+            "protein": 80,
+            "carbs": 12,
+            "fats": 5
+        },
+        "servingOptions": [
+            {
+                "label": "1 scoop (~30g)",
+                "grams": 30
+            }
+        ]
+    },
+    {
+        "id": "artichoke",
+        "name": "Artichoke (cooked)",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 53,
+            "protein": 2.9,
+            "carbs": 12,
+            "fats": 0.2
+        }
+    },
+    {
+        "id": "arugula",
+        "name": "Arugula / Rocket",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 25,
+            "protein": 2.6,
+            "carbs": 3.7,
+            "fats": 0.7
+        }
+    },
+    {
+        "id": "asparagus",
+        "name": "Asparagus",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 20,
+            "protein": 2.2,
+            "carbs": 3.9,
+            "fats": 0.1
+        }
+    },
+    {
+        "id": "olives_black",
+        "name": "Black Olives",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 115,
+            "protein": 0.8,
+            "carbs": 6,
+            "fats": 10.7
+        }
+    },
+    {
+        "id": "bok_choy",
+        "name": "Bok Choy",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 13,
+            "protein": 1.5,
+            "carbs": 2.2,
+            "fats": 0.2
+        }
+    },
+    {
+        "id": "celery",
+        "name": "Celery",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 16,
+            "protein": 0.7,
+            "carbs": 3,
+            "fats": 0.2
+        }
+    },
+    {
+        "id": "cherry_tomato",
+        "name": "Cherry Tomatoes",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 18,
+            "protein": 0.9,
+            "carbs": 3.9,
+            "fats": 0.2
+        }
+    },
+    {
+        "id": "coriander_leaves",
+        "name": "Coriander / Cilantro (fresh)",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 23,
+            "protein": 2.1,
+            "carbs": 3.7,
+            "fats": 0.5
+        }
+    },
+    {
+        "id": "curry_leaves",
+        "name": "Curry Leaves",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 108,
+            "protein": 6,
+            "carbs": 18.7,
+            "fats": 1
+        }
+    },
+    {
+        "id": "fennel",
+        "name": "Fennel",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 31,
+            "protein": 1.2,
+            "carbs": 7.3,
+            "fats": 0.2
+        }
+    },
+    {
+        "id": "garlic",
+        "name": "Garlic",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 149,
+            "protein": 6.4,
+            "carbs": 33,
+            "fats": 0.5
+        }
+    },
+    {
+        "id": "ginger",
+        "name": "Ginger (fresh)",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 80,
+            "protein": 1.8,
+            "carbs": 18,
+            "fats": 0.8
+        }
+    },
+    {
+        "id": "chilli_green",
+        "name": "Green Chilli",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 40,
+            "protein": 2,
+            "carbs": 9.5,
+            "fats": 0.4
+        }
+    },
+    {
+        "id": "olives_green",
+        "name": "Green Olives",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 145,
+            "protein": 1,
+            "carbs": 3.8,
+            "fats": 15.3
+        }
+    },
+    {
+        "id": "jalapeno",
+        "name": "Jalapeño",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 29,
+            "protein": 0.9,
+            "carbs": 6.5,
+            "fats": 0.4
+        }
+    },
+    {
+        "id": "kale",
+        "name": "Kale",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 49,
+            "protein": 4.3,
+            "carbs": 8.8,
+            "fats": 0.9
+        }
+    },
+    {
+        "id": "kimchi",
+        "name": "Kimchi",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 15,
+            "protein": 1.1,
+            "carbs": 2.4,
+            "fats": 0.5
+        }
+    },
+    {
+        "id": "leek",
+        "name": "Leek",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 61,
+            "protein": 1.5,
+            "carbs": 14,
+            "fats": 0.3
+        }
+    },
+    {
+        "id": "lotus_root",
+        "name": "Lotus Root (cooked)",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 74,
+            "protein": 2.6,
+            "carbs": 17.2,
+            "fats": 0.1
+        }
+    },
+    {
+        "id": "raw_mango",
+        "name": "Raw Mango (Kaccha Aam)",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 60,
+            "protein": 0.7,
+            "carbs": 15,
+            "fats": 0.4
+        }
+    },
+    {
+        "id": "raw_papaya",
+        "name": "Raw Papaya",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 27,
+            "protein": 1.1,
+            "carbs": 6.2,
+            "fats": 0.1
+        }
+    },
+    {
+        "id": "sauerkraut",
+        "name": "Sauerkraut",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 19,
+            "protein": 0.9,
+            "carbs": 4.3,
+            "fats": 0.1
+        }
+    },
+    {
+        "id": "snow_peas",
+        "name": "Snow Peas (Mange Tout)",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 42,
+            "protein": 2.8,
+            "carbs": 7.6,
+            "fats": 0.2
+        }
+    },
+    {
+        "id": "spring_onion",
+        "name": "Spring Onion / Scallion",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 32,
+            "protein": 1.8,
+            "carbs": 7.3,
+            "fats": 0.2
+        }
+    },
+    {
+        "id": "sun_dried_tomato",
+        "name": "Sun-Dried Tomato",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 258,
+            "protein": 14,
+            "carbs": 55.8,
+            "fats": 3
+        }
+    },
+    {
+        "id": "taro_cooked",
+        "name": "Taro (cooked)",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 142,
+            "protein": 0.5,
+            "carbs": 34.6,
+            "fats": 0.1
+        }
+    },
+    {
+        "id": "turnip",
+        "name": "Turnip",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 28,
+            "protein": 0.9,
+            "carbs": 6.4,
+            "fats": 0.1
+        }
+    },
+    {
+        "id": "yam_cooked",
+        "name": "Yam (cooked)",
+        "category": "vegetables",
+        "per100g": {
+            "calories": 118,
+            "protein": 1.5,
+            "carbs": 28,
+            "fats": 0.1
+        }
+    }
+]

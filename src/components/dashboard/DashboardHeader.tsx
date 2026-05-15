@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { useTheme } from '../../store/useTheme';
 import { spacing } from '../../constants/theme';
 import { UserProfile, WorkoutStreak } from '../../types';
+import LevelInfoModal from './LevelInfoModal';
 
 interface DashboardHeaderProps {
     user: UserProfile | null;
@@ -15,6 +16,7 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ user, streak, greeting }: DashboardHeaderProps) {
     const { colors, mode } = useTheme();
+    const [showLevelInfo, setShowLevelInfo] = React.useState(false);
 
     return (
         <View style={styles.headerWrapper}>
@@ -28,6 +30,22 @@ export function DashboardHeader({ user, streak, greeting }: DashboardHeaderProps
                     <View>
                         <Text style={styles.greetingText}>{greeting},</Text>
                         <Text style={styles.usernameText}>{user?.name?.split(' ')[0] || 'Athlete'}</Text>
+                        {user?.level && (
+                            <TouchableOpacity 
+                                style={[styles.levelBadge, { alignSelf: 'flex-start' }]}
+                                onPress={() => setShowLevelInfo(true)}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons name="star" size={10} color="#FDE68A" />
+                                <Text style={styles.levelText}>Level {user.level}</Text>
+                            </TouchableOpacity>
+                        )}
+                        
+                        <LevelInfoModal 
+                            visible={showLevelInfo} 
+                            onClose={() => setShowLevelInfo(false)} 
+                            user={user} 
+                        />
                     </View>
                     <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
                         <TouchableOpacity
@@ -43,7 +61,7 @@ export function DashboardHeader({ user, streak, greeting }: DashboardHeaderProps
                         >
                             <View style={styles.avatarContainer}>
                                 {user?.picture ? (
-                                    <Image source={{ uri: user.picture }} style={{ width: 46, height: 46, borderRadius: 23 }} />
+                                    <Image source={{ uri: user.picture }} style={{ width: 40, height: 40, borderRadius: 20 }} />
                                 ) : (
                                     <Image
                                         key={user?.gender}
@@ -52,7 +70,7 @@ export function DashboardHeader({ user, streak, greeting }: DashboardHeaderProps
                                                 ? 'https://cdn-icons-png.flaticon.com/512/6997/6997662.png'
                                                 : 'https://cdn-icons-png.flaticon.com/512/236/236831.png'
                                         }}
-                                        style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#ddd' }}
+                                        style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#ddd' }}
                                         resizeMode="cover"
                                     />
                                 )}
@@ -113,42 +131,42 @@ import { StatusBar } from 'react-native';
 
 const styles = StyleSheet.create({
     headerWrapper: {
-        paddingBottom: 20,
+        paddingBottom: 10,
     },
     headerGradient: {
-        paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 20 : 60,
+        paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 12 : 48,
         paddingHorizontal: spacing.xl,
-        paddingBottom: 30,
-        borderBottomLeftRadius: 40,
-        borderBottomRightRadius: 40,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
     headerTop: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 30,
+        marginBottom: 16,
     },
     greetingText: {
         color: 'rgba(255,255,255,0.8)',
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '500',
     },
     usernameText: {
         color: 'white',
-        fontSize: 32,
+        fontSize: 28,
         fontWeight: '800',
     },
     profileBtn: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         backgroundColor: 'rgba(255,255,255,0.2)',
         padding: 2,
     },
     avatarContainer: {
         flex: 1,
         backgroundColor: 'white',
-        borderRadius: 25,
+        borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -156,9 +174,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: 'rgba(255,255,255,0.2)',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
         gap: 6,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.3)',
@@ -167,5 +185,22 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 14,
         fontWeight: 'bold',
+    },
+    levelBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 8,
+        gap: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
+        marginTop: 4,
+    },
+    levelText: {
+        color: 'white',
+        fontSize: 11,
+        fontWeight: '800',
     },
 });

@@ -101,3 +101,38 @@ export async function deleteSavedMeal(id: number, userId: number): Promise<void>
     await db.runAsync('DELETE FROM saved_meals WHERE id = ? AND user_id = ?', [id, userId]);
     CloudSyncService.scheduleBackup('saved-meal-deleted');
 }
+
+export async function updateSavedMeal(
+    id: number,
+    userId: number,
+    name: string,
+    items: SavedMealItem[]
+): Promise<void> {
+    const db = await getDatabase();
+    const totals = items.reduce(
+        (acc, item) => ({
+            calories: acc.calories + Number(item.calories || 0),
+            protein: acc.protein + Number(item.protein || 0),
+            carbs: acc.carbs + Number(item.carbs || 0),
+            fats: acc.fats + Number(item.fats || 0),
+        }),
+        { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    );
+
+    await db.runAsync(
+        `UPDATE saved_meals 
+         SET name = ?, items_json = ?, calories = ?, protein = ?, carbs = ?, fats = ?
+         WHERE id = ? AND user_id = ?`,
+        [
+            name.trim(),
+            JSON.stringify(items),
+            Math.round(totals.calories),
+            Math.round(totals.protein * 10) / 10,
+            Math.round(totals.carbs * 10) / 10,
+            Math.round(totals.fats * 10) / 10,
+            id,
+            userId
+        ]
+    );
+    CloudSyncService.scheduleBackup('saved-meal-updated');
+}

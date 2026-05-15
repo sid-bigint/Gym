@@ -347,6 +347,27 @@ export async function initDatabase() {
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS recent_foods (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id TEXT NOT NULL,
+              name TEXT NOT NULL,
+              calories REAL NOT NULL,
+              protein REAL NOT NULL,
+              carbs REAL NOT NULL,
+              fats REAL NOT NULL,
+              last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              frequency_count INTEGER DEFAULT 1,
+              UNIQUE(user_id, name)
+            );
+
+            CREATE TABLE IF NOT EXISTS water_logs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id TEXT NOT NULL,
+              date TEXT NOT NULL,
+              glasses INTEGER DEFAULT 0,
+              UNIQUE(user_id, date)
+            );
+
             -- User settings
             CREATE TABLE IF NOT EXISTS user_settings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

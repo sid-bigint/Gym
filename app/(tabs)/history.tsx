@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
+import { useUserStore } from '../../src/store/useUserStore';
 import { useNutritionStore } from '../../src/store/useNutritionStore';
 import { useProgressStore } from '../../src/store/useProgressStore';
 import { useTheme } from '../../src/store/useTheme';
@@ -11,12 +12,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, borderRadius, shadows } from '../../src/constants/theme';
 import { format, subDays, isSameDay } from 'date-fns';
 import { LineChart } from 'react-native-chart-kit';
+import { LinearGradient } from 'expo-linear-gradient';
+import LevelInfoModal from '../../src/components/dashboard/LevelInfoModal';
 import { useAlertStore } from '../../src/store/useAlertStore';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function ProgressScreen() {
     const { getWorkoutHistory, deleteWorkoutLog } = useWorkoutStore();
+    const { user } = useUserStore();
     const { getNutritionHistory } = useNutritionStore();
     const { measurements, loadMeasurements } = useProgressStore();
     const { colors } = useTheme();
@@ -29,6 +33,7 @@ export default function ProgressScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [viewMode, setViewMode] = useState<'history' | 'insights'>('history');
     const [subViewMode, setSubViewMode] = useState<'workout' | 'nutrition' | 'body'>('workout');
+    const [showLevelInfo, setShowLevelInfo] = useState(false);
 
     const loadHistory = async () => {
         setIsLoading(true);
@@ -358,7 +363,25 @@ export default function ProgressScreen() {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Progress</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                    <Text style={[styles.headerTitle, { marginBottom: 0 }]}>Progress</Text>
+                    {user?.level && (
+                        <TouchableOpacity 
+                            style={styles.levelBadge}
+                            onPress={() => setShowLevelInfo(true)}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="star" size={12} color="#F59E0B" />
+                            <Text style={styles.levelText}>Lvl {user.level}</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+                
+                <LevelInfoModal 
+                    visible={showLevelInfo} 
+                    onClose={() => setShowLevelInfo(false)} 
+                    user={user} 
+                />
                 <View style={[styles.toggleContainer, { backgroundColor: colors.background.elevated }]}>
                     <TouchableOpacity
                         style={[styles.toggleBtn, viewMode === 'history' && { backgroundColor: colors.background.card }]}
@@ -426,6 +449,35 @@ export default function ProgressScreen() {
 
                     {subViewMode === 'workout' && (
                         <>
+                            <TouchableOpacity 
+                                style={[styles.levelCard, { backgroundColor: colors.background.card }]}
+                                onPress={() => setShowLevelInfo(true)}
+                                activeOpacity={0.9}
+                            >
+                                <View style={styles.levelCardHeader}>
+                                    <View style={styles.levelIconContainer}>
+                                        <Ionicons name="star" size={20} color="#F59E0B" />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.levelCardTitle, { color: colors.text.primary }]}>Level {user?.level || 1}</Text>
+                                        <Text style={[styles.levelCardSub, { color: colors.text.tertiary }]}>
+                                            {user?.xp || 0} / {(user?.level || 1) * 100} XP to Level {(user?.level || 1) + 1}
+                                        </Text>
+                                    </View>
+                                    <Text style={[styles.xpPercentage, { color: colors.accent.primary }]}>
+                                        {Math.round(((user?.xp || 0) / ((user?.level || 1) * 100)) * 100)}%
+                                    </Text>
+                                </View>
+                                <View style={[styles.xpTrack, { backgroundColor: colors.border.secondary }]}>
+                                    <LinearGradient
+                                        colors={['#F59E0B', '#EF4444']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={[styles.xpFill, { width: `${Math.min(((user?.xp || 0) / ((user?.level || 1) * 100)) * 100, 100)}%` }]}
+                                    />
+                                </View>
+                            </TouchableOpacity>
+
                             <View style={styles.sectionHeader}>
                                 <Ionicons name="stats-chart" size={20} color={colors.accent.primary} />
                                 <Text style={styles.sectionTitle}>Training Performance</Text>
@@ -686,7 +738,22 @@ const createStyles = (colors: any, contentTop: number) => StyleSheet.create({
         fontSize: 28,
         fontWeight: '800',
         color: colors.text.primary,
-        marginBottom: 20,
+    },
+    levelBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 8,
+        gap: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(245, 158, 11, 0.2)',
+    },
+    levelText: {
+        color: '#F59E0B',
+        fontSize: 12,
+        fontWeight: '800',
     },
     toggleContainer: {
         flexDirection: 'row',
@@ -1009,5 +1076,50 @@ const createStyles = (colors: any, contentTop: number) => StyleSheet.create({
         borderStyle: 'dashed',
         borderColor: colors.border.primary,
         marginVertical: 8,
+    },
+    levelCard: {
+        padding: spacing.lg,
+        borderRadius: 24,
+        marginTop: spacing.md,
+        marginBottom: spacing.xl,
+        borderWidth: 1,
+        borderColor: 'rgba(245, 158, 11, 0.1)',
+        ...shadows.sm,
+    },
+    levelCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 16,
+    },
+    levelIconContainer: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    levelCardTitle: {
+        fontSize: 18,
+        fontWeight: '900',
+    },
+    levelCardSub: {
+        fontSize: 12,
+        fontWeight: '600',
+        marginTop: 2,
+    },
+    xpPercentage: {
+        fontSize: 16,
+        fontWeight: '900',
+    },
+    xpTrack: {
+        height: 10,
+        borderRadius: 5,
+        overflow: 'hidden',
+    },
+    xpFill: {
+        height: '100%',
+        borderRadius: 5,
     },
 });

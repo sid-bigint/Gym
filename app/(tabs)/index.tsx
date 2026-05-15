@@ -800,7 +800,7 @@ export default function Dashboard() {
           </TouchableOpacity>
         )}
 
-        <GamificationWidget user={user} />
+        {/* Statistics and Insights Section */}
 
         {/* Main Stats Row */}
         <View style={styles.statsRow}>
