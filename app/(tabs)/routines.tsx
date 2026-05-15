@@ -1,19 +1,20 @@
-
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ScrollView, Modal, ImageBackground, TextInput } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ScrollView, Modal, Animated, Dimensions, TouchableWithoutFeedback } from 'react-native';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { useAlertStore } from '../../src/store/useAlertStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Button } from '../../src/components/Button';
 import { useTheme } from '../../src/store/useTheme';
 import { useScreenPadding } from '../../src/store/useScreenPadding';
 import { spacing, borderRadius, shadows } from '../../src/constants/theme';
-import { format } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { PREDEFINED_BUNDLES } from '../../src/data/exploreBundles';
 import { RoutineCard } from '../../src/components/RoutineCard';
 import { ProgramCard } from '../../src/components/ProgramCard';
+import { LogPastWorkoutModal } from '../../src/components/routines/LogPastWorkoutModal';
+
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function RoutinesScreen() {
     const { routines, routineAnalytics, loadRoutines, isLoading, startWorkout, activeWorkout, deleteRoutine, togglePinRoutine } = useWorkoutStore();
@@ -23,6 +24,30 @@ export default function RoutinesScreen() {
     const [deleteProgramId, setDeleteProgramId] = useState<string | null>(null);
     const [selectedProgram, setSelectedProgram] = useState<{ id: string, name: string, routines: any[], bundle?: any } | null>(null);
     const [selectedRoutineIds, setSelectedRoutineIds] = useState<Set<number>>(new Set());
+    const [showPastLogModal, setShowPastLogModal] = useState(false);
+    const [fabOpen, setFabOpen] = useState(false);
+    const scrollY = useRef(new Animated.Value(0)).current;
+    const fabAnim = useRef(new Animated.Value(0)).current;
+    const [greeting, setGreeting] = useState('');
+
+    useEffect(() => {
+        const hour = new Date().getHours();
+        if (hour < 12) setGreeting('Good morning ☀️');
+        else if (hour < 18) setGreeting('Good afternoon 🌤️');
+        else setGreeting('Good evening 🌙');
+    }, []);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            Animated.spring(fabAnim, {
+                toValue: 1,
+                friction: 6,
+                tension: 40,
+                useNativeDriver: true,
+            }).start();
+        }, 500);
+        return () => clearTimeout(timer);
+    }, []);
 
     const isSelectionMode = selectedRoutineIds.size > 0;
 
@@ -75,54 +100,39 @@ export default function RoutinesScreen() {
         const result: any[] = [];
         const usedImages = new Set<string>();
 
-        // 1. Add Pinned Routines
         const pinned = standaloneRoutines.filter(r => r.isPinned).sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
         if (pinned.length > 0) {
-            result.push({ type: 'section_header', title: 'Pinned' });
+            result.push({ type: 'section_header', title: '📌 Pinned', icon: 'pin' });
             pinned.forEach(r => result.push({ type: 'routine', data: r }));
         }
 
-        // 2. Add Uncategorized Standalone Routines
         const uncategorized = standaloneRoutines.filter(r => !r.isPinned).sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
         if (uncategorized.length > 0) {
-            result.push({ type: 'section_header', title: 'Routines' });
+            result.push({ type: 'section_header', title: '💪 All Routines', icon: 'fitness' });
             uncategorized.forEach(r => result.push({ type: 'routine', data: r }));
         }
 
-        // Add Program Groups
         const programKeys = Object.keys(groups);
         if (programKeys.length > 0) {
-            result.push({ type: 'section_header', title: 'Programs' });
+            result.push({ type: 'section_header', title: '📚 Programs', icon: 'albums' });
         }
-        
+
         programKeys.forEach(pid => {
             const bundle = PREDEFINED_BUNDLES.find((b: any) => b.id === pid);
             let name = 'Unknown Program';
             let programBundle = bundle;
 
-            // Handle AI Generated Programs (New & Legacy)
             if (pid.startsWith('ai|') || pid.startsWith('ai-')) {
-                // Try NEW format: ai|Name|Timestamp
                 if (pid.startsWith('ai|')) {
                     const parts = pid.split('|');
-                    if (parts.length >= 2) {
-                        name = parts[1];
-                    } else {
-                        name = 'AI Workout Plan';
-                    }
-                }
-                // Handle LEGACY format: ai-Timestamp
-                else {
+                    name = parts[1] || 'AI Workout Plan';
+                } else {
                     name = 'AI Generated Plan';
                 }
 
-                // Create a synthetic bundle for UI if not predefined
                 if (!programBundle) {
-                    // Generate a consistent hue based on the ID char codes
                     const charSum = pid.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
                     const hue = charSum % 360;
-
-                    // Collect ALL available images from this program's exercises
                     let selectedImage = null;
                     const allImages: string[] = [];
 
@@ -132,7 +142,6 @@ export default function RoutinesScreen() {
                             if (routine.exercises) {
                                 routine.exercises.forEach((re: any) => {
                                     if (re.exercise?.images?.length > 0) {
-                                        // Add all images found for variation
                                         re.exercise.images.forEach((img: string) => {
                                             if (typeof img === 'string' && img.length > 0) {
                                                 allImages.push(img);
@@ -143,18 +152,11 @@ export default function RoutinesScreen() {
                             }
                         });
 
-                        // Select an image if available
                         if (allImages.length > 0) {
-                            // Try to find one we haven't used yet in this list view
                             const unusedImages = allImages.filter(img => !usedImages.has(img));
                             const pool = unusedImages.length > 0 ? unusedImages : allImages;
-
-                            // Pick deterministically based on pid so it doesn't flicker on re-renders,
-                            // but effectively "random" relative to the list content
                             const index = charSum % pool.length;
                             selectedImage = pool[index];
-
-                            // Mark as used
                             usedImages.add(selectedImage);
                         }
                     } catch (e) { }
@@ -164,8 +166,8 @@ export default function RoutinesScreen() {
                         name: name,
                         description: 'Custom AI Plan',
                         gradient: [
-                            `hsl(${hue}, 60%, 40%)`,  // Darker, richer start
-                            `hsl(${(hue + 45) % 360}, 65%, 30%)` // Darker, richer end
+                            `hsl(${hue}, 70%, 45%)`,
+                            `hsl(${(hue + 45) % 360}, 75%, 35%)`
                         ],
                         image: selectedImage
                     } as any;
@@ -192,22 +194,19 @@ export default function RoutinesScreen() {
 
     const handleStartWorkout = async (routineId: number | null) => {
         if (activeWorkout) {
-            if (activeWorkout) {
-                useAlertStore.getState().showAlert(
-                    "Workout in Progress",
-                    "You already have an active workout. Finish it first or cancel to start a new one.",
-                    [
-                        { text: "OK", style: "cancel" },
-                        { text: "Go to Active", onPress: () => router.push('/workout/active') }
-                    ]
-                );
-                return;
-            }
+            useAlertStore.getState().showAlert(
+                "Workout in Progress",
+                "You already have an active workout.",
+                [
+                    { text: "OK", style: "cancel" },
+                    { text: "Go to Active", onPress: () => router.push('/workout/active') }
+                ]
+            );
+            return;
         }
 
         try {
             await startWorkout(routineId);
-            // Close modal if open
             setSelectedProgram(null);
             router.push('/workout/active');
         } catch (e) {
@@ -217,15 +216,10 @@ export default function RoutinesScreen() {
 
     const handleConfirmDeleteProgram = async () => {
         if (!deleteProgramId) return;
-
-        // Find all routines in this program
         const programRoutines = routines.filter(r => r.programId === deleteProgramId);
-
-        // Delete all
         for (const r of programRoutines) {
             await deleteRoutine(r.id);
         }
-
         setDeleteProgramId(null);
         setSelectedProgram(null);
     };
@@ -234,179 +228,330 @@ export default function RoutinesScreen() {
         if (deleteId) {
             await deleteRoutine(deleteId);
             setDeleteId(null);
-            // If deleting from within a program modal, we might need to close it if empty?
-            // Actually deleteRoutine reloads routines, so useMemo updates.
-            // We should check if selectedProgram still has routines.
-            // But simplify: just close modal if looking at program? No, keep it open if routines remain.
         }
+    };
+
+    const handleFabAction = (action: string) => {
+        setFabOpen(false);
+        setTimeout(() => {
+            switch (action) {
+                case 'ai':
+                    router.push('/programs/generate');
+                    break;
+                case 'explore':
+                    router.push('/programs/explore');
+                    break;
+                case 'custom':
+                    router.push('/programs/create');
+                    break;
+                case 'log':
+                    setShowPastLogModal(true);
+                    break;
+            }
+        }, 100);
     };
 
     const renderItem = ({ item }: { item: any }) => {
         if (item.type === 'section_header') {
-            return <Text style={[styles.sectionTitle, { color: colors.text.primary, marginTop: 12, marginBottom: 8 }]}>{item.title}</Text>;
+            return (
+                <View style={styles.sectionHeaderContainer}>
+                    <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>{item.title}</Text>
+                    <View style={[styles.sectionLine, { backgroundColor: colors.border.primary }]} />
+                </View>
+            );
         }
 
         if (item.type === 'program') {
             return (
-                <ProgramCard 
-                    item={item} 
-                    onSelect={setSelectedProgram} 
-                    onDelete={setDeleteProgramId} 
+                <ProgramCard
+                    item={item}
+                    onSelect={setSelectedProgram}
+                    onDelete={setDeleteProgramId}
                 />
             );
         }
         return (
-            <View>
-                <RoutineCard 
-                    item={item.data}
-                    analytics={routineAnalytics[item.data.name]}
-                    isSelectable={true}
-                    isSelectionMode={isSelectionMode}
-                    isSelected={selectedRoutineIds.has(item.data.id)}
-                    onToggleSelection={toggleSelection}
-                    onDelete={setDeleteId} 
-                    onPin={togglePinRoutine}
-                    onStartWorkout={handleStartWorkout} 
-                />
-            </View>
+            <RoutineCard
+                item={item.data}
+                analytics={routineAnalytics[item.data.name]}
+                isSelectable={true}
+                isSelectionMode={isSelectionMode}
+                isSelected={selectedRoutineIds.has(item.data.id)}
+                onToggleSelection={toggleSelection}
+                onDelete={setDeleteId}
+                onPin={togglePinRoutine}
+                onStartWorkout={handleStartWorkout}
+            />
         );
     };
 
-    // Safe derived routines for the modal to ensure UI updates on delete
     const modalRoutines = React.useMemo(() => {
         if (!selectedProgram) return [];
         return routines.filter(r => r.programId === selectedProgram.id);
     }, [routines, selectedProgram]);
 
+    const headerOpacity = scrollY.interpolate({
+        inputRange: [0, 80],
+        outputRange: [1, 0],
+        extrapolate: 'clamp',
+    });
+
+    const fabScale = fabAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.8, 1],
+    });
+
+    const fabRotate = fabAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '90deg'],
+    });
+
     return (
-        <View style={[styles.container, { backgroundColor: colors.background.primary, paddingTop: contentTop }]}>
-            <View style={styles.header}>
-                {isSelectionMode ? (
-                    <>
-                        <View>
-                            <Text style={[styles.title, { color: colors.text.primary }]}>{selectedRoutineIds.size} Selected</Text>
-                            <TouchableOpacity onPress={() => setSelectedRoutineIds(new Set())}>
-                                <Text style={[styles.subtitle, { color: colors.accent.primary, fontWeight: 'bold' }]}>Cancel Selection</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <TouchableOpacity
-                            style={[styles.addButton, { backgroundColor: colors.status.error }]}
-                            onPress={handleBulkDelete}
-                        >
-                            <Ionicons name="trash" size={24} color={colors.text.inverse} />
-                        </TouchableOpacity>
-                    </>
-                ) : (
-                    <>
-                        <View>
-                            <Text style={[styles.title, { color: colors.text.primary }]}>Workouts</Text>
-                            <Text style={[styles.subtitle, { color: colors.text.secondary }]}>{"Let's get moving"}</Text>
-                        </View>
-                        <TouchableOpacity
-                            style={[styles.addButton, { backgroundColor: colors.accent.secondary }]}
-                            onPress={() => router.push('/programs/create')}
-                        >
-                            <Ionicons name="add" size={24} color={colors.text.inverse} />
-                        </TouchableOpacity>
-                    </>
-                )}
-            </View>
+        <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+            {/* Animated Header */}
+            <Animated.View style={[styles.header, { opacity: headerOpacity, paddingTop: contentTop }]}>
+                <View>
+                    <Text style={[styles.greeting, { color: colors.text.secondary }]}>{greeting}</Text>
+                    <Text style={[styles.title, { color: colors.text.primary }]}>Your Workouts</Text>
+                </View>
+                <View style={styles.headerStats}>
+                    <View style={[styles.statBadge, { backgroundColor: colors.accent.primary + '15' }]}>
+                        <Ionicons name="barbell-outline" size={16} color={colors.accent.primary} />
+                        <Text style={[styles.statText, { color: colors.accent.primary }]}>{routines.length}</Text>
+                    </View>
+                </View>
+            </Animated.View>
 
-            <FlatList
-                data={displayedItems}
-                renderItem={renderItem}
-                keyExtractor={(item) => {
-                    if (item.type === 'section_header') return `header-${item.title}`;
-                    if (item.type === 'program') return `prog-${item.id}`;
-                    return `rout-${item.data?.id || item.id}`;
-                }}
+            {/* Main Content */}
+            <Animated.ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.content}
-                ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
-                ListEmptyComponent={() => (
-                    <View style={styles.emptyContainer}>
-                        <Ionicons name="fitness-outline" size={64} color={colors.text.disabled} />
-                        <Text style={[styles.emptyText, { color: colors.text.secondary }]}>No routines yet</Text>
-                        <Text style={[styles.emptySubtext, { color: colors.text.tertiary }]}>
-                            Create a routine to track your progress efficiently.
-                        </Text>
-                    </View>
+                contentContainerStyle={styles.scrollContent}
+                onScroll={Animated.event(
+                    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+                    { useNativeDriver: false }
                 )}
-                ListHeaderComponent={() => (
-                    <View>
-                        {/* Quick Actions */}
-                        <View style={styles.quickActions}>
-                            <TouchableOpacity
-                                style={[styles.actionCard, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
-                                onPress={() => router.push('/programs/generate')}
-                            >
-                                <View style={[styles.actionIcon, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
-                                    <Ionicons name="sparkles" size={24} color="#8B5CF6" />
-                                </View>
-                                <Text style={[styles.actionTitle, { color: colors.text.primary }]}>AI Generate</Text>
-                                <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Smart plans</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[styles.actionCard, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
-                                onPress={() => router.push('/programs/explore')}
-                            >
-                                <View style={[styles.actionIcon, { backgroundColor: 'rgba(255, 45, 85, 0.1)' }]}>
-                                    <Ionicons name="compass" size={24} color="#FF2D55" />
-                                </View>
-                                <Text style={[styles.actionTitle, { color: colors.text.primary }]}>Explore</Text>
-                                <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Find plans</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Create New Button */}
-                        <TouchableOpacity
-                            style={[styles.createBanner, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
-                            onPress={() => router.push('/programs/create')}
-                        >
-                            <View style={[styles.actionIcon, { backgroundColor: 'rgba(0, 122, 255, 0.1)', marginBottom: 0 }]}>
-                                <Ionicons name="create" size={24} color="#007AFF" />
-                            </View>
-                            <View style={{ flex: 1, marginLeft: 16 }}>
-                                <Text style={[styles.actionTitle, { color: colors.text.primary, marginBottom: 2 }]}>Create Custom Routine</Text>
-                                <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Build your own workout</Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={20} color={colors.text.disabled} />
-                        </TouchableOpacity>
-
-                        {/* Quick Start Feature */}
-                        <TouchableOpacity
-                            style={[
-                                styles.quickStartBanner,
-                                { backgroundColor: colors.background.card, borderColor: colors.border.primary },
-                                activeWorkout && styles.disabledAction
-                            ]}
-                            onPress={() => handleStartWorkout(null)}
-                            disabled={!!activeWorkout}
-                        >
+                scrollEventThrottle={16}
+            >
+                {/* Quick Stats Row */}
+                {!isSelectionMode && routines.length > 0 && (
+                    <View style={styles.statsRow}>
+                        <View style={[styles.statCard, { backgroundColor: colors.background.elevated }]}>
                             <LinearGradient
-                                colors={[colors.accent.primary + '20', 'transparent']}
-                                style={StyleSheet.absoluteFill}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                            />
-                            <View style={[styles.actionIcon, { backgroundColor: colors.accent.primary + '20', marginBottom: 0 }]}>
-                                <Ionicons name="flash" size={24} color={colors.accent.primary} />
-                            </View>
-                            <View style={{ flex: 1, marginLeft: 16 }}>
-                                <Text style={[styles.actionTitle, { color: colors.text.primary, marginBottom: 2 }]}>Quick Start</Text>
-                                <Text style={[styles.actionSubtitle, { color: colors.text.tertiary }]}>Start an empty workout now</Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={20} color={colors.text.disabled} />
-                        </TouchableOpacity>
-
-                        {/* My Routines Section */}
-                        <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>My Routines</Text>
+                                colors={[colors.accent.primary + '20', colors.accent.primary + '05']}
+                                style={styles.statCardGradient}
+                            >
+                                <Ionicons name="calendar-outline" size={24} color={colors.accent.primary} />
+                                <Text style={[styles.statValue, { color: colors.text.primary }]}>
+                                {routines.filter(r => routineAnalytics[r.name]?.lastPerformed).length}
+                                </Text>
+                                <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Completed</Text>
+                            </LinearGradient>
+                        </View>
+                        <View style={[styles.statCard, { backgroundColor: colors.background.elevated }]}>
+                            <LinearGradient
+                                colors={[colors.accent.primary + '20', colors.accent.primary + '05']}
+                                style={styles.statCardGradient}
+                            >
+                                <Ionicons name="flame-outline" size={24} color={colors.accent.primary} />
+                                <Text style={[styles.statValue, { color: colors.text.primary }]}>
+                                    {routines.length}
+                                </Text>
+                                <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Total Routines</Text>
+                            </LinearGradient>
+                        </View>
                     </View>
                 )}
-            />
 
-            {/* Program Details Modal */}
+                {/* Empty State */}
+                {!isSelectionMode && routines.length === 0 && (
+                    <View style={styles.emptyStateContainer}>
+                        <LinearGradient
+                            colors={[colors.accent.primary + '20', colors.accent.primary + '05']}
+                            style={styles.emptyStateGradient}
+                        >
+                            <View style={styles.emptyStateIconContainer}>
+                                <Ionicons name="fitness" size={80} color={colors.accent.primary} />
+                            </View>
+                            <Text style={[styles.emptyStateTitle, { color: colors.text.primary }]}>No workouts yet</Text>
+                            <Text style={[styles.emptyStateSubtitle, { color: colors.text.secondary }]}>
+                                Create your first workout to start tracking
+                            </Text>
+                            <View style={styles.emptyStateActions}>
+                                <TouchableOpacity
+                                    style={[styles.emptyStateButton, { backgroundColor: '#8B5CF6' }]}
+                                    onPress={() => router.push('/programs/generate')}
+                                >
+                                    <Ionicons name="sparkles" size={20} color="#fff" />
+                                    <Text style={styles.emptyStateButtonText}>AI Generate</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.emptyStateButton, { backgroundColor: '#007AFF' }]}
+                                    onPress={() => router.push('/programs/create')}
+                                >
+                                    <Ionicons name="create" size={20} color="#fff" />
+                                    <Text style={styles.emptyStateButtonText}>Custom</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </LinearGradient>
+                    </View>
+                )}
+
+                {/* Quick Start Banner - Enhanced */}
+                {!isSelectionMode && routines.length > 0 && (
+                    <TouchableOpacity
+                        style={[
+                            styles.quickStartBanner,
+                            { opacity: activeWorkout ? 0.5 : 1 }
+                        ]}
+                        onPress={() => handleStartWorkout(null)}
+                        disabled={!!activeWorkout}
+                        activeOpacity={0.8}
+                    >
+                        <LinearGradient
+                            colors={[colors.accent.primary, colors.accent.secondary || colors.accent.primary]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.quickStartGradient}
+                        >
+                            <View style={styles.quickStartContent}>
+                                <View style={styles.quickStartIconContainer}>
+                                    <Ionicons name="flash" size={28} color="#fff" />
+                                </View>
+                                <View style={styles.quickStartTextContainer}>
+                                    <Text style={styles.quickStartTitle}>Quick Start</Text>
+                                    <Text style={styles.quickStartSubtitle}>
+                                        {activeWorkout ? 'Workout in progress' : 'Start a session now'}
+                                    </Text>
+                                </View>
+                                <View style={styles.quickStartArrow}>
+                                    <Ionicons name="arrow-forward" size={24} color="#fff" />
+                                </View>
+                            </View>
+                        </LinearGradient>
+                    </TouchableOpacity>
+                )}
+
+                {/* Routines List */}
+                {!isSelectionMode && routines.length > 0 && (
+                    <View style={styles.listContainer}>
+                        {displayedItems.map((item, index) => (
+                            <View key={`${item.type}-${item.data?.id || item.id || index}`}>
+                                {renderItem({ item })}
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                {/* Selection Mode */}
+                {isSelectionMode && (
+                    <View style={styles.listContainer}>
+                        {displayedItems
+                            .filter(item => item.type === 'routine' || item.type === 'program')
+                            .map((item, index) => (
+                                <View key={`select-${item.type}-${item.data?.id || item.id || index}`}>
+                                    {renderItem({ item })}
+                                </View>
+                            ))}
+                    </View>
+                )}
+            </Animated.ScrollView>
+
+            {/* Floating Action Button */}
+            {!isSelectionMode && (
+                <View style={styles.fabContainer}>
+                    {fabOpen && (
+                        <TouchableWithoutFeedback onPress={() => setFabOpen(false)}>
+                            <View style={styles.fabBackdrop} />
+                        </TouchableWithoutFeedback>
+                    )}
+
+                    <Animated.View style={[styles.fabMenu, { transform: [{ scale: fabScale }] }]}>
+                        {fabOpen && (
+                            <>
+                                <TouchableOpacity
+                                    style={[styles.fabAction, { backgroundColor: '#8B5CF6' }]}
+                                    onPress={() => handleFabAction('ai')}
+                                    activeOpacity={0.8}
+                                >
+                                    <LinearGradient
+                                        colors={['#8B5CF6', '#7C3AED']}
+                                        style={styles.fabActionGradient}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                    >
+                                        <Ionicons name="sparkles" size={22} color="#fff" />
+                                        <Text style={styles.fabActionLabel}>AI Generate</Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.fabAction, { backgroundColor: '#FF2D55' }]}
+                                    onPress={() => handleFabAction('explore')}
+                                    activeOpacity={0.8}
+                                >
+                                    <LinearGradient
+                                        colors={['#FF2D55', '#FF0A3D']}
+                                        style={styles.fabActionGradient}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                    >
+                                        <Ionicons name="compass" size={22} color="#fff" />
+                                        <Text style={styles.fabActionLabel}>Explore</Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.fabAction, { backgroundColor: '#007AFF' }]}
+                                    onPress={() => handleFabAction('custom')}
+                                    activeOpacity={0.8}
+                                >
+                                    <LinearGradient
+                                        colors={['#007AFF', '#0051D5']}
+                                        style={styles.fabActionGradient}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                    >
+                                        <Ionicons name="create" size={22} color="#fff" />
+                                        <Text style={styles.fabActionLabel}>Custom</Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.fabAction, { backgroundColor: '#10B981' }]}
+                                    onPress={() => handleFabAction('log')}
+                                    activeOpacity={0.8}
+                                >
+                                    <LinearGradient
+                                        colors={['#10B981', '#059669']}
+                                        style={styles.fabActionGradient}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                    >
+                                        <Ionicons name="calendar" size={22} color="#fff" />
+                                        <Text style={styles.fabActionLabel}>Log Past</Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </>
+                        )}
+                    </Animated.View>
+
+                    <TouchableOpacity
+                        style={[styles.fab, { backgroundColor: colors.accent.primary }]}
+                        onPress={() => setFabOpen(!fabOpen)}
+                        activeOpacity={0.8}
+                    >
+                        <LinearGradient
+                            colors={[colors.accent.primary, colors.accent.secondary || colors.accent.primary]}
+                            style={styles.fabGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                        >
+                            <Animated.View style={{ transform: [{ rotate: fabRotate }] }}>
+                                <Ionicons name="add" size={28} color="#fff" />
+                            </Animated.View>
+                        </LinearGradient>
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {/* Modals remain the same */}
             <Modal
                 visible={!!selectedProgram}
                 animationType="slide"
@@ -420,7 +565,6 @@ export default function RoutinesScreen() {
                 }}
             >
                 <View style={[styles.programModalContainer, { backgroundColor: colors.background.primary }]}>
-                    {/* Modal Header */}
                     <View style={[styles.modalHeader, { backgroundColor: colors.background.elevated }]}>
                         {isSelectionMode ? (
                             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -455,9 +599,9 @@ export default function RoutinesScreen() {
                     </View>
 
                     <ScrollView contentContainerStyle={{ padding: 20 }}>
-                        {modalRoutines.map((routine, index) => (
+                        {modalRoutines.map((routine) => (
                             <View key={routine.id} style={{ marginBottom: 16 }}>
-                                <RoutineCard 
+                                <RoutineCard
                                     item={routine}
                                     analytics={routineAnalytics[routine.name]}
                                     isSelectable={true}
@@ -474,8 +618,7 @@ export default function RoutinesScreen() {
                 </View>
             </Modal>
 
-            {/* Delete Confirmation Modal */}
-            < Modal
+            <Modal
                 visible={!!deleteId}
                 animationType="fade"
                 transparent={true}
@@ -485,7 +628,7 @@ export default function RoutinesScreen() {
                     <View style={[styles.confirmModal, { backgroundColor: colors.background.elevated }]}>
                         <Text style={[styles.confirmTitle, { color: colors.text.primary }]}>Delete Routine?</Text>
                         <Text style={[styles.confirmText, { color: colors.text.secondary }]}>
-                            Are you sure you want to delete this routine? This action cannot be undone.
+                            This action cannot be undone.
                         </Text>
                         <View style={styles.confirmButtons}>
                             <TouchableOpacity
@@ -503,9 +646,8 @@ export default function RoutinesScreen() {
                         </View>
                     </View>
                 </View>
-            </Modal >
+            </Modal>
 
-            {/* Delete Program Confirmation Modal */}
             <Modal
                 visible={!!deleteProgramId}
                 animationType="fade"
@@ -516,7 +658,7 @@ export default function RoutinesScreen() {
                     <View style={[styles.confirmModal, { backgroundColor: colors.background.elevated }]}>
                         <Text style={[styles.confirmTitle, { color: colors.text.primary }]}>Delete Program?</Text>
                         <Text style={[styles.confirmText, { color: colors.text.secondary }]}>
-                            Are you sure you want to delete this entire program? All workouts within it will be removed.
+                            All workouts in this program will be removed.
                         </Text>
                         <View style={styles.confirmButtons}>
                             <TouchableOpacity
@@ -535,7 +677,15 @@ export default function RoutinesScreen() {
                     </View>
                 </View>
             </Modal>
-        </View >
+
+            <LogPastWorkoutModal
+                visible={showPastLogModal}
+                onClose={() => {
+                    setShowPastLogModal(false);
+                    loadRoutines();
+                }}
+            />
+        </View>
     );
 }
 
@@ -546,191 +696,231 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-end',
         paddingHorizontal: spacing.xl,
-        marginBottom: spacing.xl,
+        paddingBottom: spacing.lg,
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
+    },
+    greeting: {
+        fontSize: 14,
+        marginBottom: 4,
     },
     title: {
-        fontSize: 32,
+        fontSize: 28,
         fontWeight: '800',
     },
-    subtitle: {
+    headerStats: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    statBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        gap: 6,
+    },
+    statText: {
         fontSize: 14,
+        fontWeight: '600',
+    },
+    scrollContent: {
+        paddingBottom: 100,
+    },
+    statsRow: {
+        flexDirection: 'row',
+        paddingHorizontal: spacing.xl,
+        gap: spacing.md,
+        marginBottom: spacing.xl,
+    },
+    statCard: {
+        flex: 1,
+        borderRadius: 16,
+        overflow: 'hidden',
+    },
+    statCardGradient: {
+        padding: spacing.md,
+        alignItems: 'center',
+    },
+    statValue: {
+        fontSize: 24,
+        fontWeight: '800',
+        marginTop: 8,
+    },
+    statLabel: {
+        fontSize: 12,
         marginTop: 4,
     },
-    addButton: {
-        width: 48,
-        height: 48,
+    sectionHeaderContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: spacing.xl,
+        marginTop: spacing.lg,
+        marginBottom: spacing.md,
+        gap: 12,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    sectionLine: {
+        flex: 1,
+        height: 1,
+        opacity: 0.2,
+    },
+    listContainer: {
+        paddingHorizontal: spacing.xl,
+        gap: 12,
+    },
+    emptyStateContainer: {
+        marginHorizontal: spacing.xl,
+        marginVertical: spacing.xl,
+    },
+    emptyStateGradient: {
+        padding: spacing.xl,
         borderRadius: 24,
+        alignItems: 'center',
+    },
+    emptyStateIconContainer: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: spacing.lg,
+    },
+    emptyStateTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        marginBottom: spacing.sm,
+    },
+    emptyStateSubtitle: {
+        fontSize: 14,
+        textAlign: 'center',
+        marginBottom: spacing.xl,
+    },
+    emptyStateActions: {
+        flexDirection: 'row',
+        gap: spacing.md,
+    },
+    emptyStateButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        borderRadius: 30,
+        gap: 8,
+    },
+    emptyStateButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    quickStartBanner: {
+        marginHorizontal: spacing.xl,
+        marginBottom: spacing.xl,
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 6,
+    },
+    quickStartGradient: {
+        padding: 4,
+    },
+    quickStartContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        gap: 16,
+    },
+    quickStartIconContainer: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: 'rgba(255,255,255,0.2)',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    content: {
-        paddingHorizontal: spacing.xl,
-        paddingBottom: 120, // Space for banner
-    },
-    quickActions: {
-        flexDirection: 'row',
-        gap: spacing.md,
-        marginBottom: spacing.xxl,
-    },
-    actionCard: {
+    quickStartTextContainer: {
         flex: 1,
-        padding: spacing.lg,
-        borderRadius: borderRadius.lg,
-        borderWidth: 1,
-        alignItems: 'flex-start',
     },
-    disabledAction: {
-        opacity: 0.5,
+    quickStartTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#fff',
+        marginBottom: 2,
     },
-    actionIcon: {
+    quickStartSubtitle: {
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.9)',
+    },
+    quickStartArrow: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: spacing.md,
-    },
-    actionTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 4,
-    },
-    actionSubtitle: {
-        fontSize: 12,
-    },
-    quickStartBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: spacing.lg,
-        borderRadius: borderRadius.lg,
-        borderWidth: 1,
-        marginBottom: spacing.xxl,
-        overflow: 'hidden',
-    },
-    createBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: spacing.lg,
-        borderRadius: borderRadius.lg,
-        borderWidth: 1,
-        marginBottom: spacing.lg,
-        overflow: 'hidden',
-    },
-    sectionTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: spacing.lg,
-    },
-    listContainer: {
-        paddingBottom: spacing.xl,
-    },
-    card: {
-        borderRadius: borderRadius.lg,
-        borderWidth: 1,
-        marginBottom: 12,
-        overflow: 'hidden',
-    },
-    cardContent: {
-        padding: 16,
-    },
-    cardHeaderRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    miniIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.2)',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    cardTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 2,
-    },
-    cardSubtitle: {
-        fontSize: 13,
-    },
-    actionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    iconButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    startBtn: {
-        flex: 1,
-        height: 36,
-        borderRadius: 18,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginLeft: 8,
-    },
-    startBtnText: {
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        marginTop: 40,
-        opacity: 0.7,
-    },
-    emptyText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginTop: spacing.lg,
-        marginBottom: 8,
-    },
-    emptySubtext: {
-        fontSize: 14,
-        textAlign: 'center',
-        maxWidth: 250,
-    },
-    activeBannerContainer: {
+    fabContainer: {
         position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: spacing.lg,
-        paddingBottom: 30,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(150,150,150,0.1)',
+        bottom: 24,
+        right: 24,
+        alignItems: 'flex-end',
     },
-    activeBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: spacing.lg,
-        borderRadius: borderRadius.lg,
+    fabBackdrop: {
+        position: 'absolute',
+        top: -SCREEN_HEIGHT,
+        left: -SCREEN_WIDTH,
+        right: -SCREEN_WIDTH,
+        bottom: -SCREEN_HEIGHT,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+    },
+    fabMenu: {
+        alignItems: 'flex-end',
+        marginBottom: 16,
+        gap: 12,
+    },
+    fabAction: {
+        borderRadius: 30,
+        overflow: 'hidden',
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
         elevation: 5,
     },
-    activeBannerTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 2,
+    fabActionGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        gap: 8,
     },
-    activeBannerSubtitle: {
-        fontSize: 12,
-        opacity: 0.9,
+    fabActionLabel: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
     },
-    activeBannerButton: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: 'white',
+    fab: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        overflow: 'hidden',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 10,
+    },
+    fabGradient: {
+        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -744,7 +934,7 @@ const styles = StyleSheet.create({
     confirmModal: {
         width: '100%',
         padding: spacing.xl,
-        borderRadius: borderRadius.xl,
+        borderRadius: 24,
         alignItems: 'center',
     },
     confirmTitle: {
@@ -766,36 +956,12 @@ const styles = StyleSheet.create({
     confirmButton: {
         flex: 1,
         paddingVertical: spacing.md,
-        borderRadius: borderRadius.md,
+        borderRadius: 12,
         alignItems: 'center',
     },
     confirmButtonText: {
         fontSize: 16,
         fontWeight: '600',
-    },
-    // New Styles for Programs
-    officialBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        gap: 4
-    },
-    officialText: {
-        fontSize: 10,
-        fontWeight: 'bold',
-        color: '#fff',
-        letterSpacing: 0.5
-    },
-    programDeleteBtn: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginLeft: 8
     },
     programModalContainer: {
         flex: 1,
@@ -826,5 +992,3 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
 });
-
-

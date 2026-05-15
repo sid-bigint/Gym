@@ -51,6 +51,11 @@ export const useUserStore = create<UserState>((set, get) => ({
                         workoutType: dbUser.workoutType,
                         workoutDuration: dbUser.workoutDuration,
                         workoutFrequency: dbUser.workoutFrequency,
+                        xp: dbUser.xp ?? 0,
+                        level: dbUser.level ?? 1,
+                        streakShields: dbUser.streakShields ?? 0,
+                        lastShieldAwardDate: dbUser.lastShieldAwardDate,
+                        badges: dbUser.badges ? JSON.parse(dbUser.badges) : [],
                     }
                 });
             } else {
@@ -93,6 +98,11 @@ export const useUserStore = create<UserState>((set, get) => ({
                             workoutType: newUser.workoutType,
                             workoutDuration: newUser.workoutDuration,
                             workoutFrequency: newUser.workoutFrequency,
+                            xp: newUser.xp ?? 0,
+                            level: newUser.level ?? 1,
+                            streakShields: newUser.streakShields ?? 0,
+                            lastShieldAwardDate: newUser.lastShieldAwardDate,
+                            badges: newUser.badges ? JSON.parse(newUser.badges) : [],
                         }
                     });
                 }
@@ -133,6 +143,11 @@ export const useUserStore = create<UserState>((set, get) => ({
                 workoutType: updatedUser.workoutType ?? null,
                 workoutDuration: updatedUser.workoutDuration != null ? Number(updatedUser.workoutDuration) : null,
                 workoutFrequency: updatedUser.workoutFrequency != null ? Number(updatedUser.workoutFrequency) : null,
+                xp: updatedUser.xp ?? null,
+                level: updatedUser.level ?? null,
+                streakShields: updatedUser.streakShields ?? null,
+                lastShieldAwardDate: updatedUser.lastShieldAwardDate ?? null,
+                badges: updatedUser.badges ? JSON.stringify(updatedUser.badges) : null,
             });
 
             // 2. Cloud Sync (Background Backup)

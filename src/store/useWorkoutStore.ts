@@ -1,4 +1,4 @@
-import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek, subDays } from 'date-fns';
+import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek, subDays, addDays } from 'date-fns';
 import { create } from 'zustand';
 import type { MuscleGroup } from './useMuscleStore';
 import { getDatabase } from '../db/database';
@@ -25,7 +25,7 @@ function differenceInCalendarDaysSafe(later: Date, earlier: Date) {
     return Math.round((safeLater.getTime() - safeEarlier.getTime()) / 86400000);
 }
 
-function buildStreakStats(dates: string[]): WorkoutStreak {
+function buildStreakStats(dates: string[], streakShields: number = 0): WorkoutStreak {
     if (dates.length === 0) {
         return DEFAULT_STREAK;
     }
@@ -40,32 +40,55 @@ function buildStreakStats(dates: string[]): WorkoutStreak {
     const todayCompleted = uniqueDays.includes(todayKey);
 
     let current = 0;
-    if (lastWorkoutDate === todayKey || lastWorkoutDate === yesterdayKey) {
-        current = 1;
-        for (let i = 1; i < uniqueDays.length; i++) {
-            const previous = new Date(`${uniqueDays[i - 1]}T00:00:00`);
-            const next = new Date(`${uniqueDays[i]}T00:00:00`);
-            if (differenceInCalendarDaysSafe(previous, next) === 1) {
-                current += 1;
-            } else {
-                break;
-            }
+    let shieldsRemaining = streakShields;
+    
+    // Start from today or yesterday
+    let checkDate = new Date();
+    if (!todayCompleted) {
+        checkDate = subDays(new Date(), 1);
+    }
+    
+    while (true) {
+        const checkKey = toDayKey(checkDate);
+        if (uniqueDays.includes(checkKey)) {
+            current++;
+            checkDate = subDays(checkDate, 1);
+        } else if (shieldsRemaining > 0 && current > 0) {
+            // Use a shield for a missed day ONLY if we already have a streak going
+            // (You can't use a shield to start a streak)
+            shieldsRemaining--;
+            current++;
+            checkDate = subDays(checkDate, 1);
+        } else {
+            break;
         }
     }
 
-    let longest = uniqueDays.length > 0 ? 1 : 0;
-    let running = uniqueDays.length > 0 ? 1 : 0;
-    for (let i = 1; i < uniqueDays.length; i++) {
-        const previous = new Date(`${uniqueDays[i - 1]}T00:00:00`);
-        const next = new Date(`${uniqueDays[i]}T00:00:00`);
-        if (differenceInCalendarDaysSafe(previous, next) === 1) {
-            running += 1;
-        } else {
-            longest = Math.max(longest, running);
-            running = 1;
+    let longest = 0;
+    let running = 0;
+    let tempShields = streakShields;
+    let tempDate = parsedDays[parsedDays.length - 1]; // Oldest date
+
+    if (parsedDays.length > 0) {
+        let maxDate = new Date(); // Today
+        let iterDate = tempDate;
+        
+        while (iterDate <= maxDate) {
+            const iterKey = toDayKey(iterDate);
+            if (uniqueDays.includes(iterKey)) {
+                running++;
+                longest = Math.max(longest, running);
+            } else if (tempShields > 0 && running > 0) {
+                tempShields--;
+                running++;
+                longest = Math.max(longest, running);
+            } else {
+                running = 0;
+                tempShields = streakShields; // Reset shields for the next streak calculation
+            }
+            iterDate = addDays(iterDate, 1);
         }
     }
-    longest = Math.max(longest, running);
 
     const weekStart = startOfWeek(today, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
@@ -107,7 +130,7 @@ interface WorkoutState {
     togglePinRoutine: (id: number) => Promise<void>;
     deleteExercise: (id: number) => Promise<void>;
 
-    saveWorkoutLog: (routineId: number | null, routineName: string, duration: number, notes: string, sets: any[]) => Promise<number>;
+    saveWorkoutLog: (routineId: number | null, routineName: string, duration: number, notes: string, sets: any[], customDate?: Date) => Promise<number>;
     deleteWorkoutLog: (id: number) => Promise<void>;
     getLastWorkoutLog: (routineId: number) => Promise<WorkoutLog | null>;
 
@@ -454,7 +477,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
         }
     },
 
-    saveWorkoutLog: async (routineId: number | null, routineName: string, duration: number, notes: string, sets: any[]) => {
+    saveWorkoutLog: async (routineId: number | null, routineName: string, duration: number, notes: string, sets: any[], customDate?: Date) => {
         try {
             const db = await getDatabase();
             let sessionId = 0;
@@ -465,7 +488,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             try {
                 const safeDuration = Number(duration) || 0; // In Seconds
                 const safeNotes = notes ? String(notes) : '';
-                const safeDate = new Date().toISOString();
+                const safeDate = customDate ? customDate.toISOString() : new Date().toISOString();
                 const safeName = routineName?.trim() || 'Quick Workout';
 
                 const { useUserStore } = require('./useUserStore');
@@ -532,7 +555,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
 
                     if (statsMap.size > 0 && userId) {
                         const { format } = require('date-fns');
-                        const dateStr = format(new Date(), 'yyyy-MM-dd');
+                        const dateStr = format(customDate || new Date(), 'yyyy-MM-dd');
                         
                         console.log(`Preparing muscle stats for local date: ${dateStr}`);
                         
@@ -578,6 +601,25 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                 await get().loadStreak();
                 set({ history: refreshedHistory });
                 CloudSyncService.scheduleBackup('workout-saved');
+
+                // --- Gamification ---
+                try {
+                    const { GamificationService } = require('../services/GamificationService');
+                    
+                    // Calculate total volume for badges
+                    let totalVolume = 0;
+                    sets.forEach(s => {
+                        totalVolume += (Number(s.weight) || 0) * (Number(s.reps) || 0);
+                    });
+                    
+                    const workoutDetails = {
+                        duration: safeDuration / 60, // Convert seconds to minutes
+                        volume: totalVolume
+                    };
+                    await GamificationService.evaluateWorkoutBadges(workoutDetails, refreshedHistory.length);
+                } catch(e) {
+                    console.warn("Gamification failed", e);
+                }
 
             } finally {
                 // Re-enable FK constraints
@@ -917,8 +959,32 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                 [userId, 'COMPLETED']
             );
 
-            const streak = buildStreakStats(sessions.map((session) => session.date));
+            const streakShields = userStore.user?.streakShields || 0;
+            const streak = buildStreakStats(sessions.map((session) => session.date), streakShields);
             set({ streak });
+
+            // Check if they earned a new shield
+            try {
+                const { GamificationService } = require('../services/GamificationService');
+                
+                // Have we consumed shields?
+                // Wait, to safely consume a shield, we should check if yesterday was missed but current > 0 and todayCompleted is false
+                const todayStr = format(new Date(), 'yyyy-MM-dd');
+                const yesterdayStr = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+                const dates = sessions.map(s => s.date);
+                
+                if (streakShields > 0 && streak.current > 0 && !dates.includes(todayStr) && !dates.includes(yesterdayStr)) {
+                     // Yesterday was missed, but current > 0 means a shield WAS used in buildStreakStats!
+                     // Actually, we must do this exactly:
+                     const consumed = await GamificationService.consumeStreakShield(yesterdayStr);
+                     if (consumed) {
+                         // Reload because we inserted a SHIELDED session
+                         setTimeout(() => get().loadStreak(), 500);
+                     }
+                }
+
+                await GamificationService.checkStreakShields(streak.current);
+            } catch(e) {}
         } catch (e) {
             console.error("Failed to load streak", e);
             set({ streak: DEFAULT_STREAK });

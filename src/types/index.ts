@@ -22,6 +22,13 @@ export interface UserProfile {
     workoutType?: string | null;      // 'weightlifting' | 'cardio' | 'hiit' | 'yoga' | 'sports'
     workoutDuration?: number | null;  // minutes per session
     workoutFrequency?: number | null; // days per week
+
+    // Gamification
+    xp?: number;
+    level?: number;
+    streakShields?: number;
+    lastShieldAwardDate?: string | null;
+    badges?: string[];
 }
 
 export type ActivityLevel =

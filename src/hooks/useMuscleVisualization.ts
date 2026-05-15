@@ -250,7 +250,15 @@ export function useMuscleRecovery() {
 
             try {
                 setLoading(true);
-                return await MuscleRepository.getMuscleRecoveryHistory(userId, muscleGroup, days);
+                const { format, subDays } = require('date-fns');
+                const endDate = format(new Date(), 'yyyy-MM-dd');
+                const startDate = format(subDays(new Date(), days), 'yyyy-MM-dd');
+                const db = await require('@/db/database').getDatabase();
+                const result = await db.getAllAsync(
+                    `SELECT * FROM muscle_recovery WHERE user_id = ? AND muscle_group = ? AND date >= ? ORDER BY date DESC`,
+                    [userId, muscleGroup, startDate]
+                );
+                return result;
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to load recovery history');
                 console.error('Error loading recovery history:', err);
@@ -285,7 +293,10 @@ export function useMuscleAnalytics() {
 
             try {
                 setLoading(true);
-                const stats = await MuscleRepository.getMuscleStatsForPeriod(userId, days);
+                const { format, subDays } = require('date-fns');
+                const endDate = format(new Date(), 'yyyy-MM-dd');
+                const startDate = format(subDays(new Date(), days), 'yyyy-MM-dd');
+                const stats = await MuscleRepository.getMuscleStatsForDateRange(userId, startDate, endDate);
 
                 const volumeMap = new Map<MuscleGroup, number>();
                 stats.forEach((stat: any) => {
@@ -310,7 +321,10 @@ export function useMuscleAnalytics() {
 
             try {
                 setLoading(true);
-                const stats = await MuscleRepository.getMuscleStatsForPeriod(userId, days);
+                const { format, subDays } = require('date-fns');
+                const endDate = format(new Date(), 'yyyy-MM-dd');
+                const startDate = format(subDays(new Date(), days), 'yyyy-MM-dd');
+                const stats = await MuscleRepository.getMuscleStatsForDateRange(userId, startDate, endDate);
 
                 const frequencyMap = new Map<MuscleGroup, Set<string>>();
                 stats.forEach((stat: any) => {

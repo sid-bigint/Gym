@@ -22,6 +22,11 @@ export interface User {
     workoutType: string | null;
     workoutDuration: number | null;
     workoutFrequency: number | null;
+    xp: number | null;
+    level: number | null;
+    streakShields: number | null;
+    lastShieldAwardDate: string | null;
+    badges: string | null;
     createdAt?: string | null;
 }
 
@@ -46,6 +51,11 @@ export interface NewUser {
     workoutType?: string | null;
     workoutDuration?: number | null;
     workoutFrequency?: number | null;
+    xp?: number | null;
+    level?: number | null;
+    streakShields?: number | null;
+    lastShieldAwardDate?: string | null;
+    badges?: string | null;
 }
 
 function mapDbUser(row: any): User {
@@ -70,6 +80,11 @@ function mapDbUser(row: any): User {
         workoutType: row.workout_type,
         workoutDuration: row.workout_duration,
         workoutFrequency: row.workout_frequency,
+        xp: row.xp,
+        level: row.level,
+        streakShields: row.streak_shields,
+        lastShieldAwardDate: row.last_shield_award_date,
+        badges: row.badges,
         createdAt: row.created_at,
     };
 }
@@ -95,8 +110,8 @@ export const UserRepository = {
                     name, gender, age, height, weight, activity_level, goal,
                     target_calories, target_protein, target_carbs, target_fats, picture,
                     body_fat_percent, sleep_hours, meals_per_day, goal_intensity,
-                    workout_type, workout_duration, workout_frequency
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    workout_type, workout_duration, workout_frequency, xp, level, streak_shields, last_shield_award_date, badges
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     validatedData.name ?? null,
                     validatedData.gender ?? null,
@@ -117,6 +132,11 @@ export const UserRepository = {
                     validatedData.workoutType ?? null,
                     validatedData.workoutDuration ?? null,
                     validatedData.workoutFrequency ?? null,
+                    validatedData.xp ?? 0,
+                    validatedData.level ?? 1,
+                    validatedData.streakShields ?? 0,
+                    validatedData.lastShieldAwardDate ?? null,
+                    validatedData.badges ?? null,
                 ]
             );
             const created = await db.getFirstAsync<any>('SELECT * FROM users WHERE id = ?', [result.lastInsertRowId]);
@@ -154,6 +174,11 @@ export const UserRepository = {
                 workoutType: 'workout_type',
                 workoutDuration: 'workout_duration',
                 workoutFrequency: 'workout_frequency',
+                xp: 'xp',
+                level: 'level',
+                streakShields: 'streak_shields',
+                lastShieldAwardDate: 'last_shield_award_date',
+                badges: 'badges',
             };
 
             Object.entries(validatedUpdates).forEach(([key, value]) => {

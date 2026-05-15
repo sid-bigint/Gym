@@ -12,7 +12,7 @@ export default function Index() {
 
     // Not authenticated - go to login
     if (!isAuthenticated) {
-        return <Redirect href="/onboarding" />;
+        return <Redirect href="/auth/login" />;
     }
 
     // Authenticated but no user profile - go to onboarding

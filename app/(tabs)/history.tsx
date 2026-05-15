@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, ScrollView, Dimensions } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { useNutritionStore } from '../../src/store/useNutritionStore';
 import { useProgressStore } from '../../src/store/useProgressStore';
@@ -53,9 +54,11 @@ export default function ProgressScreen() {
         setRefreshing(false);
     };
 
-    useEffect(() => {
-        loadHistory();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            loadHistory();
+        }, [])
+    );
 
     const chartData = useMemo(() => {
         if (workouts.length === 0) return null;

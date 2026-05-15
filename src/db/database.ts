@@ -77,6 +77,11 @@ export async function initDatabase() {
         { name: 'workout_type', type: 'TEXT' },
         { name: 'workout_duration', type: 'INTEGER' },
         { name: 'workout_frequency', type: 'INTEGER' },
+        { name: 'xp', type: 'INTEGER DEFAULT 0' },
+        { name: 'level', type: 'INTEGER DEFAULT 1' },
+        { name: 'streak_shields', type: 'INTEGER DEFAULT 0' },
+        { name: 'last_shield_award_date', type: 'TEXT' },
+        { name: 'badges', type: 'TEXT' },
       ];
 
       for (const col of newColumns) {
@@ -86,7 +91,7 @@ export async function initDatabase() {
         }
       }
     } catch (e) {
-      console.warn("Enhanced calculator migration failed:", e);
+      console.warn("Enhanced calculator/gamification migration failed:", e);
     }
 
     // 3. Migration: Add user_id to relevant tables if missing
@@ -176,6 +181,11 @@ export async function initDatabase() {
                 workout_type TEXT,
                 workout_duration INTEGER,
                 workout_frequency INTEGER,
+                xp INTEGER DEFAULT 0,
+                level INTEGER DEFAULT 1,
+                streak_shields INTEGER DEFAULT 0,
+                last_shield_award_date TEXT,
+                badges TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
 

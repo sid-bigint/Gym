@@ -44,20 +44,15 @@ export default function WorkoutSummaryScreen() {
             // getWorkoutHistory returns summary, but we need details for comparison)
             // Let's rely on calculating "improvements" by checking full history for each exercise.
 
-            const db_sets = await getSetsForWorkout(currentWorkout.id);
-            const volume = db_sets.reduce((acc: number, s: any) => acc + (s.weight * s.reps), 0);
+            const db_sets = currentWorkout.sets || [];
+            const volume = db_sets.reduce((acc: number, s: any) => acc + (Number(s.weight || 0) * Number(s.reps || 0)), 0);
 
             // 3. Comparisons
             const exStatsPromises = currentWorkout.exercises.map(async (exName: string) => {
-                // Find exercise ID (Need a way to get ID from Name, or better, log preserved IDs)
-                // Since getWorkoutHistory returns names, let's fix that or fetch sets first.
-                // The DB logic in getWorkoutHistory returns Names. 
-                // Let's refactor slightly: we loop through *sets* of this workout.
-
-                const exerciseSets = db_sets.filter((s: any) => s.exercise_name === exName);
+                const exerciseSets = db_sets.filter((s: any) => s.exerciseName === exName);
                 if (exerciseSets.length === 0) return null;
 
-                const exId = exerciseSets[0].exercise_id;
+                const exId = exerciseSets[0].exerciseId;
                 const fullHistory = await getExerciseHistory(exId);
 
                 // Compare with previous session (not just any set, but the last SESSION's sets)
@@ -68,23 +63,19 @@ export default function WorkoutSummaryScreen() {
                 let isPR = false;
 
                 if (prevHistory.length > 0) {
-                    // Simple logic: Compare Max Weight of this session vs Max Weight of ALL previous (PR)
-                    const currentMax = Math.max(...exerciseSets.map((s: any) => s.weight));
-                    const prevMax = Math.max(...prevHistory.map((s: any) => s.weight));
+                    const currentMax = Math.max(...exerciseSets.map((s: any) => Number(s.weight || 0)));
+                    const prevMax = Math.max(...prevHistory.map((s: any) => Number(s.weight || 0)));
 
                     if (currentMax > prevMax && prevMax > 0) isPR = true;
 
-                    // Compare vs Last Session
-                    // Group by workout_id to find last session
                     const lastSessionId = prevHistory[prevHistory.length - 1].session_id;
                     const lastSessionSets = prevHistory.filter((h: any) => h.session_id === lastSessionId);
-                    const lastMax = Math.max(...lastSessionSets.map((s: any) => s.weight));
+                    const lastMax = Math.max(...lastSessionSets.map((s: any) => Number(s.weight || 0)));
 
                     if (currentMax > lastMax) improvement = 'Heavier';
                     else {
-                        // Check volume
-                        const curVol = exerciseSets.reduce((a: number, b: any) => a + (b.weight * b.reps), 0);
-                        const lastVol = lastSessionSets.reduce((a: number, b: any) => a + (b.weight * b.reps), 0);
+                        const curVol = exerciseSets.reduce((a: number, b: any) => a + (Number(b.weight || 0) * Number(b.reps || 0)), 0);
+                        const lastVol = lastSessionSets.reduce((a: number, b: any) => a + (Number(b.weight || 0) * Number(b.reps || 0)), 0);
                         if (curVol > lastVol) improvement = 'More Volume';
                     }
                 }
@@ -92,10 +83,10 @@ export default function WorkoutSummaryScreen() {
                 return {
                     name: exName,
                     sets: exerciseSets.length,
-                    bestWeight: Math.max(...exerciseSets.map((s: any) => s.weight)),
+                    bestWeight: Math.max(...exerciseSets.map((s: any) => Number(s.weight || 0))),
                     improvement,
                     isPR,
-                    totalVolume: exerciseSets.reduce((a: number, b: any) => a + (b.weight * b.reps), 0)
+                    totalVolume: exerciseSets.reduce((a: number, b: any) => a + (Number(b.weight || 0) * Number(b.reps || 0)), 0)
                 };
             });
 
@@ -112,27 +103,7 @@ export default function WorkoutSummaryScreen() {
         setIsLoading(false);
     };
 
-    // Helper to get sets directly (since store method might be limited)
-    // Actually we can use the store's getExerciseHistory to reverse engineer or just add a getWorkoutDetails to store.
-    // For now, let's assume we can fetch it via a direct call or duplicate logic if needed.
-    // Wait, useWorkoutStore has no 'getWorkoutDetails'. 
-    // I will mock fetch it using getExerciseHistory if needed, or just trust getWorkoutHistory returned most data.
-    // Actually, getWorkoutHistory returns `exercises` as string array.
-    // Let's implement a quick helper here that re-uses getDatabase logic if possible, 
-    // OR better, update the store to provide `getWorkoutDetails`.
-    // FOR EXPEDIENCY: I will assume `getSetsForWorkout` is available or I can't easily access DB here directly without importing `getDatabase`.
-    // I will import `getDatabase` here as it's cleaner.
-
-    const getSetsForWorkout = async (wid: number) => {
-        const { getExerciseHistory } = useWorkoutStore.getState();
-        // We can't access DB directly if not imported.
-        // Let's import getDatabase from source if possible.
-        // Or better, let's just add `getWorkoutDetails` to store in next step if this fails.
-        // But I can import `getDatabase` from `../../src/db/database`.
-        const { getDatabase } = require('../../src/db/database');
-        const db = await getDatabase();
-        return await db.getAllAsync('SELECT * FROM workout_sets_v2 WHERE session_id = ?', [wid]);
-    };
+    // Helper to get sets directly is no longer needed since currentWorkout.sets has everything.
 
     const handleDone = () => {
         router.replace('/(tabs)/routines');

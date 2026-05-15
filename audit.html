@@ -1,0 +1,2398 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATHLATOS — Onboarding UX Strategy</title>
+    <style>
+        :root {
+            --green: #22C55E;
+            --green-dim: rgba(34, 197, 94, 0.12);
+            --green-border: rgba(34, 197, 94, 0.25);
+            --bg: #080A0C;
+            --surface: #0E1114;
+            --surface2: #141820;
+            --border: rgba(255, 255, 255, 0.07);
+            --text: #F0F2F4;
+            --muted: rgba(255, 255, 255, 0.4);
+            --muted2: rgba(255, 255, 255, 0.2);
+            --red: #EF4444;
+            --amber: #F59E0B;
+            --blue: #3B82F6;
+            --purple: #8B5CF6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* NAV */
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(8, 10, 12, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            gap: 0;
+            overflow-x: auto;
+            height: 52px;
+        }
+
+        nav a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            padding: 0 16px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            border-bottom: 2px solid transparent;
+            transition: color 0.2s, border-color 0.2s;
+        }
+
+        nav a:hover {
+            color: var(--text);
+        }
+
+        nav a.active {
+            color: var(--green);
+            border-bottom-color: var(--green);
+        }
+
+        nav .logo {
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            color: var(--text);
+            margin-right: 24px;
+            padding: 0;
+            border-bottom: none;
+        }
+
+        nav .logo span {
+            color: var(--green);
+        }
+
+        /* LAYOUT */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 60px 32px;
+        }
+
+        section {
+            margin-bottom: 80px;
+        }
+
+        /* HERO */
+        .hero {
+            text-align: center;
+            padding: 80px 32px 60px;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -40%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 400px;
+            background: radial-gradient(ellipse, rgba(34, 197, 94, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            background: var(--green-dim);
+            border: 1px solid var(--green-border);
+            color: var(--green);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 6px 16px;
+            border-radius: 100px;
+            margin-bottom: 24px;
+        }
+
+        .hero h1 {
+            font-size: clamp(28px, 5vw, 48px);
+            font-weight: 900;
+            letter-spacing: -1px;
+            line-height: 1.1;
+            margin-bottom: 16px;
+        }
+
+        .hero h1 span {
+            color: var(--green);
+        }
+
+        .hero p {
+            font-size: 16px;
+            color: var(--muted);
+            max-width: 540px;
+            margin: 0 auto 32px;
+        }
+
+        .hero-meta {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            flex-wrap: wrap;
+        }
+
+        .hero-meta-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .hero-meta-num {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--green);
+        }
+
+        .hero-meta-label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* SECTION HEADERS */
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--green);
+            margin-bottom: 12px;
+        }
+
+        h2 {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+
+        .section-intro {
+            font-size: 15px;
+            color: var(--muted);
+            max-width: 620px;
+            margin-bottom: 40px;
+            line-height: 1.7;
+        }
+
+        h3 {
+            font-size: 17px;
+            font-weight: 800;
+            margin-bottom: 10px;
+            margin-top: 32px;
+        }
+
+        p {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.75;
+            margin-bottom: 12px;
+        }
+
+        p strong {
+            color: var(--text);
+            font-weight: 700;
+        }
+
+        /* AUDIT TABLE */
+        .audit-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .audit-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .audit-card-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .step-badge {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 900;
+            flex-shrink: 0;
+        }
+
+        .step-badge.keep {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--green);
+        }
+
+        .step-badge.warn {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--amber);
+        }
+
+        .step-badge.cut {
+            background: rgba(239, 68, 68, 0.12);
+            color: var(--red);
+        }
+
+        .audit-card-header h3 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 800;
+        }
+
+        .verdict {
+            margin-left: auto;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 5px 12px;
+            border-radius: 100px;
+        }
+
+        .verdict.keep {
+            background: rgba(34, 197, 94, 0.12);
+            color: var(--green);
+        }
+
+        .verdict.restructure {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--amber);
+        }
+
+        .verdict.remove {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--red);
+        }
+
+        .audit-body {
+            padding: 20px 24px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        @media (max-width: 600px) {
+            .audit-body {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .audit-pill {
+            background: var(--surface2);
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+
+        .audit-pill-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted2);
+            margin-bottom: 6px;
+        }
+
+        .audit-pill-value {
+            font-size: 13px;
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .audit-pill-value.good {
+            color: var(--green);
+        }
+
+        .audit-pill-value.warn {
+            color: var(--amber);
+        }
+
+        .audit-pill-value.bad {
+            color: var(--red);
+        }
+
+        /* FLOW DIAGRAM */
+        .flow-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            position: relative;
+            padding-left: 48px;
+        }
+
+        .flow-line {
+            position: absolute;
+            left: 20px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--green), rgba(34, 197, 94, 0.1));
+            border-radius: 1px;
+        }
+
+        .flow-item {
+            position: relative;
+            margin-bottom: 8px;
+        }
+
+        .flow-dot {
+            position: absolute;
+            left: -36px;
+            top: 18px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid var(--green);
+            background: var(--bg);
+            z-index: 1;
+        }
+
+        .flow-dot.phase {
+            width: 10px;
+            height: 10px;
+            left: -34px;
+            top: 20px;
+            border-color: var(--muted2);
+            background: var(--surface);
+        }
+
+        .flow-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px 22px;
+            transition: border-color 0.2s;
+        }
+
+        .flow-card:hover {
+            border-color: var(--green-border);
+        }
+
+        .flow-card-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 10px;
+        }
+
+        .flow-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .flow-card-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .flow-card-sub {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .flow-card-desc {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .flow-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+        }
+
+        .tag {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        .tag.green {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+
+        .tag.blue {
+            background: rgba(59, 130, 246, 0.12);
+            color: var(--blue);
+        }
+
+        .tag.purple {
+            background: rgba(139, 92, 246, 0.12);
+            color: var(--purple);
+        }
+
+        .tag.amber {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--amber);
+        }
+
+        .tag.red {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--red);
+        }
+
+        .phase-header {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 12px 0 8px 0;
+            color: var(--muted2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .phase-header::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* PSYCHOLOGY CARDS */
+        .psych-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .psych-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 22px;
+        }
+
+        .psych-icon {
+            font-size: 28px;
+            margin-bottom: 14px;
+        }
+
+        .psych-card h3 {
+            font-size: 15px;
+            font-weight: 800;
+            margin: 0 0 8px;
+            color: var(--text);
+        }
+
+        .psych-card p {
+            font-size: 13px;
+            color: var(--muted);
+            margin: 0;
+        }
+
+        /* GAMIFICATION */
+        .gamify-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+        }
+
+        .gamify-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+        }
+
+        .gamify-card .num {
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--green);
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .gamify-card h4 {
+            font-size: 13px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        .gamify-card p {
+            font-size: 12px;
+            color: var(--muted);
+            margin: 0;
+        }
+
+        /* GOAL TIERS */
+        .goal-tiers {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        @media (max-width: 640px) {
+            .goal-tiers {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .goal-tier {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .goal-tier-header {
+            padding: 14px 18px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .goal-tier-header.short {
+            background: rgba(34, 197, 94, 0.08);
+            color: var(--green);
+        }
+
+        .goal-tier-header.mid {
+            background: rgba(59, 130, 246, 0.08);
+            color: var(--blue);
+        }
+
+        .goal-tier-header.long {
+            background: rgba(139, 92, 246, 0.08);
+            color: var(--purple);
+        }
+
+        .goal-tier-body {
+            padding: 16px 18px;
+        }
+
+        .goal-tier-body li {
+            font-size: 13px;
+            color: var(--muted);
+            padding: 5px 0;
+            padding-left: 18px;
+            position: relative;
+            list-style: none;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .goal-tier-body li:last-child {
+            border-bottom: none;
+        }
+
+        .goal-tier-body li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--muted2);
+            font-size: 11px;
+        }
+
+        /* COPY EXAMPLES */
+        .copy-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px 24px;
+            margin-bottom: 14px;
+        }
+
+        .copy-card .context {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted2);
+            margin-bottom: 12px;
+        }
+
+        .copy-bad,
+        .copy-good {
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 13px;
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+
+        .copy-bad {
+            background: rgba(239, 68, 68, 0.07);
+            border-left: 3px solid var(--red);
+            color: rgba(239, 68, 68, 0.8);
+        }
+
+        .copy-good {
+            background: rgba(34, 197, 94, 0.07);
+            border-left: 3px solid var(--green);
+            color: rgba(34, 197, 94, 0.9);
+        }
+
+        .copy-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .copy-label.bad {
+            color: var(--red);
+        }
+
+        .copy-label.good {
+            color: var(--green);
+        }
+
+        /* RETENTION TABLE */
+        .retention-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .retention-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 22px;
+        }
+
+        .retention-card .r-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-bottom: 14px;
+        }
+
+        .retention-card h3 {
+            font-size: 15px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .retention-card p {
+            font-size: 13px;
+            color: var(--muted);
+            margin: 0;
+        }
+
+        .retention-card ul {
+            list-style: none;
+            margin-top: 10px;
+        }
+
+        .retention-card ul li {
+            font-size: 12px;
+            color: var(--muted);
+            padding: 4px 0;
+            padding-left: 14px;
+            position: relative;
+        }
+
+        .retention-card ul li::before {
+            content: '·';
+            position: absolute;
+            left: 0;
+            color: var(--green);
+            font-size: 18px;
+            line-height: 1;
+            top: 3px;
+        }
+
+        /* PRIORITY TABLE */
+        .priority-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .priority-table th {
+            text-align: left;
+            padding: 10px 16px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted2);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .priority-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--muted);
+            vertical-align: top;
+        }
+
+        .priority-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .priority-table td:first-child {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .effort-badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 3px 9px;
+            border-radius: 6px;
+        }
+
+        .effort-badge.low {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--green);
+        }
+
+        .effort-badge.mid {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--amber);
+        }
+
+        .effort-badge.high {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--red);
+        }
+
+        /* SCREEN SPEC CARDS */
+        .screen-spec {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .screen-spec-header {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface2);
+        }
+
+        .screen-num {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: var(--green-dim);
+            border: 1px solid var(--green-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 900;
+            color: var(--green);
+            flex-shrink: 0;
+        }
+
+        .screen-title {
+            font-size: 17px;
+            font-weight: 900;
+        }
+
+        .screen-subtitle {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .screen-time {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted2);
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .screen-body {
+            padding: 22px 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 640px) {
+            .screen-body {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .screen-section-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--muted2);
+            margin-bottom: 10px;
+        }
+
+        .screen-body p {
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .screen-copy {
+            background: var(--surface2);
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 13px;
+            color: var(--green);
+            font-style: italic;
+            border-left: 3px solid var(--green-border);
+            margin-top: 8px;
+        }
+
+        .screen-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+        }
+
+        .screen-psych {
+            background: rgba(139, 92, 246, 0.07);
+            border-left: 3px solid rgba(139, 92, 246, 0.4);
+            border-radius: 0 10px 10px 0;
+            padding: 12px 14px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: rgba(139, 92, 246, 0.9);
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 48px 0;
+        }
+
+        .callout {
+            background: var(--green-dim);
+            border: 1px solid var(--green-border);
+            border-radius: 14px;
+            padding: 18px 22px;
+            margin: 24px 0;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.75);
+        }
+
+        .callout strong {
+            color: var(--green);
+        }
+
+        .info-callout {
+            background: rgba(59, 130, 246, 0.07);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 14px;
+            padding: 18px 22px;
+            margin: 24px 0;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .info-callout strong {
+            color: var(--blue);
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 32px;
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--muted2);
+        }
+
+        footer strong {
+            color: var(--green);
+        }
+
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Active nav highlight via scroll */
+        :target {
+            scroll-margin-top: 72px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav>
+        <a class="logo" href="#">ATHLE<span>ATOS</span></a>
+        <a href="#audit">Audit</a>
+        <a href="#auth">Auth Strategy</a>
+        <a href="#architecture">New Flow</a>
+        <a href="#psychology">Psychology</a>
+        <a href="#gamification">Gamification</a>
+        <a href="#goals">Goals</a>
+        <a href="#copy">Copywriting</a>
+        <a href="#retention">Retention</a>
+        <a href="#priority">Priorities</a>
+    </nav>
+
+    <div class="hero">
+        <div class="hero-badge">Product UX Strategy Report</div>
+        <h1>Redesign Your Onboarding<br>For <span>Maximum Retention</span></h1>
+        <p>A complete audit and redesign of the ATHLATOS onboarding experience. Built around behavioral psychology,
+            modern fitness app best practices, and dopamine-driven habit formation.</p>
+        <div class="hero-meta">
+            <div class="hero-meta-item">
+                <div class="hero-meta-num">5→9</div>
+                <div class="hero-meta-label">Screens (Redesigned)</div>
+            </div>
+            <div class="hero-meta-item">
+                <div class="hero-meta-num">3 min</div>
+                <div class="hero-meta-label">Target Completion Time</div>
+            </div>
+            <div class="hero-meta-item">
+                <div class="hero-meta-num">Day 0</div>
+                <div class="hero-meta-label">First Win Delivered</div>
+            </div>
+            <div class="hero-meta-item">
+                <div class="hero-meta-num">+40%</div>
+                <div class="hero-meta-label">Expected Retention Lift</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+
+
+        <!-- ========== SECTION 1: AUDIT ========== -->
+        <section id="audit">
+            <div class="section-label">Section 01</div>
+            <h2>Current Flow — Deep Audit</h2>
+            <p class="section-intro">
+                Every screen in your existing 5-step onboarding is analyzed for psychological purpose, data value,
+                friction cost, and retention impact. Green = keep. Amber = restructure. Red = problem area.
+            </p>
+
+            <div class="callout">
+                <strong>The core problem:</strong> Your current flow is a data collection exercise disguised as an
+                onboarding. Users fill out a form and then get redirected to login — having seen zero value from the
+                app. This is a classic drop-off funnel. The fix is a value-first, identity-first, commitment-second
+                architecture.
+            </div>
+
+            <div class="audit-grid">
+
+                <div class="audit-card">
+                    <div class="audit-card-header">
+                        <div class="step-badge keep">S1</div>
+                        <div>
+                            <h3>Step 1 — Welcome + Name + Gender</h3>
+                            <p style="font-size:12px; color: var(--muted); margin:0;">Intro screen with logo, name
+                                input, gender picker, login link</p>
+                        </div>
+                        <div class="verdict restructure">Restructure</div>
+                    </div>
+                    <div class="audit-body">
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Psychological Purpose</div>
+                            <div class="audit-pill-value">First impression, identity anchoring via name</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Data Value</div>
+                            <div class="audit-pill-value good">High — name personalizes every surface; gender affects
+                                calorie math</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Friction Cost</div>
+                            <div class="audit-pill-value warn">Medium — name input is fine, but gender binary may
+                                alienate some users</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Retention Impact</div>
+                            <div class="audit-pill-value bad">Low — user sees no value yet; no emotional hook
+                                established</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Verdict</div>
+                            <div class="audit-pill-value warn">Keep name + gender but add a value-prop hook BEFORE this
+                                screen. Add "Prefer not to say" as a third gender option.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Missing Element</div>
+                            <div class="audit-pill-value bad">No social proof, no emotional hook, no "what you'll get"
+                                preview. User doesn't know why they're filling this out.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="audit-card">
+                    <div class="audit-card-header">
+                        <div class="step-badge warn">S2</div>
+                        <div>
+                            <h3>Step 2 — Age + Height + Weight</h3>
+                            <p style="font-size:12px; color: var(--muted); margin:0;">Three numeric text inputs with
+                                unit toggles</p>
+                        </div>
+                        <div class="verdict restructure">Restructure</div>
+                    </div>
+                    <div class="audit-body">
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Psychological Purpose</div>
+                            <div class="audit-pill-value">Baseline data for calorie/macro math</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Data Value</div>
+                            <div class="audit-pill-value good">Very high — drives the entire TDEE calculation; without
+                                it, app is generic</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Friction Cost</div>
+                            <div class="audit-pill-value bad">High — 3 raw numeric inputs in a row feels clinical. Many
+                                users will estimate anyway.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Retention Impact</div>
+                            <div class="audit-pill-value warn">Medium — necessary but demotivating. Need to show a
+                                payoff immediately after.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Verdict</div>
+                            <div class="audit-pill-value warn">Keep but transform: use sliders + big visual display
+                                instead of TextInput. Show live calorie estimate updating as user drags.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Enhancement</div>
+                            <div class="audit-pill-value good">After stats: instantly show "Your estimated TDEE: 2,340
+                                kcal/day" — the first moment of personalization is a micro-reward.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="audit-card">
+                    <div class="audit-card-header">
+                        <div class="step-badge keep">S3</div>
+                        <div>
+                            <h3>Step 3 — Activity Level</h3>
+                            <p style="font-size:12px; color: var(--muted); margin:0;">4-card grid: Sedentary / Light /
+                                Moderate / Active</p>
+                        </div>
+                        <div class="verdict keep">Keep</div>
+                    </div>
+                    <div class="audit-body">
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Psychological Purpose</div>
+                            <div class="audit-pill-value">Self-categorization — users feel understood when they find
+                                their "type"</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Data Value</div>
+                            <div class="audit-pill-value good">Very high — the activity multiplier is the biggest
+                                variable in TDEE after weight</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Friction Cost</div>
+                            <div class="audit-pill-value good">Low — single choice from 4 clear options. Well-designed.
+                            </div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Retention Impact</div>
+                            <div class="audit-pill-value good">Good — creates identity ("I'm moderately active") which
+                                the app can reference</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Verdict</div>
+                            <div class="audit-pill-value good">Keep this screen as-is but merge it with Step 2 as a TDEE
+                                result reveal: "Based on your activity level, your daily target is..."</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Missing</div>
+                            <div class="audit-pill-value warn">Add "very_active" as a 5th option (existing code supports
+                                it). Show TDEE update live as user changes their activity level.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="audit-card">
+                    <div class="audit-card-header">
+                        <div class="step-badge cut">S4</div>
+                        <div>
+                            <h3>Step 4 — Training Interests</h3>
+                            <p style="font-size:12px; color: var(--muted); margin:0;">Multi-select: Strength / Cardio /
+                                Mobility / HIIT</p>
+                        </div>
+                        <div class="verdict remove">Delay or Cut</div>
+                    </div>
+                    <div class="audit-body">
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Psychological Purpose</div>
+                            <div class="audit-pill-value">Personalization signal for AI workout recommendations</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Data Value</div>
+                            <div class="audit-pill-value warn">Medium — good for workout plan generation but could be
+                                inferred from goal</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Friction Cost</div>
+                            <div class="audit-pill-value bad">High — placed mid-flow when user fatigue is building. "Why
+                                does it need to know this now?"</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Retention Impact</div>
+                            <div class="audit-pill-value bad">Negative — adds length to an already long flow without
+                                giving value back. Users start doubting completion.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Verdict</div>
+                            <div class="audit-pill-value bad">Remove from onboarding. Collect after Day 1 or in-app
+                                during first workout plan generation. User will be more invested then.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Alternative</div>
+                            <div class="audit-pill-value warn">If kept, fold it into the Goal screen: "Build Muscle →
+                                you'll probably love Strength + HIIT" with pre-selection.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="audit-card">
+                    <div class="audit-card-header">
+                        <div class="step-badge keep">S5</div>
+                        <div>
+                            <h3>Step 5 — Primary Goal</h3>
+                            <p style="font-size:12px; color: var(--muted); margin:0;">3 list items: Lose Weight /
+                                Maintain / Build Muscle</p>
+                        </div>
+                        <div class="verdict restructure">Restructure</div>
+                    </div>
+                    <div class="audit-body">
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Psychological Purpose</div>
+                            <div class="audit-pill-value">Identity commitment — highest-leverage question in the flow
+                            </div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Data Value</div>
+                            <div class="audit-pill-value good">Very high — drives calorie deficit/surplus, macro split,
+                                workout type defaults</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Friction Cost</div>
+                            <div class="audit-pill-value good">Low — beautiful card design, clear labels, 3 choices only
+                            </div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Retention Impact</div>
+                            <div class="audit-pill-value warn">High potential but poorly positioned. After 4 screens of
+                                data entry, user has no emotional stake yet.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Verdict</div>
+                            <div class="audit-pill-value warn">Move this to Screen 2 (right after name). Goal is the
+                                emotional anchor of the whole journey — it should come first, not last.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Critical Bug</div>
+                            <div class="audit-pill-value bad">After finishing, user is redirected to
+                                <code>/auth/login</code>. This is jarring — they expect a reward, they get a login wall.
+                                All data is lost if auth fails.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="audit-card">
+                    <div class="audit-card-header">
+                        <div class="step-badge cut">❌</div>
+                        <div>
+                            <h3>Missing — "Aha Moment" Screen</h3>
+                            <p style="font-size:12px; color: var(--muted); margin:0;">There is no moment where the app
+                                shows what it will do for the user</p>
+                        </div>
+                        <div class="verdict remove">Add This</div>
+                    </div>
+                    <div class="audit-body">
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">The Problem</div>
+                            <div class="audit-pill-value bad">User completes 5 steps and gets a login form. No preview
+                                of their personalized plan, no dopamine hit, no "this is what you just set up" moment.
+                            </div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">What Top Apps Do</div>
+                            <div class="audit-pill-value good">Duolingo shows your streak start + first lesson
+                                immediately. Nike Run Club shows your first plan. Noom shows your predicted goal date.
+                            </div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">What to Add</div>
+                            <div class="audit-pill-value good">A "Your Plan is Ready" screen that shows: daily calorie
+                                target, macro breakdown, and a teaser of their first AI workout — before auth.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Why This Matters</div>
+                            <div class="audit-pill-value good">This single screen is the biggest retention lever in the
+                                entire flow. Once a user sees their personalized plan, they WANT to sign up to save it.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="audit-card">
+                    <div class="audit-card-header">
+                        <div class="step-badge cut">❌</div>
+                        <div>
+                            <h3>Missing — Commitment + Scheduling Screen</h3>
+                            <p style="font-size:12px; color: var(--muted); margin:0;">No reminder setup, no first
+                                workout scheduling, no "Day 1 starts now" moment</p>
+                        </div>
+                        <div class="verdict remove">Add This</div>
+                    </div>
+                    <div class="audit-body">
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">The Problem</div>
+                            <div class="audit-pill-value bad">Users complete onboarding and enter the app with no clear
+                                next action. "What do I do now?" is the fastest path to churn.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">The Behavioral Science</div>
+                            <div class="audit-pill-value good">Implementation Intention: "I will work out on [day] at
+                                [time]" increases follow-through by 91% (Gollwitzer, 1999). The moment of commitment is
+                                everything.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">What to Add</div>
+                            <div class="audit-pill-value good">"When's your first session?" day picker + time picker.
+                                Show "Streak Day 1 starts now" badge. Offer notification permission with clear value
+                                prop.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Retention Impact</div>
+                            <div class="audit-pill-value good">Users who set a reminder in onboarding have 3x higher
+                                Day-7 retention. This is the highest-ROI screen to add.</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <hr>
+
+        <!-- ========== SECTION 2: AUTH STRATEGY ========== -->
+        <section id="auth">
+            <div class="section-label">Section 02</div>
+            <h2>Auth-First vs. Onboarding-First — The Right Answer</h2>
+            <p class="section-intro">
+                The biggest structural decision in your onboarding is: when does the user authenticate? Your current
+                flow collects all data and then redirects to login, creating catastrophic data-loss risk and a jarring
+                experience.
+            </p>
+
+            <div class="info-callout">
+                <strong>The rule:</strong> Never collect more than name + email before offering auth. Every additional
+                field before authentication is a potential data hostage.
+            </div>
+
+            <h3>The Recommended Architecture: Progressive Auth</h3>
+            <p><strong>Screen 0 (Value Hook):</strong> Show app value prop + "Continue with Google" as primary CTA. Also
+                offer "Explore First" (guest mode).</p>
+            <p><strong>Why Google first?</strong> Google Sign-In is a one-tap interaction on mobile. It captures email
+                for re-engagement campaigns, eliminates password friction entirely, and pre-populates the name field.
+                Users who authenticate via Google have ~40% higher Day-30 retention than email/password users (industry
+                average).</p>
+            <p><strong>What about guest mode?</strong> Offer it clearly but not prominently. "Explore without an account
+                →" in small text below the primary CTA. Guest users see a persistent "Save your progress" banner
+                throughout onboarding.</p>
+            <p><strong>What about data loss?</strong> Store onboarding state in local/session storage during the flow.
+                If user authenticates mid-flow or at end, sync to backend. Never ask users to re-enter data after auth.
+            </p>
+
+            <h3>Auth Flow Decision Tree</h3>
+            <div class="audit-card" style="margin-top: 16px;">
+                <div class="audit-body" style="grid-template-columns: 1fr;">
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Scenario A: User taps "Continue with Google" on Screen 0</div>
+                            <div class="audit-pill-value good">✓ Best path. Auth immediately, then run full personalized
+                                onboarding. Data saves to their account in real-time. At the end, land directly in the
+                                app.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Scenario B: User taps "Explore First" (guest)</div>
+                            <div class="audit-pill-value warn">→ Run onboarding with local state. Before the "Your Plan
+                                is Ready" screen, show a modal: "Save your plan — sign in to keep it." The plan preview
+                                is the hook that converts guests to accounts.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Scenario C: Returning user taps "Already an athlete? Log In"
+                            </div>
+                            <div class="audit-pill-value good">→ Skip onboarding entirely. Route directly to the
+                                dashboard with today's plan. Surface "Update your profile" as a settings nudge.</div>
+                        </div>
+                        <div class="audit-pill">
+                            <div class="audit-pill-label">Scenario D: Deep link from push notification</div>
+                            <div class="audit-pill-value good">→ Auth check, then deep link destination. Never force
+                                onboarding again for an existing user.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <hr>
+
+        <!-- ========== SECTION 3: NEW ARCHITECTURE ========== -->
+        <section id="architecture">
+            <div class="section-label">Section 03</div>
+            <h2>Redesigned Onboarding Architecture — 9 Screens</h2>
+            <p class="section-intro">
+                Complete screen-by-screen specification. Each screen has a clear psychological purpose, a defined
+                interaction model, suggested microcopy, and retention impact. Total target time: under 3 minutes.
+            </p>
+
+            <div class="flow-container">
+                <div class="flow-line"></div>
+
+                <div class="flow-item">
+                    <div class="flow-dot"></div>
+                    <div class="phase-header">Phase 0 — Hook (Before Any Form)</div>
+                </div>
+
+                <!-- SCREEN 0 -->
+                <div class="flow-item">
+                    <div class="flow-dot"></div>
+                    <div class="screen-spec">
+                        <div class="screen-spec-header">
+                            <div class="screen-num">0</div>
+                            <div>
+                                <div class="screen-title">The Value Hook</div>
+                                <div class="screen-subtitle">Purpose: Make user want to continue BEFORE collecting
+                                    anything</div>
+                            </div>
+                            <div class="screen-time">~15 sec<br><span
+                                    style="color:var(--muted2); font-size:10px;">Target time</span></div>
+                        </div>
+                        <div class="screen-body">
+                            <div>
+                                <div class="screen-section-label">What's on screen</div>
+                                <p>Animated logo reveal. 3 quick swipe cards showing app features (not a feature list —
+                                    transformation stories): "Sarah lost 12kg in 4 months" / "Marcus hit his first
+                                    pull-up" / "2M+ athletes already training." Primary CTA: <strong>Continue with
+                                        Google</strong>. Secondary: <strong>Explore First</strong>. Tertiary (small):
+                                    "Already an athlete? Log in"</p>
+                                <div class="screen-copy">"Your transformation starts with one tap."</div>
+                            </div>
+                            <div>
+                                <div class="screen-section-label">Psychological Principles</div>
+                                <div class="screen-psych">🧠 <strong>Social proof</strong> (2M+ users) +
+                                    <strong>aspirational identity</strong> (you could be Sarah) + <strong>sunk cost
+                                        avoidance</strong> (tapping Google takes &lt;1 second, so committing feels
+                                    low-risk)</div>
+                                <div class="screen-tags">
+                                    <span class="tag green">Social Proof</span>
+                                    <span class="tag purple">Identity Hook</span>
+                                    <span class="tag blue">Low Friction Auth</span>
+                                    <span class="tag amber">FOMO</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-item">
+                    <div class="flow-dot"></div>
+                    <div class="phase-header">Phase 1 — Identity (Who Are You?)</div>
+                </div>
+
+                <!-- SCREEN 1 -->
+                <div class="flow-item">
+                    <div class="flow-dot"></div>
+                    <div class="screen-spec">
+                        <div class="screen-spec-header">
+                            <div class="screen-num">1</div>
+                            <div>
+                                <div class="screen-title">The "Why" — Emotional Anchor</div>
+                                <div class="screen-subtitle">Purpose: Create emotional investment before any data
+                                    collection</div>
+                            </div>
+                            <div class="screen-time">~20 sec</div>
+                        </div>
+                        <div class="screen-body">
+                            <div>
+                                <div class="screen-section-label">Interaction Model</div>
+                                <p>Replace the goal question from Step 5 with a more emotionally resonant framing.
+                                    Instead of "Primary Goal: Cut / Maintain / Bulk" — show 3 mood-board style cards
+                                    with photography/imagery:</p>
+                                <p><strong>🔥 Get Lean</strong> — "I want to feel lighter, more confident, and finally
+                                    see results"</p>
+                                <p><strong>⚡ Stay Strong</strong> — "I want to maintain my fitness and build healthy
+                                    habits"</p>
+                                <p><strong>💪 Build Power</strong> — "I want to pack on muscle and get genuinely strong"
+                                </p>
+                                <div class="screen-copy">"What brought you here today, [Name]?"</div>
+                            </div>
+                            <div>
+                                <div class="screen-section-label">Why this works</div>
+                                <div class="screen-psych">🧠 <strong>Emotional framing</strong> beats technical framing.
+                                    "Feel lighter and confident" vs "cut (15% calorie deficit)" — same data, 5x the
+                                    motivation. The user is buying a feeling, not a macro target.</div>
+                                <p style="margin-top: 12px;"><strong>Data captured:</strong> goal (cut/maintain/bulk),
+                                    initial workout interest signal, emotional state</p>
+                                <div class="screen-tags">
+                                    <span class="tag green">Goal Set</span>
+                                    <span class="tag purple">Emotional Hook</span>
+                                    <span class="tag blue">Identity Anchor</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SCREEN 2 -->
+                <div class="flow-item">
+                    <div class="flow-dot"></div>
+                    <div class="screen-spec">
+                        <div class="screen-spec-header">
+                            <div class="screen-num">2</div>
+                            <div>
+                                <div class="screen-title">Tell Us About You — Conversational</div>
+                                <div class="screen-subtitle">Purpose: Collect name + gender in the most human way
+                                    possible</div>
+                            </div>
+                            <div class="screen-time">~20 sec</div>
+                        </div>
+                        <div class="screen-body">
+                            <div>
+                                <div class="screen-section-label">Interaction Model</div>
+                                <p>Chat-bubble style layout (not a form). The app "speaks" to the user:</p>
+                                <p>💬 <em>"First things first — what do we call you?"</em> → large name input, centered,
+                                    no label needed</p>
+                                <p>💬 <em>"Nice to meet you, [Name]! How do we best tailor your plan?"</em> → 3 pill
+                                    chips: Male / Female / Non-binary</p>
+                                <p>Gender is optional — "Skip" link below chips. If skipped, assume neutral macro
+                                    calculation.</p>
+                                <div class="screen-copy">"Hey [Name], let's build something that actually fits YOU."
+                                </div>
+                            </div>
+                            <div>
+                                <div class="screen-section-label">UX & Psychology</div>
+                                <div class="screen-psych">🧠 <strong>Personalization by name</strong> creates instant
+                                    rapport. By this screen the app already knows their goal — calling them by name
+                                    while referencing their goal ("your lean body plan, [Name]") feels like a personal
+                                    trainer, not a form.</div>
+                                <p style="margin-top: 12px;"><strong>Data captured:</strong> display name, gender
+                                    (optional)</p>
+                                <div class="screen-tags">
+                                    <span class="tag green">Personalization</span>
+                                    <span class="tag purple">Rapport</span>
+                                    <span class="tag amber">Optional Fields</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-item">
+                    <div class="flow-dot"></div>
+                    <div class="phase-header">Phase 2 — Calibration (Science-Backed Inputs)</div>
+                </div>
+
+                <!-- SCREEN 3 -->
+                <div class="flow-item">
+                    <div class="flow-dot"></div>
+                    <div class="screen-spec">
+                        <div class="screen-spec-header">
+                            <div class="screen-num">3</div>
+                            <div>
+                                <div class="screen-title">Body Calibration — Interactive Sliders</div>
+                                <div class="screen-subtitle">Purpose: Collect age, height, weight with dopamine feedback
+                                </div>
+                            </div>
+                            <div class="screen-time">~30 sec</div>
+                        </div>
+                        <div class="screen-body">
+                            <div>
+                                <div class="screen-section-label">Interaction Model</div>
+                                <p>Replace 3 TextInput fields with <strong>large, tactile drum-roll pickers</strong>
+                                    (like iOS native date pickers) or smooth sliders. As the user drags, show a live
+                                    silhouette visualization that subtly shifts (taller/shorter, heavier/lighter) — not
+                                    a body-shaming chart, just a human icon that scales.</p>
+                                <p>Above all sliders, show a continuously updating calculation:</p>
+                                <p style="font-size: 14px; color: var(--green); font-weight: 700;">⚡ Your estimated
+                                    daily burn: <span style="color:white;">2,340 kcal</span></p>
+                                <p>This number updates live as they adjust. It's the first payoff — they see the science
+                                    working for them in real time.</p>
+                            </div>
+                            <div>
+                                <div class="screen-section-label">Why this is critical</div>
+                                <div class="screen-psych">🧠 <strong>Variable reward</strong> — the live calorie number
+                                    changing as they drag creates a mini-dopamine loop. <strong>Immediate
+                                        feedback</strong> makes the input feel purposeful rather than administrative.
+                                    Users who see live calculation updates are 60% less likely to abandon mid-screen.
+                                </div>
+                                <div class="screen-tags">
+                                    <span class="tag green">Live Feedback</span>
+                                    <span class="tag blue">Sliders (not TextInput)</span>
+                                    <span class="tag purple">Science Preview</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SCREEN 4 -->
+                <div class="flow-item">
+                    <div class="flow-dot"></div>
+                    <div class="screen-spec">
+                        <div class="screen-spec-header">
+                            <div class="screen-num">4</div>
+                            <div>
+                                <div class="screen-title">Activity Level — Lifestyle Snapshot</div>
+                                <div class="screen-subtitle">Purpose: Refine TDEE + establish daily habit context</div>
+                            </div>
+                            <div class="screen-time">~15 sec</div>
+                        </div>
+                        <div class="screen-body">
+                            <div>
+                                <div class="screen-section-label">Interaction Model</div>
+                                <p>Keep your existing 4-card grid — it's actually good UX. Enhance with:</p>
+                                <p>• Show the TDEE multiplier as a tooltip/badge on each card (e.g. "×1.55 modifier")
+                                </p>
+                                <p>• As user selects, the top banner updates: "Daily target adjusts to <strong>2,580
+                                        kcal</strong>"</p>
+                                <p>• Add a 5th option: "Elite / 2x/day training" for serious athletes</p>
+                                <p>• Add a single line below: "We'll refine this over time as we learn your actual burn
+                                    rate."</p>
+                            </div>
+                            <div>
+                                <div class="screen-section-label">Psychology & Retention</div>
+                                <div class="screen-psych">🧠 <strong>Growth mindset priming</strong> — "we'll refine
+                                    this over time" sets the expectation that the app gets smarter, making returning
+                                    feel valuable. <strong>Self-categorization</strong> ("I'm a Moderately Active
+                                    person") creates a fitness identity users want to live up to.</div>
+                                <div class="screen-tags">
+                                    <span class="tag green">TDEE Refinement</span>
+                                    <span class="tag purple">Identity Formation</span>
+                                    <span class="tag amber">Future Hook</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-item">
+                    <div class="flow-dot"></div>
+                    <div class="phase-header">Phase 3 — The Reward (Your Plan is Ready)</div>
+                </div>
+
+                <!-- SCREEN 5 -->
+                <div class="flow-item">
+                    <div class="flow-dot"></div>
+                    <div class="screen-spec">
+                        <div class="screen-spec-header">
+                            <div class="screen-num">5</div>
+                            <div>
+                                <div class="screen-title">🎯 Your Plan is Ready — The Aha Moment</div>
+                                <div class="screen-subtitle">THE most important screen in the entire flow</div>
+                            </div>
+                            <div class="screen-time">~30 sec</div>
+                        </div>
+                        <div class="screen-body">
+                            <div>
+                                <div class="screen-section-label">What's on screen</div>
+                                <p>Full-screen reveal with a confetti/particle burst animation. Show a personalized
+                                    summary card:</p>
+                                <p>🎯 <strong>Your [Goal] Plan, [Name]</strong></p>
+                                <p>📊 Daily calories: <strong>2,100 kcal</strong> (toward your goal)</p>
+                                <p>🥩 Protein: 148g · 🍚 Carbs: 210g · 🥑 Fats: 58g</p>
+                                <p>📅 AI-generated workout preview: "Your first session — Full Body Foundation (35 min)"
+                                </p>
+                                <p>🔥 "Projected result: -0.5kg/week at this pace"</p>
+                                <p>At the bottom: a <strong>locked/blurred</strong> section — "See your full 4-week
+                                    program →" (requires save/auth to unlock)</p>
+                            </div>
+                            <div>
+                                <div class="screen-section-label">Why this is the #1 retention screen</div>
+                                <div class="screen-psych">🧠 <strong>IKEA effect</strong> — users who see a plan built
+                                    from their own data feel ownership over it. <strong>Loss aversion</strong> — the
+                                    blurred "full program" they can almost see creates urgency to sign in and save. The
+                                    projected result date ("by March 15th") makes the goal feel real and time-bound.
+                                </div>
+                                <p style="margin-top: 12px; font-size: 13px; color: var(--amber);">⚠️ This screen MUST
+                                    come before auth for guest users. The plan is the conversion hook.</p>
+                                <div class="screen-tags">
+                                    <span class="tag green">Aha Moment</span>
+                                    <span class="tag red">Loss Aversion</span>
+                                    <span class="tag purple">IKEA Effect</span>
+                                    <span class="tag amber">Urgency</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SCREEN 6 (Auth Gate) -->
+                <div class="flow-item">
+                    <div class="flow-dot"></div>
+                    <div class="screen-spec">
+                        <div class="screen-spec-header">
+                            <div class="screen-num">6</div>
+                            <div>
+                                <div class="screen-title">Save Your Plan — Auth (if not already done)</div>
+                                <div class="screen-subtitle">Purpose: Convert guest to account, or confirm existing auth
+                                </div>
+                            </div>
+                            <div class="screen-time">~20 sec</div>
+                        </div>
+                        <div class="screen-body">
+                            <div>
+                                <div class="screen-section-label">Interaction Model</div>
+                                <p>If already authed (Google on Screen 0): skip this screen entirely, go straight to
+                                    Screen 7.</p>
+                                <p>If guest: show a bottom sheet (not a full redirect!) with:</p>
+                                <p>🔐 <strong>"Save your plan — it's free"</strong></p>
+                                <p>Headline: "Don't lose [Name]'s plan" — uses their name again.</p>
+                                <p>• Sign up with Google (primary, large)</p>
+                                <p>• Sign up with Apple</p>
+                                <p>• Email signup (expandable)</p>
+                                <p>• "Continue without saving" (small, at bottom — will show banner later)</p>
+                            </div>
+                            <div>
+                                <div class="screen-section-label">Psychology</div>
+                                <div class="screen-psych">🧠 "Don't lose [Name]'s plan" uses <strong>loss
+                                        aversion</strong> (Kahneman) — framing as not losing something is 2x more
+                                    motivating than gaining something. The bottom sheet keeps the plan visible behind
+                                    it, reinforcing what's at stake. <strong>Never redirect away</strong> from the plan
+                                    view.</div>
+                                <div class="screen-tags">
+                                    <span class="tag red">Loss Aversion</span>
+                                    <span class="tag green">Social Auth</span>
+                                    <span class="tag purple">Guest Conversion</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-item">
+                    <div class="flow-dot"></div>
+                    <div class="phase-header">Phase 4 — Commitment (Lock In the Habit)</div>
+                </div>
+
+                <!-- SCREEN 7 -->
+                <div class="flow-item">
+                    <div class="flow-dot"></div>
+                    <div class="screen-spec">
+                        <div class="screen-spec-header">
+                            <div class="screen-num">7</div>
+                            <div>
+                                <div class="screen-title">Schedule Your First Session</div>
+                                <div class="screen-subtitle">Purpose: Implementation intention + notification opt-in
+                                </div>
+                            </div>
+                            <div class="screen-time">~25 sec</div>
+                        </div>
+                        <div class="screen-body">
+                            <div>
+                                <div class="screen-section-label">Interaction Model</div>
+                                <p>"When do you want to train, [Name]?" — day chips (Mon-Sun), then time picker (Morning
+                                    6-9am / Midday / Evening / Night).</p>
+                                <p>As user picks: show a preview: "✅ Your first session is set for <strong>Monday at
+                                        7:00 AM</strong>"</p>
+                                <p>Then: "Want a nudge when it's time?" — single toggle for notifications with copy:
+                                    "We'll remind you 30 min before. You can change this anytime."</p>
+                                <p><strong>Never request notification permission cold</strong> — always explain the
+                                    value first.</p>
+                            </div>
+                            <div>
+                                <div class="screen-section-label">The Science Behind This</div>
+                                <div class="screen-psych">🧠 <strong>Implementation Intention</strong> (Gollwitzer,
+                                    1999): Specifying WHEN and WHERE you'll do a behavior increases follow-through by
+                                    91%. This is the single highest-impact behavior change intervention available.
+                                    Combined with notification opt-in (push notifications have 7x better engagement than
+                                    email), this screen drives Day-7 retention more than any other.</div>
+                                <div class="screen-tags">
+                                    <span class="tag green">Implementation Intention</span>
+                                    <span class="tag blue">Notification Opt-in</span>
+                                    <span class="tag purple">Habit Formation</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SCREEN 8 -->
+                <div class="flow-item">
+                    <div class="flow-dot"></div>
+                    <div class="screen-spec">
+                        <div class="screen-spec-header">
+                            <div class="screen-num">8</div>
+                            <div>
+                                <div class="screen-title">Day 1 Begins — Welcome to the App</div>
+                                <div class="screen-subtitle">Purpose: Land user in the app with immediate first action
+                                </div>
+                            </div>
+                            <div class="screen-time">~10 sec</div>
+                        </div>
+                        <div class="screen-body">
+                            <div>
+                                <div class="screen-section-label">What's on screen</div>
+                                <p>Animated "🔥 Streak Day 1 — Started!" badge with a pulse animation. Sound effect
+                                    optional (haptic feedback on iOS).</p>
+                                <p>Below: a pre-loaded Today view showing:</p>
+                                <p>• Today's workout (tap to start)</p>
+                                <p>• Calories logged: 0 / 2,100 kcal</p>
+                                <p>• Water: 0 / 8 glasses</p>
+                                <p>• A single highlighted CTA: <strong>"Log Your First Meal"</strong> or <strong>"Start
+                                        Today's Workout"</strong></p>
+                            </div>
+                            <div>
+                                <div class="screen-section-label">First Action Design</div>
+                                <div class="screen-psych">🧠 <strong>Action bias</strong> — the worst thing that can
+                                    happen after onboarding is an empty dashboard. Give users one clear, achievable
+                                    first action. The first interaction with core functionality must happen within 2
+                                    minutes of completing onboarding. "You can't build a streak of zero" — Day 1 must
+                                    end with at least one tap in the app.</div>
+                                <div class="screen-tags">
+                                    <span class="tag green">Streak Begins</span>
+                                    <span class="tag blue">Immediate Action</span>
+                                    <span class="tag red">Anti-Churn</span>
+                                    <span class="tag amber">Dopamine Hit</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <hr>
+
+        <!-- ========== SECTION 4: PSYCHOLOGY ========== -->
+        <section id="psychology">
+            <div class="section-label">Section 04</div>
+            <h2>Behavioral Psychology Principles</h2>
+            <p class="section-intro">Every design decision in the redesigned flow maps to a proven behavioral science
+                principle. Here are the key frameworks and how they apply to ATHLATOS.</p>
+
+            <div class="psych-grid">
+                <div class="psych-card">
+                    <div class="psych-icon">🪝</div>
+                    <h3>Hooked Model (Nir Eyal)</h3>
+                    <p>Trigger → Action → Variable Reward → Investment. Your onboarding must establish this loop from
+                        Day 0. The trigger is a notification, the action is logging, the reward is a streak/badge, the
+                        investment is data the user has put into the app.</p>
+                </div>
+                <div class="psych-card">
+                    <div class="psych-icon">🧲</div>
+                    <h3>Loss Aversion (Kahneman)</h3>
+                    <p>Losses feel ~2.5x more painful than equivalent gains feel good. "Don't lose your plan" beats
+                        "Save your plan." "Your streak is at risk" beats "Log a workout today." Use this framing
+                        everywhere for re-engagement.</p>
+                </div>
+                <div class="psych-card">
+                    <div class="psych-icon">🎯</div>
+                    <h3>Implementation Intention</h3>
+                    <p>"I will [behavior] at [time] in [place]" increases follow-through by 91% vs. just deciding to do
+                        something. Asking users to schedule their first workout is the most evidence-backed thing you
+                        can add to onboarding.</p>
+                </div>
+                <div class="psych-card">
+                    <div class="psych-icon">🏗️</div>
+                    <h3>IKEA Effect</h3>
+                    <p>People value things they've helped create. Every onboarding question that contributes to their
+                        plan makes the plan feel more theirs. This is why you MUST show the personalized output — it's
+                        not just UX, it's making users emotionally invested in a plan they "built."</p>
+                </div>
+                <div class="psych-card">
+                    <div class="psych-icon">📈</div>
+                    <h3>Goal Gradient Effect</h3>
+                    <p>People accelerate effort as they approach a goal. Progress bars should always show users as
+                        closer to done than they actually are (show 20% fill at step 1 of 5, not 0%). The feeling of
+                        momentum matters more than accuracy.</p>
+                </div>
+                <div class="psych-card">
+                    <div class="psych-icon">🌟</div>
+                    <h3>Identity-Based Habits (James Clear)</h3>
+                    <p>"Every action you take is a vote for the person you want to become." The goal screen should frame
+                        logging a meal as "being the kind of person who tracks their nutrition" — not "adding a log
+                        entry." Identity framing drives 2x longer retention than outcome framing.</p>
+                </div>
+                <div class="psych-card">
+                    <div class="psych-icon">🎲</div>
+                    <h3>Variable Reward (Skinner)</h3>
+                    <p>Unpredictable rewards are more addictive than predictable ones. Implement random "bonus XP,"
+                        surprise badges, and unexpected motivational messages. "You've hit your protein goal 5 days in a
+                        row — here's a badge nobody else has yet."</p>
+                </div>
+                <div class="psych-card">
+                    <div class="psych-icon">🔗</div>
+                    <h3>Commitment & Consistency (Cialdini)</h3>
+                    <p>Once people commit to something publicly (or even just in an app), they're more likely to follow
+                        through. The "schedule your first session" screen is a commitment device. Add an optional "Tell
+                        a friend about your goal" share as a social commitment amplifier.</p>
+                </div>
+                <div class="psych-card">
+                    <div class="psych-icon">⚡</div>
+                    <h3>Zeigarnik Effect</h3>
+                    <p>People remember incomplete tasks better than completed ones. Use this for re-engagement: "You
+                        logged breakfast and lunch — just dinner away from a perfect day." Incomplete loops are
+                        psychologically uncomfortable, driving users to return and close them.</p>
+                </div>
+            </div>
+        </section>
+
+        <hr>
+
+        <!-- ========== SECTION 5: GAMIFICATION ========== -->
+        <section id="gamification">
+            <div class="section-label">Section 05</div>
+            <h2>Gamification, Streaks & Achievement Systems</h2>
+            <p class="section-intro">Duolingo's streak system is responsible for a significant portion of their ~70% DAU
+                retention. Your app needs a layered reward architecture — not just streaks, but a full progression
+                economy.</p>
+
+            <h3>Layer 1: The Streak System</h3>
+            <div class="gamify-grid">
+                <div class="gamify-card">
+                    <div class="num">🔥</div>
+                    <h4>Daily Streak</h4>
+                    <p>Log at least one meal OR complete one workout per day. Show streak in the header on every screen.
+                        Losing a streak = biggest app event of the day (urgent notification).</p>
+                </div>
+                <div class="gamify-card">
+                    <div class="num">🛡️</div>
+                    <h4>Streak Shield</h4>
+                    <p>Earn 1 shield every 7-day streak. Shield auto-saves you on a missed day. This keeps users from
+                        quitting after one miss — the #1 reason people abandon fitness apps.</p>
+                </div>
+                <div class="gamify-card">
+                    <div class="num">📅</div>
+                    <h4>Streak Milestones</h4>
+                    <p>Day 3 (badge), Day 7 (badge + unlock), Day 14 (title), Day 30 (special badge + AI plan upgrade),
+                        Day 100 (elite status), Day 365 (app legend).</p>
+                </div>
+                <div class="gamify-card">
+                    <div class="num">🌊</div>
+                    <h4>Weekly Waves</h4>
+                    <p>Each week resets with a new mini-challenge: "This week: hit protein every day." Short-term goals
+                        nested within long-term streaks prevent fatigue.</p>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 32px;">Layer 2: Achievement System</h3>
+            <div class="gamify-grid">
+                <div class="gamify-card">
+                    <div class="num">🏅</div>
+                    <h4>First Log</h4>
+                    <p>Award immediately on first meal/workout log. "First Step" badge. Show a quick animation + share
+                        option. This is the first dopamine hit and MUST happen in Session 1.</p>
+                </div>
+                <div class="gamify-card">
+                    <div class="num">💯</div>
+                    <h4>Perfect Day</h4>
+                    <p>All macro targets hit + workout logged. Rare and celebrated. Show a full-screen celebration on
+                        first Perfect Day — this is a milestone moment users share.</p>
+                </div>
+                <div class="gamify-card">
+                    <div class="num">🚀</div>
+                    <h4>Protein King/Queen</h4>
+                    <p>Hit protein target 7 days straight. Tiered: Bronze (7 days), Silver (21 days), Gold (60 days).
+                        Specialization achievements keep power users engaged long-term.</p>
+                </div>
+                <div class="gamify-card">
+                    <div class="num">⚖️</div>
+                    <h4>Progress Milestones</h4>
+                    <p>First -1kg, -5kg, -10kg (or +1kg muscle). These are life events, not app events — celebrate them
+                        like it. Personal best badges for weight lifted, run pace, etc.</p>
+                </div>
+                <div class="gamify-card">
+                    <div class="num">🎯</div>
+                    <h4>Macro Maestro</h4>
+                    <p>Log all 3 macros within 5% of targets for a full week. Shows nutritional sophistication — appeals
+                        to the tracking-obsessed user who becomes your most retained segment.</p>
+                </div>
+                <div class="gamify-card">
+                    <div class="num">👑</div>
+                    <h4>Challenge Champion</h4>
+                    <p>Complete a weekly challenge. Leaderboard within friend groups or globally. Competition drives
+                        significantly higher retention than solo tracking — add social features in v2.</p>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 32px;">Layer 3: XP & Level System</h3>
+            <p>Award XP for every action: +10 XP log a meal, +25 XP log a workout, +5 XP hit a macro target, +50 XP
+                complete a challenge, +100 XP perfect week. Levels unlock cosmetics (app themes, profile badges) and
+                features (advanced analytics at Level 10, AI coach chat at Level 20). Levels give users a reason to use
+                every feature of the app, not just tracking.</p>
+            <p><strong>Key insight:</strong> XP is infinite motivation. Unlike streaks (which users fear losing), XP can
+                only go up — it's pure positive reinforcement with no anxiety downside.</p>
+
+            <h3 style="margin-top: 32px;">Layer 4: Personalized Challenges</h3>
+            <p>AI-generated weekly challenges based on user behavior: "You hit protein 5/7 days last week — this week's
+                challenge: 7/7." Challenges adapt to be 15% harder than current performance (Vygotsky's Zone of Proximal
+                Development — the sweet spot between boring and impossible). Never give the same challenge twice.
+                Completing a challenge = satisfying resolution + tease of next challenge.</p>
+        </section>
+
+        <hr>
+
+        <!-- ========== SECTION 6: GOALS ========== -->
+        <section id="goals">
+            <div class="section-label">Section 06</div>
+            <h2>Goal Architecture — Short, Medium & Long-Term</h2>
+            <p class="section-intro">Users need a visible goal at every time horizon. One long-term goal is demotivating
+                without the near-term wins that prove progress is happening.</p>
+
+            <div class="goal-tiers">
+                <div class="goal-tier">
+                    <div class="goal-tier-header short">Short-Term (Daily/Weekly)</div>
+                    <div class="goal-tier-body">
+                        <li>Hit today's calorie target</li>
+                        <li>Log all 3 meals</li>
+                        <li>Complete today's workout</li>
+                        <li>Drink 8 glasses of water</li>
+                        <li>Hit protein target</li>
+                        <li>Log body weight (weekly)</li>
+                        <li>Complete this week's challenge</li>
+                        <li>Maintain today's streak</li>
+                    </div>
+                </div>
+                <div class="goal-tier">
+                    <div class="goal-tier-header mid">Medium-Term (Monthly)</div>
+                    <div class="goal-tier-body">
+                        <li>Complete a 30-day streak</li>
+                        <li>Finish a full AI workout program</li>
+                        <li>Reach first body weight milestone</li>
+                        <li>Log 100 meals total</li>
+                        <li>Hit Level 10 in the XP system</li>
+                        <li>Complete 10 logged workouts</li>
+                        <li>Beat a personal best lift</li>
+                        <li>Invite a friend/accountability partner</li>
+                    </div>
+                </div>
+                <div class="goal-tier">
+                    <div class="goal-tier-header long">Long-Term (Transformation)</div>
+                    <div class="goal-tier-body">
+                        <li>Reach goal body weight</li>
+                        <li>Complete a 365-day streak</li>
+                        <li>Hit target body fat %</li>
+                        <li>Build a specific lift milestone (e.g. 100kg bench)</li>
+                        <li>Maintain goal weight for 90 days</li>
+                        <li>Reach Elite status in app</li>
+                        <li>Complete a before/after transformation</li>
+                        <li>Become a Top 10% athlete on the platform</li>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Adaptive AI Goal Adjustment</h3>
+            <p>After 2 weeks of data, the AI should recalibrate: "Based on your actual logging behavior, your best
+                sustainable calorie target is 2,050 kcal — slightly below your initial target. Your AI plan has been
+                updated." This makes users feel the app is working for them, not just tracking them. Show before/after
+                of the adjustment with a brief explanation in plain language.</p>
+            <p>After 4 weeks: "You've been consistently hitting 80% of workouts. Ready for a harder program?" —
+                progression gate that the user unlocks through behavior, not time.</p>
+        </section>
+
+        <hr>
+
+        <!-- ========== SECTION 7: COPYWRITING ========== -->
+        <section id="copy">
+            <div class="section-label">Section 07</div>
+            <h2>Microcopy & Voice — Examples</h2>
+            <p class="section-intro">The words in your app are as important as the design. Every string is an
+                opportunity to motivate, humanize, and make the user feel understood. Here's before/after for key
+                moments.</p>
+
+            <div class="copy-card">
+                <div class="context">Progress Bar Label</div>
+                <div class="copy-label bad">Before (Boring)</div>
+                <div class="copy-bad">"STEP 3/5"</div>
+                <div class="copy-label good">After (Motivational)</div>
+                <div class="copy-good">"Almost there — your plan is being built" / "Step 3 of 5 · 60% done" / "One more
+                    step to your personalized plan"</div>
+            </div>
+
+            <div class="copy-card">
+                <div class="context">Goal Selection Screen Header</div>
+                <div class="copy-label bad">Before (Clinical)</div>
+                <div class="copy-bad">"Primary Goal"</div>
+                <div class="copy-label good">After (Emotional)</div>
+                <div class="copy-good">"What's driving you, [Name]?" / "Let's talk about where you want to be" / "What
+                    would make you proud 3 months from now?"</div>
+            </div>
+
+            <div class="copy-card">
+                <div class="context">Stats Screen Header</div>
+                <div class="copy-label bad">Before (Generic)</div>
+                <div class="copy-bad">"Vital Stats — These help us calculate your targets."</div>
+                <div class="copy-label good">After (Purposeful)</div>
+                <div class="copy-good">"Your numbers, your plan — we'll use this to build something that actually fits
+                    your body" / "The science starts here — your personalized calorie target updates live"</div>
+            </div>
+
+            <div class="copy-card">
+                <div class="context">Notification Permission Request</div>
+                <div class="copy-label bad">Before (Generic system prompt)</div>
+                <div class="copy-bad">"ATHLATOS would like to send you notifications."</div>
+                <div class="copy-label good">After (Value-First)</div>
+                <div class="copy-good">"Your workout reminder is set for Monday at 7:00 AM. Want us to give you a nudge?
+                    We'll remind you 30 minutes before — nothing spammy, just the nudge that keeps your streak alive."
+                </div>
+            </div>
+
+            <div class="copy-card">
+                <div class="context">Streak Loss Notification</div>
+                <div class="copy-label bad">Before</div>
+                <div class="copy-bad">"You haven't logged today. Don't break your streak!"</div>
+                <div class="copy-label good">After (Empathetic + Urgent)</div>
+                <div class="copy-good">"Hey [Name] — your 14-day streak is safe for 2 more hours. Log anything — even
+                    just water — to keep it alive. 🛡️"</div>
+            </div>
+
+            <div class="copy-card">
+                <div class="context">Empty Dashboard State (Day 1)</div>
+                <div class="copy-label bad">Before</div>
+                <div class="copy-bad">"No workouts logged. Start tracking."</div>
+                <div class="copy-label good">After</div>
+                <div class="copy-good">"Day 1 of your journey, [Name]. Your AI workout is loaded and ready — this is the
+                    hardest one to start, and the most important. 💪"</div>
+            </div>
+
+            <div class="copy-card">
+                <div class="context">Calorie Goal Hit</div>
+                <div class="copy-label bad">Before</div>
+                <div class="copy-bad">"Goal reached!"</div>
+                <div class="copy-label good">After (Specific + Personal)</div>
+                <div class="copy-good">"Perfect fuel day, [Name]. You hit your calorie target within 50kcal — that level
+                    of precision is what separates people who see results from those who wonder why they don't. 🎯"
+                </div>
+            </div>
+
+            <div class="copy-card">
+                <div class="context">Save Plan / Auth Gate</div>
+                <div class="copy-label bad">Before</div>
+                <div class="copy-bad">"Create an account to continue"</div>
+                <div class="copy-label good">After (Loss Aversion)</div>
+                <div class="copy-good">"Don't lose [Name]'s plan — it took 2 minutes to build and it's personalized to
+                    you. Save it free in one tap."</div>
+            </div>
+        </section>
+
+        <hr>
+
+        <!-- ========== SECTION 8: RETENTION ========== -->
+        <section id="retention">
+            <div class="section-label">Section 08</div>
+            <h2>Daily Engagement & Long-Term Retention Systems</h2>
+            <p class="section-intro">Onboarding is just the start. Here's the full retention ecosystem that keeps users
+                engaged after Day 1.</p>
+
+            <div class="retention-grid">
+                <div class="retention-card">
+                    <div class="r-icon" style="background: rgba(34,197,94,0.1);">📅</div>
+                    <h3>The Daily Loop</h3>
+                    <p>Every day, user opens app and sees a "Today" dashboard with 3-4 clear actions.</p>
+                    <ul>
+                        <li>Log breakfast (first action of day)</li>
+                        <li>Today's AI workout (time-stamped)</li>
+                        <li>Streak status + XP earned today</li>
+                        <li>Daily macro ring (visual progress)</li>
+                    </ul>
+                </div>
+                <div class="retention-card">
+                    <div class="r-icon" style="background: rgba(59,130,246,0.1);">🔔</div>
+                    <h3>Smart Notification Strategy</h3>
+                    <p>Notifications should feel like a coach, not spam.</p>
+                    <ul>
+                        <li>Pre-workout nudge (30 min before scheduled time)</li>
+                        <li>Lunch macro check-in (if user usually logs lunch)</li>
+                        <li>Evening streak reminder (8pm if not yet logged)</li>
+                        <li>Weekly progress summary (Sunday night)</li>
+                        <li>Never more than 3 notifications/day</li>
+                    </ul>
+                </div>
+                <div class="retention-card">
+                    <div class="r-icon" style="background: rgba(139,92,246,0.1);">👥</div>
+                    <h3>Social Accountability</h3>
+                    <p>Social features are the highest-ROI retention investment after streaks.</p>
+                    <ul>
+                        <li>Invite an accountability partner</li>
+                        <li>See friend's streak (not calories — privacy)</li>
+                        <li>Weekly group challenges</li>
+                        <li>Share milestones to stories (with branded card)</li>
+                        <li>Friend feed of workout completions</li>
+                    </ul>
+                </div>
+                <div class="retention-card">
+                    <div class="r-icon" style="background: rgba(245,158,11,0.1);">📊</div>
+                    <h3>Progress Visibility</h3>
+                    <p>Making progress feel visible quickly is the #1 predictor of 30-day retention.</p>
+                    <ul>
+                        <li>Weekly progress recap (auto-generated)</li>
+                        <li>Trend charts from Day 1 (even if minimal data)</li>
+                        <li>Body measurement trend (if user inputs)</li>
+                        <li>"This week vs last week" comparison</li>
+                        <li>AI insight: "You're most consistent on Mondays"</li>
+                    </ul>
+                </div>
+                <div class="retention-card">
+                    <div class="r-icon" style="background: rgba(239,68,68,0.1);">🔄</div>
+                    <h3>Re-Engagement Flows</h3>
+                    <p>Users will lapse. The win-back flow determines if they return.</p>
+                    <ul>
+                        <li>Day 3 lapse: "Your streak is waiting — come back"</li>
+                        <li>Day 7 lapse: "A lot has happened — see your summary"</li>
+                        <li>Day 14 lapse: "Fresh start — your plan has been updated"</li>
+                        <li>Day 30 lapse: personalized email with new AI plan</li>
+                        <li>Never guilt-shame — always frame as a fresh start</li>
+                    </ul>
+                </div>
+                <div class="retention-card">
+                    <div class="r-icon" style="background: rgba(34,197,94,0.1);">🤖</div>
+                    <h3>AI Personalization Engine</h3>
+                    <p>The app should feel smarter every week.</p>
+                    <ul>
+                        <li>Calorie target auto-adjusts based on actual loss rate</li>
+                        <li>Workout intensity scales with performance data</li>
+                        <li>Food suggestions based on logged meal history</li>
+                        <li>Weekly AI insight ("Your best performance days are Tue/Thu")</li>
+                        <li>Goal date recalculation as data accumulates</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>The "Small Win" Architecture</h3>
+            <p>Users need to feel progress within the <strong>first 10 minutes</strong> of using the app. Small wins to
+                engineer:</p>
+            <p>• <strong>Onboarding completion badge</strong> (earned by finishing Screen 8) — instant reward</p>
+            <p>• <strong>First meal log badge</strong> — must trigger within first session, even if it's just water</p>
+            <p>• <strong>Profile complete indicator</strong> — "Your profile is 80% complete — add a profile photo for
+                +50 XP"</p>
+            <p>• <strong>Day 1 summary</strong> — pushed at 9pm on first day: "Day 1 complete. You logged X, burned Y,
+                started a streak. Tomorrow's workout is ready."</p>
+            <p>• <strong>First AI insight</strong> — trigger after 3 meals logged: "Based on your food choices, you're
+                naturally high in protein — your plan has been refined." Makes user feel the AI is watching and caring.
+            </p>
+        </section>
+
+        <hr>
+
+        <!-- ========== SECTION 9: PRIORITY TABLE ========== -->
+        <section id="priority">
+            <div class="section-label">Section 09</div>
+            <h2>Implementation Priorities</h2>
+            <p class="section-intro">Not everything can be built at once. Here's what to build first, ordered by
+                retention impact vs. development effort.</p>
+
+            <div class="callout">
+                <strong>Rule:</strong> Ship the onboarding redesign before any other feature. A 10% improvement in
+                onboarding completion has the same retention effect as a 30% improvement in any post-onboarding feature.
+            </div>
+
+            <div
+                style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden;">
+                <table class="priority-table">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Retention Impact</th>
+                            <th>Dev Effort</th>
+                            <th>Do When</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Google Sign-In on Screen 0</td>
+                            <td>🔥 Highest — removes biggest friction point</td>
+                            <td><span class="effort-badge low">Low</span></td>
+                            <td>Sprint 1 / Now</td>
+                        </tr>
+                        <tr>
+                            <td>"Your Plan is Ready" screen with personalized calorie/macro preview</td>
+                            <td>🔥 Highest — the Aha Moment that converts users</td>
+                            <td><span class="effort-badge low">Low</span></td>
+                            <td>Sprint 1 / Now</td>
+                        </tr>
+                        <tr>
+                            <td>Move Goal screen to Step 1 (emotional anchor first)</td>
+                            <td>🔥 Very High — sets emotional tone of entire flow</td>
+                            <td><span class="effort-badge low">Low</span></td>
+                            <td>Sprint 1 / Now</td>
+                        </tr>
+                        <tr>
+                            <td>Remove training interests from onboarding (delay to Day 3)</td>
+                            <td>🟡 High — reduces drop-off by shortening flow</td>
+                            <td><span class="effort-badge low">Low</span></td>
+                            <td>Sprint 1 / Now</td>
+                        </tr>
+                        <tr>
+                            <td>Daily streak system (visual counter in app header)</td>
+                            <td>🔥 Very High — single biggest retention driver post-onboarding</td>
+                            <td><span class="effort-badge mid">Medium</span></td>
+                            <td>Sprint 2</td>
+                        </tr>
+                        <tr>
+                            <td>Schedule first session screen + notification opt-in</td>
+                            <td>🔥 Very High — 3x Day-7 retention (implementation intention)</td>
+                            <td><span class="effort-badge mid">Medium</span></td>
+                            <td>Sprint 2</td>
+                        </tr>
+                        <tr>
+                            <td>Slider-based body stats (not TextInput)</td>
+                            <td>🟡 High — reduces friction and adds live TDEE feedback</td>
+                            <td><span class="effort-badge mid">Medium</span></td>
+                            <td>Sprint 2</td>
+                        </tr>
+                        <tr>
+                            <td>Day 1 evening summary push notification</td>
+                            <td>🟡 High — reinforces first-day behavior, sets expectation</td>
+                            <td><span class="effort-badge low">Low</span></td>
+                            <td>Sprint 2</td>
+                        </tr>
+                        <tr>
+                            <td>Streak shield system</td>
+                            <td>🟡 Medium — reduces churn after first missed day</td>
+                            <td><span class="effort-badge mid">Medium</span></td>
+                            <td>Sprint 3</td>
+                        </tr>
+                        <tr>
+                            <td>XP system + Levels</td>
+                            <td>🟡 Medium — long-term engagement layer</td>
+                            <td><span class="effort-badge high">High</span></td>
+                            <td>Sprint 3-4</td>
+                        </tr>
+                        <tr>
+                            <td>Achievement badges (20+ types)</td>
+                            <td>🟡 Medium — milestone rewards for power users</td>
+                            <td><span class="effort-badge mid">Medium</span></td>
+                            <td>Sprint 3-4</td>
+                        </tr>
+                        <tr>
+                            <td>Weekly AI progress insight</td>
+                            <td>🟡 Medium — high perceived intelligence value</td>
+                            <td><span class="effort-badge high">High</span></td>
+                            <td>Sprint 4-5</td>
+                        </tr>
+                        <tr>
+                            <td>Social features (friend streaks, sharing)</td>
+                            <td>🔥 Very High long-term — biggest retention multiplier</td>
+                            <td><span class="effort-badge high">High</span></td>
+                            <td>v2.0</td>
+                        </tr>
+                        <tr>
+                            <td>Re-engagement email/push flows (lapse sequences)</td>
+                            <td>🟡 High — recovers churned users</td>
+                            <td><span class="effort-badge mid">Medium</span></td>
+                            <td>Post-launch</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 style="margin-top: 40px;">The One-Paragraph Summary</h3>
+            <div class="callout">
+                Your current onboarding collects data first and delivers value last — and that's backwards. Users don't
+                care about filling out a form; they care about seeing what the app will do for them. The redesigned flow
+                flips this: lead with emotion (your "Why" goal screen), collect the minimum data needed, then
+                immediately deliver a personalized plan preview that makes users want to save it. Add Google Sign-In at
+                the start to eliminate password friction. Add a schedule screen at the end to cement the habit. Make Day
+                1 end with at least one logged action. Show a streak counter from the first second. Do those five things
+                and you'll see measurably higher onboarding completion, Day-7 retention, and 30-day active users than
+                anything else you could build this quarter.
+            </div>
+        </section>
+
+    </div>
+
+    <footer>
+        <p>ATHLATOS — Onboarding UX Strategy Report &nbsp;·&nbsp; Built for <strong>Sid @ Maxscripts</strong></p>
+        <p style="margin-top: 8px; font-size: 11px;">Reference: Duolingo retention systems · Noom onboarding ·
+            MyFitnessPal UX · Nike Training Club · Behavioral science (Kahneman, Cialdini, Gollwitzer, Clear)</p>
+    </footer>
+
+    <script>
+        const sections = document.querySelectorAll('section[id]');
+        const navLinks = document.querySelectorAll('nav a[href^="#"]');
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    navLinks.forEach(link => {
+                        link.classList.toggle('active', link.getAttribute('href') === '#' + entry.target.id);
+                    });
+                }
+            });
+        }, { rootMargin: '-20% 0px -70% 0px' });
+
+        sections.forEach(s => observer.observe(s));
+    </script>
+
+</body>
+
+</html>

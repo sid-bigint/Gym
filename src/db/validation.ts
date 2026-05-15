@@ -28,6 +28,13 @@ export const UserSchema = z.object({
     workoutType: z.string().nullable().optional(),
     workoutDuration: z.number().int().min(10).max(180).nullable().optional(),
     workoutFrequency: z.number().int().min(1).max(7).nullable().optional(),
+    
+    // Gamification
+    xp: z.number().int().nonnegative().optional(),
+    level: z.number().int().positive().optional(),
+    streakShields: z.number().int().nonnegative().optional(),
+    lastShieldAwardDate: z.string().nullable().optional(),
+    badges: z.string().nullable().optional(),
 });
 
 // Partial schema for updates

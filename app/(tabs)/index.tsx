@@ -17,7 +17,8 @@ import { MuscleVisualizerCard } from '../../src/components/MuscleVisualizerCard'
 import useMuscleStore from '../../src/store/useMuscleStore';
 import MuscleRepository from '../../src/repositories/MuscleRepository';
 import { useAuthStore } from '../../src/store/useAuthStore';
-
+import { DashboardHeader } from '../../src/components/dashboard/DashboardHeader';
+import { GamificationWidget } from '../../src/components/dashboard/GamificationWidget';
 
 const { width } = Dimensions.get('window');
 
@@ -717,75 +718,7 @@ export default function Dashboard() {
     <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <StatusBar barStyle={mode === 'dark' ? 'light-content' : 'dark-content'} />
 
-      {/* Immersive Header */}
-      <View style={styles.headerWrapper}>
-        <LinearGradient
-          colors={[colors.accent.primary, mode === 'dark' ? '#4C1D95' : colors.accent.secondary]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerGradient}
-        >
-          <View style={styles.headerTop}>
-            <View>
-              <Text style={styles.greetingText}>{greeting()},</Text>
-              <Text style={styles.usernameText}>{user?.name?.split(' ')[0] || 'Athlete'}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-              <TouchableOpacity
-                style={styles.headerActionBtn}
-                onPress={() => router.push('/(tabs)/routines')}
-              >
-                <Ionicons name="add" size={24} color="white" />
-                <Text style={styles.headerActionText}>Start</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.profileBtn}
-                onPress={() => router.push('/(tabs)/settings')}
-              >
-                <View style={styles.avatarContainer}>
-                  {user?.picture ? (
-                    <Image source={{ uri: user.picture }} style={{ width: 46, height: 46, borderRadius: 23 }} />
-                  ) : (
-                    <Image
-                      key={user?.gender}
-                      source={{
-                        uri: (user?.gender?.toLowerCase() === 'female')
-                          ? 'https://cdn-icons-png.flaticon.com/512/6997/6997662.png' // Female Avatar
-                          : 'https://cdn-icons-png.flaticon.com/512/236/236831.png'   // Male Avatar
-                      }}
-                      style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: '#ddd' }}
-                      resizeMode="cover"
-                    />
-                  )}
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 5,
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderRadius: 999,
-              backgroundColor: 'rgba(255,255,255,0.14)',
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.18)'
-            }}>
-              <Ionicons name="flame" size={18} color="#FDE68A" />
-              <Text style={{ color: 'white', fontSize: 13, fontWeight: '800' }}>
-                {streak.current} day streak
-              </Text>
-            </View>
-            <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.55)' }} />
-            <Text style={{ color: 'rgba(255,255,255,0.74)', fontSize: 12, fontWeight: '600' }}>
-              Best {streak.longest}
-            </Text>
-          </View>
-        </LinearGradient>
-      </View>
+      <DashboardHeader user={user} streak={streak} greeting={greeting()} />
 
       <ScrollView
         style={styles.scrollView}
@@ -866,6 +799,8 @@ export default function Dashboard() {
             </LinearGradient>
           </TouchableOpacity>
         )}
+
+        <GamificationWidget user={user} />
 
         {/* Main Stats Row */}
         <View style={styles.statsRow}>
