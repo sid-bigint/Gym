@@ -28,6 +28,11 @@ export default function NutritionScreen() {
     const fabAnim = useRef(new Animated.Value(0)).current;
     const { lastDeletedItem, storeDeletedItem, clearLastDeleted } = useUndoDelete<NutritionLog>();
 
+    // Goal celebration
+    const [celebration, setCelebration] = useState<string | null>(null);
+    const celebrationAnim = useRef(new Animated.Value(0)).current;
+    const celebratedGoalsRef = useRef<Set<string>>(new Set());
+
     // Progress animations
     const calAnim = useRef(new Animated.Value(0)).current;
     const protAnim = useRef(new Animated.Value(0)).current;
@@ -51,12 +56,34 @@ export default function NutritionScreen() {
     useEffect(() => {
         const getVal = (curr: number, target: number) => target > 0 ? Math.min(curr / target, 1) : 0;
         Animated.parallel([
-            Animated.timing(calAnim, { toValue: getVal(totals.calories, user?.calorieGoal || 2000), duration: 800, useNativeDriver: false }),
-            Animated.timing(protAnim, { toValue: getVal(totals.protein, user?.targetProtein || 150), duration: 800, useNativeDriver: false }),
-            Animated.timing(carbAnim, { toValue: getVal(totals.carbs, user?.targetCarbs || 200), duration: 800, useNativeDriver: false }),
-            Animated.timing(fatAnim, { toValue: getVal(totals.fats, user?.targetFats || 70), duration: 800, useNativeDriver: false }),
+            Animated.spring(calAnim, { toValue: getVal(totals.calories, user?.calorieGoal || 2000), tension: 20, friction: 8, useNativeDriver: false }),
+            Animated.spring(protAnim, { toValue: getVal(totals.protein, user?.targetProtein || 150), tension: 20, friction: 8, useNativeDriver: false }),
+            Animated.spring(carbAnim, { toValue: getVal(totals.carbs, user?.targetCarbs || 200), tension: 20, friction: 8, useNativeDriver: false }),
+            Animated.spring(fatAnim, { toValue: getVal(totals.fats, user?.targetFats || 70), tension: 20, friction: 8, useNativeDriver: false }),
         ]).start();
     }, [totals, user]);
+
+    // Detect goal completion
+    useEffect(() => {
+        if (!user || totals.calories === 0) return;
+        const goals = [
+            { key: 'calories', current: totals.calories, target: user.calorieGoal || 2000, label: 'Calorie Goal' },
+            { key: 'protein', current: totals.protein, target: user.targetProtein || 150, label: 'Protein Goal' },
+        ];
+        for (const g of goals) {
+            if (g.current >= g.target && !celebratedGoalsRef.current.has(g.key)) {
+                celebratedGoalsRef.current.add(g.key);
+                setCelebration(`🎉 ${g.label} reached!`);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Animated.sequence([
+                    Animated.spring(celebrationAnim, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
+                    Animated.delay(2500),
+                    Animated.timing(celebrationAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+                ]).start(() => setCelebration(null));
+                break;
+            }
+        }
+    }, [totals]);
 
     const handleEdit = (log: NutritionLog) => {
         setEditingLog(log);
@@ -232,7 +259,7 @@ export default function NutritionScreen() {
     );
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background.primary, paddingTop: contentTop }]}>
+            <View style={[styles.container, { backgroundColor: colors.background.primary, paddingTop: contentTop }]}>
             {/* Header */}
             <View style={styles.header}>
                 <View>
@@ -363,6 +390,25 @@ export default function NutritionScreen() {
                 onDismiss={() => setShowUndo(false)}
             />
 
+            {/* Goal Celebration Toast */}
+            {celebration && (
+                <Animated.View style={[
+                    styles.celebrationToast,
+                    {
+                        backgroundColor: colors.accent.primary,
+                        opacity: celebrationAnim,
+                        transform: [{
+                            translateY: celebrationAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [-20, 0],
+                            }),
+                        }],
+                    },
+                ]}>
+                    <Text style={styles.celebrationText}>{celebration}</Text>
+                </Animated.View>
+            )}
+
             {/* Quick Add Modal */}
             <Modal visible={showQuickAdd} animationType="slide" transparent onRequestClose={() => setShowQuickAdd(false)}>
                 <View style={styles.modalOverlay}>
@@ -471,7 +517,7 @@ export default function NutritionScreen() {
                     </View>
                 </View>
             </Modal>
-        </View>
+            </View>
     );
 }
 
@@ -530,4 +576,22 @@ const styles = StyleSheet.create({
     fabLabel: { fontSize: 14, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
     mainFab: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
     miniFab: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 1, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
+    celebrationToast: {
+        position: 'absolute',
+        top: 100,
+        alignSelf: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 20,
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+    },
+    celebrationText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '800',
+    },
 });

@@ -361,7 +361,7 @@ export default function ProgressScreen() {
     }
 
     return (
-        <View style={styles.container}>
+            <View style={styles.container}>
             <View style={styles.header}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                     <Text style={[styles.headerTitle, { marginBottom: 0 }]}>Progress</Text>
@@ -719,7 +719,7 @@ export default function ProgressScreen() {
                     )}
                 </ScrollView>
             )}
-        </View>
+            </View>
     );
 }
 

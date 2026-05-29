@@ -31,7 +31,7 @@ export default function AddFoodScreen() {
     // State
     const [mealType, setMealType] = useState<string>(getMealTypeByTime());
     const [source, setSource] = useState<AddSource>('search'); // Default to search as it's most common
-    const [showSourceSelector, setShowSourceSelector] = useState(true);
+    const [showSourceSelector, setShowSourceSelector] = useState(false);
     const [selectedFood, setSelectedFood] = useState<any | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [addedItems, setAddedItems] = useState<any[]>([]);
@@ -39,6 +39,7 @@ export default function AddFoodScreen() {
     const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
     const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
     const overlayAnim = useRef(new Animated.Value(0)).current;
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (selectedFood) {
@@ -106,8 +107,11 @@ export default function AddFoodScreen() {
         ).slice(0, 50);
     }, [combinedFoods, searchQuery]);
 
+    const isAddingRef = useRef(false);
+
     const handleAddFoodToLog = (quantity: number, unit: 'g' | 'pc') => {
-        if (!selectedFood) return;
+        if (!selectedFood || isAddingRef.current) return;
+        isAddingRef.current = true;
 
         const multiplier = unit === 'g' ? quantity / 100 : quantity;
         let actualMultiplier = multiplier;
@@ -126,9 +130,12 @@ export default function AddFoodScreen() {
             mealType: mealType.toLowerCase()
         };
 
-        setAddedItems([...addedItems, newItem]);
+        setAddedItems(prev => [...prev, newItem]);
         setSelectedFood(null);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        // Reset after animation clears
+        setTimeout(() => { isAddingRef.current = false; }, 500);
     };
 
     const handleSaveCustomFood = async (food: any) => {
@@ -175,10 +182,16 @@ export default function AddFoodScreen() {
     };
 
     const handleFinish = async () => {
-        for (const item of addedItems) {
-            await addLog(item);
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+        try {
+            for (const item of addedItems) {
+                await addLog(item);
+            }
+            router.back();
+        } finally {
+            setIsSubmitting(false);
         }
-        router.back();
     };
 
     const handleSaveAsTemplate = () => {
@@ -208,28 +221,53 @@ export default function AddFoodScreen() {
             <Stack.Screen options={{ 
                 headerShown: true,
                 headerTitle: 'Add Food',
-                headerTransparent: true,
+                headerStyle: { backgroundColor: colors.background.primary },
+                headerTitleStyle: { color: colors.text.primary, fontWeight: '700' },
+                headerShadowVisible: false,
                 headerLeft: () => (
                     <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
                         <Ionicons name="close" size={28} color={colors.text.primary} />
                     </TouchableOpacity>
                 ),
-                headerRight: () => null
+                headerRight: () => (
+                    <TouchableOpacity onPress={() => setShowSourceSelector(true)} style={styles.headerBtn}>
+                        <Ionicons name="options-outline" size={22} color={colors.text.secondary} />
+                    </TouchableOpacity>
+                )
             }} />
 
-            <View style={[styles.content, { paddingTop: 100 }]}>
-                {/* Step Indicator */}
-                <View style={styles.stepIndicator}>
-                    {[1, 2].map(s => (
-                        <View 
-                            key={s} 
+            <View style={[styles.content, { paddingTop: 8 }]}>
+                {/* Tab Pills */}
+                <View style={[styles.tabBar, { backgroundColor: colors.background.elevated, borderColor: colors.border.primary }]}>
+                    {([
+                        { key: 'search' as AddSource, label: 'Food Library', icon: 'search' as const },
+                        { key: 'saved' as AddSource, label: 'Saved Meals', icon: 'bookmark' as const },
+                        { key: 'custom' as AddSource, label: 'Create New', icon: 'add-circle' as const },
+                    ]).map(tab => (
+                        <TouchableOpacity
+                            key={tab.key}
                             style={[
-                                styles.stepDot, 
-                                { backgroundColor: colors.border.primary },
-                                s === 1 && source === 'none' && { backgroundColor: colors.accent.primary },
-                                s === 2 && source !== 'none' && { backgroundColor: colors.accent.primary }
-                            ]} 
-                        />
+                                styles.tabPill,
+                                source === tab.key && { backgroundColor: colors.accent.primary + '18' },
+                            ]}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setSource(tab.key);
+                            }}
+                        >
+                            <Ionicons
+                                name={tab.icon}
+                                size={16}
+                                color={source === tab.key ? colors.accent.primary : colors.text.disabled}
+                            />
+                            <Text style={[
+                                styles.tabLabel,
+                                { color: source === tab.key ? colors.accent.primary : colors.text.disabled },
+                                source === tab.key && { fontWeight: '700' },
+                            ]}>
+                                {tab.label}
+                            </Text>
+                        </TouchableOpacity>
                     ))}
                 </View>
 
@@ -304,7 +342,7 @@ export default function AddFoodScreen() {
                 </View>
             )}
 
-            {/* Source Selector Bottom Sheet */}
+            {/* Source Selector Bottom Sheet (meal type picker) */}
             <Modal visible={showSourceSelector} transparent animationType="slide" onRequestClose={() => setShowSourceSelector(false)}>
                 <View style={styles.modalOverlay}>
                     <TouchableOpacity 
@@ -350,16 +388,25 @@ const styles = StyleSheet.create({
     headerBtn: {
         padding: 8,
     },
-    stepIndicator: {
+    tabBar: {
         flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 8,
-        marginBottom: 24,
+        borderRadius: 14,
+        padding: 4,
+        marginBottom: 16,
+        borderWidth: 1,
     },
-    stepDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+    tabPill: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 5,
+        paddingVertical: 10,
+        borderRadius: 11,
+    },
+    tabLabel: {
+        fontSize: 12,
+        fontWeight: '600',
     },
     overlay: {
         ...StyleSheet.absoluteFillObject,

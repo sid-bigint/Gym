@@ -13,6 +13,9 @@ import { PREDEFINED_BUNDLES } from '../../src/data/exploreBundles';
 import { RoutineCard } from '../../src/components/RoutineCard';
 import { ProgramCard } from '../../src/components/ProgramCard';
 import { LogPastWorkoutModal } from '../../src/components/routines/LogPastWorkoutModal';
+import { TutorialOverlay, TourStepConfig } from '../../src/components/dashboard/TutorialOverlay';
+import { TourHighlightWrapper } from '../../src/components/dashboard/TourHighlightWrapper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -29,6 +32,89 @@ export default function RoutinesScreen() {
     const scrollY = useRef(new Animated.Value(0)).current;
     const fabAnim = useRef(new Animated.Value(0)).current;
     const [greeting, setGreeting] = useState('');
+    const scrollRef = useRef<any>(null);
+
+    // ─── Tutorial State ───
+    const [isTourVisible, setIsTourVisible] = useState(false);
+    const [tourStep, setTourStep] = useState(1);
+
+    const ROUTINES_TOUR_STEPS: TourStepConfig[] = [
+      {
+        title: 'Routines Overview',
+        description: 'This is where all your workout routines live. You can see your total routines count in the top-right badge.',
+        icon: 'barbell',
+      },
+      {
+        title: 'Quick Stats',
+        description: 'See how many routines you\'ve completed and how many you have in total at a glance.',
+        icon: 'stats-chart',
+      },
+      {
+        title: 'Quick Start',
+        description: 'Tap this banner to instantly begin a freestyle workout without picking a routine.',
+        icon: 'flash',
+      },
+      {
+        title: 'Your Routine Cards',
+        description: 'Each card is a workout routine. Tap to start, long-press to select multiple, swipe to pin or delete.',
+        icon: 'list',
+      },
+      {
+        title: 'The Create Menu',
+        description: 'The + button opens a menu with multiple ways to create workouts.',
+        icon: 'add-circle',
+        placement: 'top',
+      },
+      {
+        title: 'AI & Custom Routines',
+        description: 'Use the AI generator to instantly build a personalized plan, or create your own custom workout from scratch.',
+        icon: 'hardware-chip',
+        placement: 'top',
+      },
+      {
+        title: 'Log Past Workouts',
+        description: 'Forgot to track a workout? You can easily log a past session here to keep your progress history accurate.',
+        icon: 'time',
+        placement: 'top',
+      },
+    ];
+
+    useEffect(() => {
+      const checkTour = async () => {
+        try {
+          const seen = await AsyncStorage.getItem('@has_seen_routines_tour_v1');
+          if (!seen) {
+            setTimeout(() => {
+              setIsTourVisible(true);
+              setTourStep(1);
+            }, 800);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      checkTour();
+    }, []);
+
+    const handleTourStepChange = (nextStep: number) => {
+      setTourStep(nextStep);
+      const scrollTargets = [0, 0, 50, 200, 0, 0, 0];
+      const targetY = scrollTargets[nextStep - 1] || 0;
+      scrollRef.current?.scrollTo?.({ y: targetY, animated: true });
+      scrollRef.current?.getNode?.()?.scrollTo?.({ y: targetY, animated: true });
+
+      if (nextStep >= 5) {
+        setFabOpen(true);
+      } else {
+        setFabOpen(false);
+      }
+    };
+
+    const finishTour = async () => {
+      setIsTourVisible(false);
+      setFabOpen(false);
+      await AsyncStorage.setItem('@has_seen_routines_tour_v1', 'true');
+    };
 
     useEffect(() => {
         const hour = new Date().getHours();
@@ -307,9 +393,10 @@ export default function RoutinesScreen() {
     });
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+          <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
             {/* Animated Header */}
-            <Animated.View style={[styles.header, { opacity: headerOpacity, paddingTop: contentTop }]}>
+            <TourHighlightWrapper isActive={isTourVisible && tourStep === 1} borderRadius={24}>
+              <Animated.View style={[styles.header, { opacity: headerOpacity, paddingTop: contentTop }]}>
                 <View>
                     <Text style={[styles.greeting, { color: colors.text.secondary }]}>{greeting}</Text>
                     <Text style={[styles.title, { color: colors.text.primary }]}>Your Workouts</Text>
@@ -320,10 +407,12 @@ export default function RoutinesScreen() {
                         <Text style={[styles.statText, { color: colors.accent.primary }]}>{routines.length}</Text>
                     </View>
                 </View>
-            </Animated.View>
+              </Animated.View>
+            </TourHighlightWrapper>
 
             {/* Main Content */}
             <Animated.ScrollView
+                ref={scrollRef}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
                 onScroll={Animated.event(
@@ -334,7 +423,8 @@ export default function RoutinesScreen() {
             >
                 {/* Quick Stats Row */}
                 {!isSelectionMode && routines.length > 0 && (
-                    <View style={styles.statsRow}>
+                    <TourHighlightWrapper isActive={isTourVisible && tourStep === 2} borderRadius={16}>
+                      <View style={styles.statsRow}>
                         <View style={[styles.statCard, { backgroundColor: colors.background.elevated }]}>
                             <LinearGradient
                                 colors={[colors.accent.primary + '20', colors.accent.primary + '05']}
@@ -360,6 +450,7 @@ export default function RoutinesScreen() {
                             </LinearGradient>
                         </View>
                     </View>
+                    </TourHighlightWrapper>
                 )}
 
                 {/* Empty State */}
@@ -398,6 +489,7 @@ export default function RoutinesScreen() {
 
                 {/* Quick Start Banner - Enhanced */}
                 {!isSelectionMode && routines.length > 0 && (
+                    <TourHighlightWrapper isActive={isTourVisible && tourStep === 3} borderRadius={16}>
                     <TouchableOpacity
                         style={[
                             styles.quickStartBanner,
@@ -429,17 +521,20 @@ export default function RoutinesScreen() {
                             </View>
                         </LinearGradient>
                     </TouchableOpacity>
+                    </TourHighlightWrapper>
                 )}
 
                 {/* Routines List */}
                 {!isSelectionMode && routines.length > 0 && (
-                    <View style={styles.listContainer}>
+                    <TourHighlightWrapper isActive={isTourVisible && tourStep === 4} borderRadius={16}>
+                      <View style={styles.listContainer}>
                         {displayedItems.map((item, index) => (
                             <View key={`${item.type}-${item.data?.id || item.id || index}`}>
                                 {renderItem({ item })}
                             </View>
                         ))}
-                    </View>
+                      </View>
+                    </TourHighlightWrapper>
                 )}
 
                 {/* Selection Mode */}
@@ -454,10 +549,26 @@ export default function RoutinesScreen() {
                             ))}
                     </View>
                 )}
+
+                {/* --- DEV TOOLS: Temporary Reset Button --- */}
+                <TouchableOpacity 
+                  style={{ alignSelf: 'center', marginVertical: 30, padding: 10, backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: 12 }}
+                  onPress={async () => {
+                    await AsyncStorage.removeItem('@has_seen_routines_tour_v1');
+                    setTourStep(1);
+                    setIsTourVisible(true);
+                    scrollRef.current?.scrollTo?.({ y: 0, animated: true });
+                    scrollRef.current?.getNode?.()?.scrollTo?.({ y: 0, animated: true });
+                  }}
+                >
+                  <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>Test Tutorial Again</Text>
+                </TouchableOpacity>
+                {/* -------------------------------------- */}
             </Animated.ScrollView>
 
             {/* Floating Action Button */}
             {!isSelectionMode && (
+                <TourHighlightWrapper isActive={isTourVisible && tourStep === 5} borderRadius={40}>
                 <View style={styles.fabContainer}>
                     {fabOpen && (
                         <TouchableWithoutFeedback onPress={() => setFabOpen(false)}>
@@ -549,6 +660,7 @@ export default function RoutinesScreen() {
                         </LinearGradient>
                     </TouchableOpacity>
                 </View>
+                </TourHighlightWrapper>
             )}
 
             {/* Modals remain the same */}
@@ -685,7 +797,16 @@ export default function RoutinesScreen() {
                     loadRoutines();
                 }}
             />
-        </View>
+
+            {/* Routines Tutorial Overlay */}
+            <TutorialOverlay
+                isVisible={isTourVisible}
+                step={tourStep}
+                steps={ROUTINES_TOUR_STEPS}
+                onStepChange={handleTourStepChange}
+                onFinish={finishTour}
+            />
+          </View>
     );
 }
 

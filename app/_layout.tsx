@@ -10,8 +10,6 @@ import { useUserStore } from "../src/store/useUserStore";
 import { CloudSyncService } from "../src/services/cloudSyncService";
 
 import { useWorkoutNotification } from "../src/hooks/useWorkoutNotification";
-
-
 // Ignore specific warnings that are irrelevant to our Local Notification implementation
 LogBox.ignoreLogs([
   "expo-notifications: Android Push notifications",

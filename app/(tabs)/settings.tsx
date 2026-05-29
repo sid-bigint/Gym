@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { CalorieCalculator } from '../../src/components/CalorieCalculator';
 import { accentColors, shadows, spacing, ThemeType } from '../../src/constants/theme';
+import { BADGES } from '../../src/constants/badges';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { useHealthConnectStore } from '../../src/store/useHealthConnectStore';
 import { useNotesStore } from '../../src/store/useNotesStore';
@@ -14,8 +15,12 @@ import { useProgressStore } from '../../src/store/useProgressStore';
 import { useScreenPadding } from '../../src/store/useScreenPadding';
 import { useTheme } from '../../src/store/useTheme';
 import { useUserStore } from '../../src/store/useUserStore';
-
+import { useWorkoutStore } from '../../src/store/useWorkoutStore';
+import { useNutritionStore } from '../../src/store/useNutritionStore';
+import { subDays, startOfDay, isWithinInterval } from 'date-fns';
 import { useAlertStore } from '../../src/store/useAlertStore';
+import LevelInfoModal from '../../src/components/dashboard/LevelInfoModal';
+import { DataExportService } from '../../src/services/DataExportService';
 
 const { width } = Dimensions.get('window');
 
@@ -24,6 +29,7 @@ export default function ProfileScreen() {
     const { user: authUser } = useAuthStore();
     const { logout } = useAuthStore();
     const { measurements, loadMeasurements, deleteMeasurement, addMeasurement } = useProgressStore();
+    const { history: workoutHistory, loadHistory: loadWorkoutHistory } = useWorkoutStore();
     const {
         todaySteps,
         isAvailable: isHealthConnectAvailable,
@@ -42,15 +48,18 @@ export default function ProfileScreen() {
 
     const [showCalculator, setShowCalculator] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [isLogging, setIsLogging] = useState(false);
     const [newWeight, setNewWeight] = useState('');
     const [editingItem, setEditingItem] = useState<any | null>(null);
+    const [showLevelInfo, setShowLevelInfo] = useState(false);
 
     useEffect(() => {
         initTheme();
         loadMeasurements();
         bootstrapHealthConnect();
+        loadWorkoutHistory();
     }, []);
 
     const pickImage = async () => {
@@ -119,6 +128,20 @@ export default function ProfileScreen() {
         useAlertStore.getState().showAlert("Change Profile Photo", "Choose an option to update your profile picture.", options);
     };
 
+    const handleExportData = async () => {
+        if (!user?.id) return;
+        
+        setIsExporting(true);
+        try {
+            await DataExportService.exportAllDataAsPDF(String(user.id));
+            useAlertStore.getState().showAlert('Export Success', 'Your progress report has been generated and is ready to share.');
+        } catch (error) {
+            useAlertStore.getState().showAlert('Export Failed', 'Something went wrong while generating your PDF report.');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     const handleLogout = async () => {
         useAlertStore.getState().showAlert(
             "Log Out",
@@ -168,19 +191,39 @@ export default function ProfileScreen() {
 
     const latestWeight = measurements[0]?.weight || user?.weight || 0;
     const notebookItems = useNotesStore((s) => s.items);
-    const notebookSummary = useMemo(() => {
-        const taskCount = notebookItems.filter(item => item.type === 'task').length;
-        const openTaskCount = notebookItems.filter(item => item.type === 'task' && !item.isDone).length;
-        return {
-            total: notebookItems.length,
-            label: notebookItems.length === 0
-                ? 'Notes, tasks, reminders'
-                : `${notebookItems.length} items · ${openTaskCount}/${taskCount} tasks open`,
-        };
-    }, [notebookItems]);
+    const totalWorkouts = useMemo(() => workoutHistory.length, [workoutHistory]);
+    const totalDaysActive = useMemo(() => {
+        const uniqueDates = new Set(workoutHistory.map(w => format(new Date(w.date), 'yyyy-MM-dd')));
+        return uniqueDates.size;
+    }, [workoutHistory]);
     const weightChange = measurements.length >= 2
         ? (measurements[0].weight - measurements[1].weight).toFixed(1)
         : 0;
+
+    // --- P2: Weekly Summary Calculations ---
+    const last7Days = useMemo(() => {
+        const days = [];
+        for (let i = 6; i >= 0; i--) {
+            days.push(subDays(startOfDay(new Date()), i));
+        }
+        return days;
+    }, []);
+
+    const weeklyStats = useMemo(() => {
+        const workouts = workoutHistory.filter(w => 
+            isWithinInterval(new Date(w.date), { start: last7Days[0], end: new Date() })
+        );
+        
+        // This is a simplification; in a real app, you'd fetch nutrition data for the whole week
+        // For now, we'll just show the workout count and total duration
+        const totalDuration = workouts.reduce((acc, curr) => acc + (curr.durationSeconds || 0), 0);
+        
+        return {
+            workoutCount: workouts.length,
+            hoursSpent: (totalDuration / 3600).toFixed(1),
+            avgCals: user?.calorieGoal || 0, // Placeholder
+        };
+    }, [workoutHistory, last7Days, user]);
 
     return (
         <ScrollView
@@ -190,74 +233,96 @@ export default function ProfileScreen() {
             {/* Dynamic Status Bar Spacer based on active workout */}
             <View style={{ height: contentTop }} />
 
-            {/* Premium Header Profile Card */}
+            {/* Extraordinary RPG-style Character Stat Card */}
             <View style={styles.profileHeaderWrapper}>
-                <LinearGradient
-                    colors={[colors.accent.primary, colors.accent.secondary]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.profileHeaderCard}
+                <TouchableOpacity 
+                    activeOpacity={0.9} 
+                    onPress={() => setShowLevelInfo(true)}
                 >
-                    <>
-                        <View style={styles.profileTopRow}>
-                            <View style={styles.profileInfo}>
-                                <Text style={styles.profileWelcome}>Welcome back,</Text>
-                                <Text style={styles.profileName}>{user?.name || 'User'}</Text>
-                            </View>
-                            <View>
-                                <View style={styles.avatarMain}>
+                    <LinearGradient
+                        colors={[colors.accent.primary, colors.accent.secondary, mode === 'dark' ? '#0F172A' : '#1E293B']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[styles.profileHeaderCard, { shadowColor: colors.accent.primary }]}
+                    >
+                        {/* Decorative Patterns & Glows */}
+                        <View style={[styles.cardGlow, { backgroundColor: colors.accent.primary + '40' }]} />
+                        <Ionicons name="shield" size={180} color="rgba(255,255,255,0.03)" style={styles.bgIconLarge} />
+
+                        <View style={styles.cardTopSection}>
+                            <View style={styles.avatarWrapper}>
+                                <View style={[styles.avatarContainer, { borderColor: 'rgba(255,255,255,0.2)', borderWidth: 2 }]}>
                                     {user?.picture ? (
-                                        <Image source={{ uri: user.picture }} style={{ width: 68, height: 68, borderRadius: 34 }} />
+                                        <Image source={{ uri: user.picture }} style={styles.profileAvatar} />
                                     ) : (
-                                        <Image
-                                            key={user?.gender}
-                                            source={{
-                                                uri: (user?.gender?.toLowerCase() === 'female')
-                                                    ? 'https://cdn-icons-png.flaticon.com/512/6997/6997662.png'
-                                                    : 'https://cdn-icons-png.flaticon.com/512/236/236831.png'
-                                            }}
-                                            style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: '#ddd' }}
-                                            resizeMode="cover"
-                                        />
+                                        <View style={[styles.avatarPlaceholder, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+                                            <Ionicons name="person" size={40} color="white" />
+                                        </View>
                                     )}
+                                    <View style={styles.levelShieldFloating}>
+                                        <Text style={styles.levelShieldText}>{user?.level || 1}</Text>
+                                    </View>
                                 </View>
-                                <TouchableOpacity
-                                    style={{
-                                        position: 'absolute',
-                                        bottom: -2,
-                                        right: -2,
-                                        backgroundColor: colors.accent.primary,
-                                        width: 28,
-                                        height: 28,
-                                        borderRadius: 14,
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        borderWidth: 2,
-                                        borderColor: colors.accent.secondary
-                                    }}
+                                <TouchableOpacity 
+                                    style={[styles.editPhotoBtnCompact, { backgroundColor: colors.accent.primary, borderColor: colors.background.card }]} 
                                     onPress={handleAvatarPress}
                                 >
-                                    <Ionicons name="camera" size={14} color="white" />
+                                    <Ionicons name="camera" size={10} color="white" />
                                 </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.headerTextSection}>
+                                <View style={styles.rankBadgeGold}>
+                                    <Text style={styles.rankBadgeText}>
+                                        {(user?.level || 1) < 5 ? 'NOVICE ATHLETE' : (user?.level || 1) < 15 ? 'WARRIOR' : 'ELITE TITAN'}
+                                    </Text>
+                                </View>
+                                <Text style={styles.profileNameMain}>{user?.name || 'Athlete'}</Text>
+                                
+                                <View style={styles.miniStatsRow}>
+                                    <View style={styles.miniStatItem}>
+                                        <Ionicons name="barbell" size={12} color="rgba(255,255,255,0.6)" />
+                                        <Text style={styles.miniStatText}>{totalWorkouts} Workouts</Text>
+                                    </View>
+                                    <View style={styles.miniStatItem}>
+                                        <Ionicons name="flash" size={12} color="rgba(255,255,255,0.6)" />
+                                        <Text style={styles.miniStatText}>{user?.xp || 0} Total XP</Text>
+                                    </View>
+                                </View>
                             </View>
                         </View>
 
-                        <View style={styles.profileBadges}>
-                            <View style={styles.profileBadgeItem}>
-                                <Ionicons name="flame" size={14} color="white" />
-                                <Text style={styles.profileBadgeText}>{user?.goal || 'Maintain'}</Text>
+                        {/* Enhanced XP Bar */}
+                        <View style={styles.xpProgressSection}>
+                            <View style={styles.xpLabelRow}>
+                                <Text style={styles.xpLabelLeft}>LVL {user?.level || 1}</Text>
+                                <Text style={styles.xpLabelRight}>{Math.round(Math.min(((user?.xp || 0) / ((user?.level || 1) * 100)) * 100, 100))}% to NEXT LEVEL</Text>
                             </View>
-                            <View style={styles.profileBadgeItem}>
-                                <Ionicons name="trending-up" size={14} color="white" />
-                                <Text style={styles.profileBadgeText}>{user?.activityLevel?.replace('_', ' ') || 'Active'}</Text>
+                            <View style={styles.xpBarContainerNew}>
+                                <View style={[styles.xpBarBackgroundNew, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+                                    <LinearGradient
+                                        colors={['#FDE68A', '#F59E0B']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={[styles.xpBarFillNew, { width: `${Math.min(((user?.xp || 0) / ((user?.level || 1) * 100)) * 100, 100)}%` }]}
+                                    >
+                                        <View style={styles.xpBarShine} />
+                                    </LinearGradient>
+                                </View>
                             </View>
                         </View>
-                    </>
-                </LinearGradient>
+                    </LinearGradient>
+                </TouchableOpacity>
+
+                <LevelInfoModal 
+                    visible={showLevelInfo} 
+                    onClose={() => setShowLevelInfo(false)} 
+                    user={user} 
+                />
             </View>
 
             <View style={styles.content}>
-                {/* Section: Progress Summary */}
+                {/* Section: Body Stats */}
                 <View style={styles.sectionHeaderNew}>
                     <Text style={[styles.sectionTitleNew, { color: colors.text.primary }]}>Body Stats</Text>
                     <TouchableOpacity onPress={() => setShowHistory(true)}>
@@ -267,11 +332,14 @@ export default function ProfileScreen() {
 
                 <View style={[styles.statsRowNew]}>
                     <View style={[styles.statBox, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
-                        <View style={[styles.statIconCircle, { backgroundColor: colors.accent.primary + '15' }]}>
-                            <Ionicons name="scale-outline" size={20} color={colors.accent.primary} />
+                        <View>
+                            <View style={[styles.statIconCircle, { backgroundColor: colors.accent.primary + '15' }]}>
+                                <Ionicons name="scale-outline" size={20} color={colors.accent.primary} />
+                            </View>
+                            <Text style={[styles.statValueNew, { color: colors.text.primary }]}>{latestWeight}</Text>
+                            <Text style={[styles.statLabelNew, { color: colors.text.tertiary }]}>Weight (kg)</Text>
                         </View>
-                        <Text style={[styles.statValueNew, { color: colors.text.primary }]}>{latestWeight}</Text>
-                        <Text style={[styles.statLabelNew, { color: colors.text.tertiary }]}>Weight (kg)</Text>
+                        
                         {Number(weightChange) !== 0 && (
                             <View style={[styles.trendBadge, { backgroundColor: Number(weightChange) < 0 ? '#10B98120' : '#EF444420' }]}>
                                 <Text style={[styles.trendText, { color: Number(weightChange) < 0 ? '#10B981' : '#EF4444' }]}>
@@ -434,8 +502,39 @@ export default function ProfileScreen() {
                     </ScrollView>
                 </View>
 
+                {/* Data & Privacy */}
+                <View style={[styles.dataCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary, marginTop: 24 }]}>
+                    <View style={styles.dataInfo}>
+                        <Ionicons name="shield-checkmark" size={24} color={colors.accent.primary} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.dataTitle, { color: colors.text.primary }]}>Your Data, Your Control</Text>
+                            <Text style={[styles.dataDesc, { color: colors.text.tertiary }]}>
+                                Export a complete archive of your workout history, nutrition logs, and progress measurements.
+                            </Text>
+                        </View>
+                    </View>
+                    
+                    <TouchableOpacity 
+                        style={[styles.exportBtn, { backgroundColor: colors.accent.primary }]}
+                        onPress={handleExportData}
+                        disabled={isExporting}
+                    >
+                        {isExporting ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Ionicons name="sync" size={18} color="white" />
+                                <Text style={styles.exportBtnText}>Compiling...</Text>
+                            </View>
+                        ) : (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Ionicons name="document-text-outline" size={18} color="white" />
+                                <Text style={styles.exportBtnText}>Export Progress Report (PDF)</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                </View>
+
                 {/* Account Actions */}
-                <View style={styles.actionRowNew}>
+                <View style={[styles.actionRowNew, { marginTop: 24 }]}>
                     <TouchableOpacity
                         style={[styles.actionBtnSecondary, { borderColor: colors.border.primary }]}
                         onPress={() => router.push('/onboarding')}
@@ -687,75 +786,292 @@ const styles = StyleSheet.create({
     profileHeaderWrapper: {
         paddingHorizontal: spacing.xl,
         marginTop: 20,
-        ...shadows.lg,
     },
     profileHeaderCard: {
-        borderRadius: 32,
+        borderRadius: 36,
         padding: 24,
+        overflow: 'hidden',
+        elevation: 15,
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.4,
+        shadowRadius: 24,
     },
-    profileTopRow: {
+    cardGlow: {
+        position: 'absolute',
+        top: -80,
+        right: -80,
+        width: 280,
+        height: 280,
+        borderRadius: 140,
+    },
+    bgIconLarge: {
+        position: 'absolute',
+        bottom: -40,
+        left: -40,
+        transform: [{ rotate: '15deg' }],
+    },
+    cardTopSection: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        gap: 24,
+        marginBottom: 32,
     },
-    profileInfo: {
-        flex: 1,
+    avatarWrapper: {
+        position: 'relative',
     },
-    profileWelcome: {
-        color: 'rgba(255,255,255,0.7)',
-        fontSize: 14,
-        fontWeight: '600',
+    avatarContainer: {
+        width: 84,
+        height: 84,
+        borderRadius: 42,
+        padding: 4,
+        position: 'relative',
     },
-    profileName: {
-        color: 'white',
-        fontSize: 28,
-        fontWeight: '900',
-        marginTop: 4,
+    profileAvatar: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 40,
     },
-    avatarMain: {
-        width: 68,
-        height: 68,
-        borderRadius: 34,
-        backgroundColor: 'white',
+    avatarPlaceholder: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 40,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 3,
-        borderColor: 'rgba(255,255,255,0.3)',
-        overflow: 'hidden'
     },
-    avatarTextMain: {
-        fontSize: 28,
+    levelShieldFloating: {
+        position: 'absolute',
+        bottom: -4,
+        right: -4,
+        backgroundColor: '#F59E0B',
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        borderWidth: 3,
+        borderColor: '#1E293B',
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 4,
+    },
+    levelShieldText: {
+        color: 'white',
+        fontSize: 12,
         fontWeight: '900',
     },
-    profileBadges: {
-        flexDirection: 'row',
-        gap: 10,
+    editPhotoBtnCompact: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 2,
     },
-    profileBadgeItem: {
+    headerTextSection: {
+        flex: 1,
+    },
+    rankBadgeGold: {
+        backgroundColor: 'rgba(253, 230, 138, 0.15)',
+        alignSelf: 'flex-start',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+        marginBottom: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(253, 230, 138, 0.3)',
+    },
+    rankBadgeText: {
+        color: '#FDE68A',
+        fontSize: 10,
+        fontWeight: '900',
+        letterSpacing: 1.5,
+        textTransform: 'uppercase',
+    },
+    profileNameMain: {
+        fontSize: 26,
+        fontWeight: '900',
+        color: 'white',
+        letterSpacing: -0.5,
+        marginBottom: 8,
+    },
+    miniStatsRow: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    miniStatItem: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        backgroundColor: 'rgba(255,255,255,0.15)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
     },
-    profileBadgeText: {
+    miniStatText: {
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    xpProgressSection: {
+        marginTop: 'auto',
+    },
+    xpLabelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        marginBottom: 8,
+    },
+    xpLabelLeft: {
         color: 'white',
-        fontSize: 12,
+        fontSize: 11,
+        fontWeight: '900',
+        letterSpacing: 1,
+    },
+    xpLabelRight: {
+        color: 'rgba(255,255,255,0.6)',
+        fontSize: 10,
         fontWeight: '700',
-        textTransform: 'capitalize',
+        letterSpacing: 0.5,
+    },
+    xpBarContainerNew: {
+        height: 10,
+        width: '100%',
+    },
+    xpBarBackgroundNew: {
+        flex: 1,
+        borderRadius: 5,
+        overflow: 'hidden',
+    },
+    xpBarFillNew: {
+        height: '100%',
+        borderRadius: 5,
+        position: 'relative',
+    },
+    xpBarShine: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '40%',
+        backgroundColor: 'rgba(255,255,255,0.3)',
     },
     content: {
-        paddingTop: 32,
+        paddingTop: 24,
         paddingHorizontal: spacing.xl,
+    },
+    achievementsWrapper: {
+        marginTop: 32,
+        paddingHorizontal: spacing.xl,
+    },
+    badgeScroll: {
+        gap: 12,
+        paddingVertical: 8,
+    },
+    badgeCard: {
+        width: 100,
+        padding: 12,
+        borderRadius: 20,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+    },
+    badgeIconCircle: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+    },
+    badgeName: {
+        fontSize: 10,
+        fontWeight: '700',
+        textAlign: 'center',
+    },
+    lockIcon: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+    },
+    weeklySummaryCard: {
+        padding: 20,
+        borderRadius: 28,
+        borderWidth: 1,
+        marginBottom: 32,
+    },
+    summaryHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 16,
+    },
+    summaryTitle: {
+        fontSize: 12,
+        fontWeight: '900',
+        letterSpacing: 1,
+    },
+    summaryGrid: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    summaryItem: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    summaryValue: {
+        fontSize: 20,
+        fontWeight: '900',
+    },
+    summaryLabel: {
+        fontSize: 10,
+        fontWeight: '600',
+        marginTop: 2,
+    },
+    summaryDivider: {
+        width: 1,
+        height: 24,
+        backgroundColor: 'rgba(0,0,0,0.1)',
     },
     sectionHeaderNew: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 14,
+    },
+    dataCard: {
+        padding: 20,
+        borderRadius: 24,
+        borderWidth: 1,
+        gap: 20,
+    },
+    dataInfo: {
+        flexDirection: 'row',
+        gap: 16,
+        alignItems: 'center',
+    },
+    dataTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        marginBottom: 4,
+    },
+    dataDesc: {
+        fontSize: 13,
+        lineHeight: 18,
+    },
+    exportBtn: {
+        height: 52,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    exportBtnText: {
+        color: 'white',
+        fontWeight: '700',
+        fontSize: 15,
     },
     sectionTitleNew: {
         fontSize: 18,

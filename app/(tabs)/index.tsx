@@ -19,6 +19,10 @@ import MuscleRepository from '../../src/repositories/MuscleRepository';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import { DashboardHeader } from '../../src/components/dashboard/DashboardHeader';
 import { GamificationWidget } from '../../src/components/dashboard/GamificationWidget';
+import { TutorialOverlay } from '../../src/components/dashboard/TutorialOverlay';
+import { DASHBOARD_TOUR_STEPS } from '../../src/components/dashboard/DashboardTutorialOverlay';
+import { TourHighlightWrapper } from '../../src/components/dashboard/TourHighlightWrapper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -84,7 +88,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    marginTop: -20,
   },
   scrollContent: {
     padding: spacing.xl,
@@ -508,6 +511,49 @@ export default function Dashboard() {
     openHealthConnectApp,
   } = useHealthConnectStore();
   const { colors, mode } = useTheme();
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [isTourVisible, setIsTourVisible] = useState(false);
+  const [tourStep, setTourStep] = useState(1);
+
+  useEffect(() => {
+    const checkTutorial = async () => {
+      try {
+        const hasSeen = await AsyncStorage.getItem('@has_seen_dashboard_tour_v5');
+        if (!hasSeen) {
+          setTimeout(() => {
+            setIsTourVisible(true);
+            setTourStep(1);
+          }, 1200);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    checkTutorial();
+  }, []);
+
+  const handleStepChange = (nextStep: number) => {
+    setTourStep(nextStep);
+    
+    // Scroll targets matching the actual top-to-bottom layout order:
+    // Step 1: Header (no scroll needed, it's above the ScrollView)
+    // Step 2: Stats Row (top of ScrollView)
+    // Step 3: Muscle Visualizer (below stats ~250px)
+    // Step 4: Quick Actions (below visualizer ~550px)
+    // Step 5: Activity Feed (near bottom ~550px)
+    const scrollTargets = [0, 0, 150, 380, 550];
+    const targetY = scrollTargets[nextStep - 1];
+    
+    scrollViewRef.current?.scrollTo({ y: targetY, animated: true });
+  };
+
+  const finishTour = async () => {
+    setIsTourVisible(false);
+    await AsyncStorage.setItem('@has_seen_dashboard_tour_v5', 'true');
+  };
+
+
   const [refreshing, setRefreshing] = useState(false);
   const [muscleLoading, setMuscleLoading] = useState(false);
   const [showWeightLog, setShowWeightLog] = useState(false);
@@ -715,12 +761,15 @@ export default function Dashboard() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <StatusBar barStyle={mode === 'dark' ? 'light-content' : 'dark-content'} />
 
-      <DashboardHeader user={user} streak={streak} greeting={greeting()} />
+      <TourHighlightWrapper isActive={isTourVisible && tourStep === 1} borderRadius={40}>
+        <DashboardHeader user={user} streak={streak} greeting={greeting()} />
+      </TourHighlightWrapper>
 
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent.primary} />}
@@ -803,7 +852,9 @@ export default function Dashboard() {
         {/* Statistics and Insights Section */}
 
         {/* Main Stats Row */}
-        <View style={styles.statsRow}>
+        {/* Main Stats Row */}
+        <TourHighlightWrapper isActive={isTourVisible && tourStep === 2} borderRadius={24}>
+          <View style={styles.statsRow}>
           {/* Nutrition Summary */}
           <TouchableOpacity
             style={[styles.mainCard, { backgroundColor: colors.background.card, flex: 1.2 }]}
@@ -875,31 +926,37 @@ export default function Dashboard() {
             </TouchableOpacity>
           </View>
         </View>
+        </TourHighlightWrapper>
 
 
 
         {/* Muscle Visualizer Widget - Stats reflect DONE sessions only */}
-        <MuscleVisualizerCard
-          muscleData={muscleStore.muscleData} 
-          loading={muscleLoading}
-          onPress={() => router.push('/muscles' as any)}
-          todaysExercises={muscleStore.todaysExercises}
-        />
+        <TourHighlightWrapper isActive={isTourVisible && tourStep === 3} borderRadius={24}>
+          <MuscleVisualizerCard
+            muscleData={muscleStore.muscleData} 
+            loading={muscleLoading}
+            onPress={() => router.push('/muscles' as any)}
+            todaysExercises={muscleStore.todaysExercises}
+          />
+        </TourHighlightWrapper>
 
         {/* Action Buttons */}
-        <View style={styles.actionGrid}>
+        <TourHighlightWrapper isActive={isTourVisible && tourStep === 4} borderRadius={20}>
+          <View style={styles.actionGrid}>
           <TouchableOpacity
             style={[styles.heroActionBtn, { backgroundColor: colors.background.card }]}
             onPress={() => {
               if (isHealthConnectAvailable && hasStepPermission) {
                 bootstrapHealthConnect();
-                return;
-              }
-              if (!isHealthConnectAvailable) {
+              } else if (!isHealthConnectAvailable) {
                 openHealthConnectApp();
-                return;
+              } else {
+                connectAndSync();
               }
-              connectAndSync();
+              // Advance tutorial if on step 4
+              if (isTourVisible && tourStep === 4) {
+                setTimeout(() => handleStepChange(5), 400);
+              }
             }}
           >
             <View style={[styles.actionIconContainer, { backgroundColor: 'rgba(34, 197, 94, 0.12)' }]}>
@@ -927,9 +984,11 @@ export default function Dashboard() {
             <Text style={[styles.actionBtnLabel, { color: colors.text.primary }]}>Log Meal</Text>
           </TouchableOpacity>
         </View>
+        </TourHighlightWrapper>
 
         {/* Recent Activity Feed */}
-        <View style={styles.activityFeed}>
+        <TourHighlightWrapper isActive={isTourVisible && tourStep === 5} borderRadius={24}>
+          <View style={styles.activityFeed}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Progress Feed</Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/history')}>
@@ -976,6 +1035,22 @@ export default function Dashboard() {
             </View>
           )}
         </View>
+        </TourHighlightWrapper>
+
+        {/* --- DEV TOOLS: Temporary Reset Button --- */}
+        <TouchableOpacity 
+          style={{ alignSelf: 'center', marginVertical: 30, padding: 10, backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: 12 }}
+          onPress={async () => {
+            await AsyncStorage.removeItem('@has_seen_dashboard_tour_v5');
+            setTourStep(1);
+            setIsTourVisible(true);
+            scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+          }}
+        >
+          <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>Test Tutorial Again</Text>
+        </TouchableOpacity>
+        {/* -------------------------------------- */}
+
       </ScrollView>
 
       {/* Weight Log Modal */}
@@ -1041,6 +1116,16 @@ export default function Dashboard() {
           </View>
         </View>
       </Modal>
-    </View>
+
+      {/* High-Fidelity Custom Tutorial Overlay */}
+      <TutorialOverlay
+        isVisible={isTourVisible}
+        step={tourStep}
+        steps={DASHBOARD_TOUR_STEPS}
+        onStepChange={handleStepChange}
+        onFinish={finishTour}
+      />
+
+      </View>
   );
 }

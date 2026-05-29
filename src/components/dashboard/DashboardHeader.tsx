@@ -131,7 +131,7 @@ import { StatusBar } from 'react-native';
 
 const styles = StyleSheet.create({
     headerWrapper: {
-        paddingBottom: 10,
+        zIndex: 10,
     },
     headerGradient: {
         paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 12 : 48,

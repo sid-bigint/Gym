@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Modal, Image } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
