@@ -9,6 +9,7 @@ import {
 import Body from 'react-native-body-highlighter';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/store/useTheme';
+import { useUserStore } from '@/store/useUserStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -50,10 +51,24 @@ const mapSlugToMuscle = (slug: string): MuscleGroup | null => {
 
 export const MuscleVisualizer: React.FC<MuscleVisualizerProps> = ({ muscleData, onMuscleSelect }) => {
     const { colors, colorScheme } = useTheme();
+    const { user } = useUserStore();
     const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | null>(null);
+    const isDark = colorScheme === 'dark';
+
+    const gender = user?.gender === 'female' ? 'female' : 'male';
 
     const bodyData = useMemo(() => {
-        const dataArray: Array<{ slug: any; intensity: number; color: string }> = [];
+        const dataArray: Array<{ slug: any; intensity?: number; color?: string; styles?: any }> = [];
+
+        // Apply a premium, high-tech styled hair look!
+        dataArray.push({
+            slug: 'hair',
+            styles: {
+                fill: isDark ? '#1e293b' : '#334155', // Sleek obsidian/dark slate hair
+                stroke: colors.accent.primary,        // Glowing neon theme-accent hair outline!
+                strokeWidth: 1.5
+            }
+        });
 
         muscleData.forEach((data, muscleGroup) => {
             if (data.intensity > 0 || data.soreness > 0) {
@@ -76,7 +91,7 @@ export const MuscleVisualizer: React.FC<MuscleVisualizerProps> = ({ muscleData, 
         }
 
         return dataArray;
-    }, [muscleData, selectedMuscle, colors.accent.primary]);
+    }, [muscleData, selectedMuscle, colors.accent.primary, isDark]);
 
     const handleMusclePress = useCallback(
         (slugInfo: any) => {
@@ -89,8 +104,6 @@ export const MuscleVisualizer: React.FC<MuscleVisualizerProps> = ({ muscleData, 
         },
         [onMuscleSelect]
     );
-
-    const isDark = colorScheme === 'dark';
 
     return (
         <View style={styles.container}>
@@ -111,11 +124,15 @@ export const MuscleVisualizer: React.FC<MuscleVisualizerProps> = ({ muscleData, 
                         <View style={styles.bodyTransform}>
                             <Body
                                 data={bodyData}
-                                gender="male"
+                                gender={gender}
                                 side="front"
                                 scale={0.85}
                                 onBodyPartPress={handleMusclePress}
                                 colors={isDark ? ['#334155', '#34d399', '#3b82f6', '#8b5cf6', '#ef4444', '#7f1d1d'] : ['#e2e8f0', '#34d399', '#3b82f6', '#8b5cf6', '#ef4444', '#7f1d1d']}
+                                defaultFill={isDark ? '#1e293b' : '#f8fafc'}
+                                defaultStroke={isDark ? '#334155' : '#cbd5e1'}
+                                defaultStrokeWidth={0.5}
+                                border={isDark ? '#334155' : '#cbd5e1'}
                             />
                         </View>
                     </View>
@@ -127,11 +144,15 @@ export const MuscleVisualizer: React.FC<MuscleVisualizerProps> = ({ muscleData, 
                         <View style={styles.bodyTransform}>
                             <Body
                                 data={bodyData}
-                                gender="male"
+                                gender={gender}
                                 side="back"
                                 scale={0.85}
                                 onBodyPartPress={handleMusclePress}
                                 colors={isDark ? ['#334155', '#34d399', '#3b82f6', '#8b5cf6', '#ef4444', '#7f1d1d'] : ['#e2e8f0', '#34d399', '#3b82f6', '#8b5cf6', '#ef4444', '#7f1d1d']}
+                                defaultFill={isDark ? '#1e293b' : '#f8fafc'}
+                                defaultStroke={isDark ? '#334155' : '#cbd5e1'}
+                                defaultStrokeWidth={0.5}
+                                border={isDark ? '#334155' : '#cbd5e1'}
                             />
                         </View>
                     </View>

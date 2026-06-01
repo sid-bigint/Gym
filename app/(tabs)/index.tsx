@@ -23,6 +23,7 @@ import { TutorialOverlay } from '../../src/components/dashboard/TutorialOverlay'
 import { DASHBOARD_TOUR_STEPS } from '../../src/components/dashboard/DashboardTutorialOverlay';
 import { TourHighlightWrapper } from '../../src/components/dashboard/TourHighlightWrapper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CalorieCalculator } from '../../src/components/CalorieCalculator';
 
 const { width } = Dimensions.get('window');
 
@@ -557,9 +558,24 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [muscleLoading, setMuscleLoading] = useState(false);
   const [showWeightLog, setShowWeightLog] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [hasUsedCalculator, setHasUsedCalculator] = useState(false);
+  const [showCalcSuccessMessage, setShowCalcSuccessMessage] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weightInput, setWeightInput] = useState('');
   const [elapsedTime, setElapsedTime] = useState('0:00');
+
+  useEffect(() => {
+    const checkCalc = async () => {
+      try {
+        const calcUsed = await AsyncStorage.getItem('@has_used_calculator');
+        if (calcUsed === 'true') {
+          setHasUsedCalculator(true);
+        }
+      } catch (e) {}
+    };
+    checkCalc();
+  }, [user]);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -851,7 +867,43 @@ export default function Dashboard() {
 
         {/* Statistics and Insights Section */}
 
-        {/* Main Stats Row */}
+        {/* Calorie Calculator Promo Banner */}
+        {!hasUsedCalculator && (
+          <View style={{ marginBottom: 24, paddingHorizontal: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.accent.primary, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, alignSelf: 'flex-start', marginBottom: -10, zIndex: 2, marginLeft: 16 }}>
+              <Ionicons name="sparkles" size={12} color="white" />
+              <Text style={{ color: 'white', fontSize: 10, fontWeight: '800', marginLeft: 4, textTransform: 'uppercase' }}>Action Required</Text>
+            </View>
+            <TouchableOpacity
+              style={[{
+                flexDirection: 'row', alignItems: 'center', padding: 16, paddingTop: 20, borderRadius: 20, 
+                borderWidth: 1, gap: 14,
+                backgroundColor: colors.background.card, borderColor: colors.accent.primary + '50',
+                ...shadows.sm
+              }]}
+              onPress={() => setShowCalculator(true)}
+            >
+              <View style={{ width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent.primary + '15' }}>
+                <Ionicons name="calculator-outline" size={20} color={colors.accent.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.text.primary, fontWeight: '800', fontSize: 15 }}>Set Your Calories</Text>
+                <Text style={{ color: colors.text.tertiary, fontWeight: '500', fontSize: 12, marginTop: 2 }}>Use it here to test your calorie requirements and set it for the whole application.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.text.disabled} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {hasUsedCalculator && showCalcSuccessMessage && (
+          <View style={{ marginBottom: 24, padding: 16, borderRadius: 16, backgroundColor: colors.accent.success + '15', borderWidth: 1, borderColor: colors.accent.success + '30', flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Ionicons name="checkmark-circle" size={24} color={colors.accent.success} />
+            <Text style={{ color: colors.text.primary, fontSize: 13, flex: 1, fontWeight: '500' }}>
+              Goals set! If you ever need to use it again, you can find it in the Profile page.
+            </Text>
+          </View>
+        )}
+
         {/* Main Stats Row */}
         <TourHighlightWrapper isActive={isTourVisible && tourStep === 2} borderRadius={24}>
           <View style={styles.statsRow}>
@@ -996,7 +1048,7 @@ export default function Dashboard() {
             </TouchableOpacity>
           </View>
 
-          {history.slice(0, 5).map((log, idx) => (
+          {history.slice(0, 7).map((log, idx) => (
             <TouchableOpacity
               key={log.id}
               style={[styles.activityItem, { borderBottomColor: colors.border.secondary }]}
@@ -1037,19 +1089,6 @@ export default function Dashboard() {
         </View>
         </TourHighlightWrapper>
 
-        {/* --- DEV TOOLS: Temporary Reset Button --- */}
-        <TouchableOpacity 
-          style={{ alignSelf: 'center', marginVertical: 30, padding: 10, backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: 12 }}
-          onPress={async () => {
-            await AsyncStorage.removeItem('@has_seen_dashboard_tour_v5');
-            setTourStep(1);
-            setIsTourVisible(true);
-            scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-          }}
-        >
-          <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>Test Tutorial Again</Text>
-        </TouchableOpacity>
-        {/* -------------------------------------- */}
 
       </ScrollView>
 
@@ -1124,6 +1163,54 @@ export default function Dashboard() {
         steps={DASHBOARD_TOUR_STEPS}
         onStepChange={handleStepChange}
         onFinish={finishTour}
+      />
+
+      {/* Calorie Calculator Modal */}
+      <CalorieCalculator
+          visible={showCalculator}
+          onClose={() => setShowCalculator(false)}
+          initialValues={{
+              weight: user?.weight,
+              height: user?.height,
+              age: user?.age,
+              gender: user?.gender,
+              activityLevel: user?.activityLevel,
+              goal: user?.goal,
+              bodyFatPercent: user?.bodyFatPercent,
+              sleepHours: user?.sleepHours,
+              mealsPerDay: user?.mealsPerDay,
+              goalIntensity: user?.goalIntensity,
+              workoutType: user?.workoutType,
+              workoutDuration: user?.workoutDuration,
+              workoutFrequency: user?.workoutFrequency
+          }}
+          onSave={async (results) => {
+              try {
+                  if (user) {
+                      await useUserStore.getState().updateProfile({
+                          ...user,
+                          weight: results.weight,
+                          height: results.height,
+                          age: results.age,
+                          gender: results.gender,
+                          activityLevel: results.activityLevel as any,
+                          goal: results.goal,
+                          calorieGoal: results.calories,
+                          targetProtein: results.protein,
+                          targetCarbs: results.carbs,
+                          targetFats: results.fats,
+                      });
+                      await useUserStore.getState().loadUser();
+                  }
+                  setShowCalculator(false);
+                  setHasUsedCalculator(true);
+                  setShowCalcSuccessMessage(true);
+                  await AsyncStorage.setItem('@has_used_calculator', 'true');
+                  setTimeout(() => setShowCalcSuccessMessage(false), 5 * 60 * 1000);
+              } catch (error) {
+                  console.error('Failed to update profile:', error);
+              }
+          }}
       />
 
       </View>

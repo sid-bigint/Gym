@@ -56,6 +56,21 @@
             "targetSdkVersion": 35
           }
         }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "FitnessWidget",
+              "label": "Daily Macros",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "description": "View today's calorie and macro progress.",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
       ]
     ],
     "experiments": {

@@ -15,11 +15,18 @@ import { LineChart } from 'react-native-chart-kit';
 import { LinearGradient } from 'expo-linear-gradient';
 import LevelInfoModal from '../../src/components/dashboard/LevelInfoModal';
 import { useAlertStore } from '../../src/store/useAlertStore';
+import { MuscleVisualizerCard, WeeklyMuscleHeatmap, MuscleProgressChart } from '../../src/components/MuscleVisualizerCard';
+import useMuscleStore, { MuscleGroup } from '../../src/store/useMuscleStore';
+import MuscleRepository from '../../src/repositories/MuscleRepository';
+import { MuscleRecoveryTracker, RecoveryData } from '../../src/components/MuscleRecoveryTracker';
+import { MuscleVisualizer } from '../../src/components/MuscleVisualizer';
+import { getMuscleGroupsForExercise } from '../../src/services/muscleCalculationService';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function ProgressScreen() {
-    const { getWorkoutHistory, deleteWorkoutLog } = useWorkoutStore();
+    const { getWorkoutHistory, deleteWorkoutLog, activeWorkout, exercises } = useWorkoutStore();
     const { user } = useUserStore();
     const { getNutritionHistory } = useNutritionStore();
     const { measurements, loadMeasurements } = useProgressStore();
@@ -27,13 +34,176 @@ export default function ProgressScreen() {
     const { contentTop } = useScreenPadding();
     const styles = useMemo(() => createStyles(colors, contentTop), [colors, contentTop]);
 
+    const muscleStore = useMuscleStore();
+    const [muscleLoading, setMuscleLoading] = useState(false);
+    const [activeMuscleTab, setActiveMuscleTab] = useState<'visualizer' | 'recovery' | 'analytics'>('visualizer');
+    const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | null>(null);
+
     const [workouts, setWorkouts] = useState<any[]>([]);
     const [nutritionHistory, setNutritionHistory] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [viewMode, setViewMode] = useState<'history' | 'insights'>('history');
+    const [viewMode, setViewMode] = useState<'heatmap' | 'history' | 'insights'>('heatmap');
     const [subViewMode, setSubViewMode] = useState<'workout' | 'nutrition' | 'body'>('workout');
     const [showLevelInfo, setShowLevelInfo] = useState(false);
+
+    const mergedMuscleData = useMemo(() => {
+        const merged = new Map(muscleStore.muscleData);
+
+        muscleStore.weeklyData.forEach((volumes, muscle) => {
+            const weeklyVolume = volumes.reduce((a, b) => a + b, 0);
+            if (weeklyVolume > 0 && !merged.has(muscle as MuscleGroup)) {
+                const intensity = Math.min(10, weeklyVolume / 100);
+                merged.set(muscle as MuscleGroup, {
+                    group: muscle as MuscleGroup, volume: 0, setCount: 0, repCount: 0,
+                    intensity,
+                    soreness: 0, recoveryStatus: 'FRESH',
+                    lastTrainedDate: new Date().toISOString(), restDaysSince: 0,
+                    color: useMuscleStore.getState().getMuscleColor(muscle as MuscleGroup, intensity, 0)
+                });
+            }
+        });
+
+        if (activeWorkout && activeWorkout.activeSets && activeWorkout.activeSets.length > 0) {
+            activeWorkout.activeSets.filter((s: any) => s.completed).forEach((setData: any) => {
+                const ex = exercises.find((e: any) => e.id === setData.exerciseId);
+                const muscles = getMuscleGroupsForExercise(setData.exerciseName || ex?.name || '', ex?.muscleGroup || '');
+                const volume = (Number(setData.weight) || 0) * (Number(setData.reps) || 0);
+                muscles.forEach((muscle: MuscleGroup) => {
+                    const existing = merged.get(muscle) || { group: muscle, volume: 0, setCount: 0, repCount: 0, intensity: 0, soreness: 0, recoveryStatus: 'FRESH' as any, lastTrainedDate: new Date().toISOString(), restDaysSince: 0, color: '#64748b' };
+                    const newVolume = existing.volume + volume;
+                    merged.set(muscle, { ...existing, volume: newVolume, setCount: existing.setCount + 1, repCount: existing.repCount + (Number(setData.reps) || 0), intensity: Math.min(10, Math.max(existing.intensity, newVolume / 50)), color: useMuscleStore.getState().getMuscleColor(muscle, Math.min(10, newVolume / 50), existing.soreness) });
+                });
+            });
+        }
+        return merged;
+    }, [muscleStore.muscleData, muscleStore.weeklyData, activeWorkout, exercises]);
+
+    const recoveryInitialData = useMemo(() => {
+        const data: RecoveryData = {};
+        mergedMuscleData.forEach((muscle, group) => {
+            data[group] = {
+                soreness: muscle.soreness,
+                recoveryStatus: muscle.recoveryStatus
+            };
+        });
+        return data;
+    }, [mergedMuscleData]);
+
+    const handleRecoverySave = useCallback(async (data: RecoveryData) => {
+        if (!user?.id) return;
+        try {
+            setMuscleLoading(true);
+            const today = format(new Date(), 'yyyy-MM-dd');
+            const userIdStr = String(user.id);
+
+            for (const [muscleGroup, recoveryInfo] of Object.entries(data)) {
+                await MuscleRepository.saveMuscleRecovery({
+                    userId: userIdStr,
+                    muscleGroup: muscleGroup as MuscleGroup,
+                    date: today,
+                    soreness: recoveryInfo.soreness,
+                    recoveryStatus: recoveryInfo.recoveryStatus,
+                });
+            }
+            await loadHistory();
+        } catch (error) {
+            console.error('Error saving recovery data:', error);
+            useAlertStore.getState().showAlert('Error', 'Failed to save recovery data');
+        } finally {
+            setMuscleLoading(false);
+        }
+    }, [user?.id]);
+
+    const renderLegend = () => (
+        <View style={styles.legendContainer}>
+            <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#8b5cf6' }]} />
+                <Text style={styles.legendText}>Growth (New PR)</Text>
+            </View>
+            <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#2563eb' }]} />
+                <Text style={styles.legendText}>Maintenance</Text>
+            </View>
+            <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
+                <Text style={styles.legendText}>Stalled (No PR)</Text>
+            </View>
+            <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#f87171' }]} />
+                <Text style={styles.legendText}>Sore/Fatigued</Text>
+            </View>
+        </View>
+    );
+
+    const renderMuscleTabContent = () => {
+        switch (activeMuscleTab) {
+            case 'visualizer':
+                return (
+                    <View style={{ flex: 1 }}>
+                        <MuscleVisualizer 
+                            muscleData={mergedMuscleData} 
+                            onMuscleSelect={setSelectedMuscle}
+                        />
+                        {renderLegend()}
+                        {selectedMuscle && mergedMuscleData.has(selectedMuscle) && (
+                            <View style={styles.quickStatsRow}>
+                                <View style={[styles.quickStatCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
+                                    <Text style={[styles.quickStatValue, { color: colors.text.primary }]}>
+                                        {mergedMuscleData.get(selectedMuscle)?.volume.toFixed(0)}
+                                        <Text style={[styles.quickStatUnit, { color: colors.text.tertiary }]}> kg</Text>
+                                    </Text>
+                                    <Text style={[styles.quickStatLabel, { color: colors.text.tertiary }]}>Today's Volume</Text>
+                                </View>
+                                <View style={[styles.quickStatCard, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
+                                    <Text style={[styles.quickStatValue, { color: colors.text.primary }]}>
+                                        {mergedMuscleData.get(selectedMuscle)?.setCount}
+                                    </Text>
+                                    <Text style={[styles.quickStatLabel, { color: colors.text.tertiary }]}>Sets</Text>
+                                </View>
+                            </View>
+                        )}
+                    </View>
+                );
+            case 'recovery':
+                return (
+                    <View style={{ flex: 1 }}>
+                        <MuscleRecoveryTracker 
+                            initialData={recoveryInitialData}
+                            muscleData={mergedMuscleData} 
+                            onSave={handleRecoverySave} 
+                        />
+                    </View>
+                );
+            case 'analytics':
+                return (
+                    <View style={{ flex: 1 }}>
+                        <WeeklyMuscleHeatmap weeklyData={muscleStore.weeklyData} />
+                        <View style={{ height: 20 }} />
+                        <MuscleProgressChart 
+                            muscleData={new Map(Array.from(muscleStore.weeklyData.entries()).map(([mg, volumes]) => {
+                                const vol = volumes.reduce((a, b) => a + b, 0);
+                                return [
+                                    mg as MuscleGroup, 
+                                    { 
+                                        group: mg as MuscleGroup, 
+                                        volume: vol,
+                                        color: useMuscleStore.getState().getMuscleColor(mg as MuscleGroup, vol / 100, 0),
+                                        setCount: 0,
+                                        repCount: 0,
+                                        intensity: vol / 100,
+                                        soreness: 0,
+                                        recoveryStatus: 'FRESH' as const,
+                                        lastTrainedDate: new Date().toISOString(),
+                                        restDaysSince: 0
+                                    }
+                                ];
+                            }))} 
+                        />
+                    </View>
+                );
+        }
+    };
 
     const loadHistory = async () => {
         setIsLoading(true);
@@ -44,6 +214,28 @@ export default function ProgressScreen() {
         ]);
         setWorkouts(wHistory);
         setNutritionHistory(nHistory);
+
+        // Load muscle data for the heat map
+        if (user?.id) {
+            try {
+                setMuscleLoading(true);
+                const userIdStr = String(user.id);
+                const todayStats = await MuscleRepository.getTodaysMuscleStats(userIdStr);
+                const weeklyStats = await MuscleRepository.getWeeklyMuscleStats(userIdStr);
+                
+                if (todayStats.size > 0 || muscleStore.muscleData.size === 0) {
+                    muscleStore.setMuscleData(todayStats);
+                }
+                if (weeklyStats.size > 0 || muscleStore.weeklyData.size === 0) {
+                    muscleStore.setWeeklyData(weeklyStats);
+                }
+            } catch (err) {
+                console.error("ProgressScreen failed to load muscle data", err);
+            } finally {
+                setMuscleLoading(false);
+            }
+        }
+
         setIsLoading(false);
     };
 
@@ -56,6 +248,25 @@ export default function ProgressScreen() {
         ]);
         setWorkouts(wHistory);
         setNutritionHistory(nHistory);
+
+        // Refresh muscle data
+        if (user?.id) {
+            try {
+                const userIdStr = String(user.id);
+                const todayStats = await MuscleRepository.getTodaysMuscleStats(userIdStr);
+                const weeklyStats = await MuscleRepository.getWeeklyMuscleStats(userIdStr);
+                
+                if (todayStats.size > 0 || muscleStore.muscleData.size === 0) {
+                    muscleStore.setMuscleData(todayStats);
+                }
+                if (weeklyStats.size > 0 || muscleStore.weeklyData.size === 0) {
+                    muscleStore.setWeeklyData(weeklyStats);
+                }
+            } catch (err) {
+                console.error("ProgressScreen failed to refresh muscle data", err);
+            }
+        }
+
         setRefreshing(false);
     };
 
@@ -384,6 +595,12 @@ export default function ProgressScreen() {
                 />
                 <View style={[styles.toggleContainer, { backgroundColor: colors.background.elevated }]}>
                     <TouchableOpacity
+                        style={[styles.toggleBtn, viewMode === 'heatmap' && { backgroundColor: colors.background.card }]}
+                        onPress={() => setViewMode('heatmap')}
+                    >
+                        <Text style={[styles.toggleText, viewMode === 'heatmap' && { color: colors.accent.primary }]}>Body Map</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
                         style={[styles.toggleBtn, viewMode === 'history' && { backgroundColor: colors.background.card }]}
                         onPress={() => setViewMode('history')}
                     >
@@ -398,7 +615,48 @@ export default function ProgressScreen() {
                 </View>
             </View>
 
-            {viewMode === 'history' ? (
+            {viewMode === 'heatmap' ? (
+                <ScrollView 
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent.primary} />
+                    }
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* Visualizer Tab Bar */}
+                    <View style={styles.visualizerTabBar}>
+                        {[
+                            { id: 'visualizer', label: 'Visualization', icon: 'human' },
+                            { id: 'recovery', label: 'Recovery', icon: 'shield-check' },
+                            { id: 'analytics', label: 'Analytics', icon: 'chart-box' },
+                        ].map(tab => (
+                            <TouchableOpacity
+                                key={tab.id}
+                                onPress={() => setActiveMuscleTab(tab.id as any)}
+                                style={[
+                                    styles.visualizerTabItem,
+                                    activeMuscleTab === tab.id && { backgroundColor: colors.accent.primary }
+                                ]}
+                            >
+                                <MaterialCommunityIcons 
+                                    name={tab.icon as any} 
+                                    size={18} 
+                                    color={activeMuscleTab === tab.id ? '#fff' : colors.text.tertiary} 
+                                />
+                                <Text style={[
+                                    styles.visualizerTabLabel,
+                                    { color: activeMuscleTab === tab.id ? '#fff' : colors.text.tertiary }
+                                ]}>
+                                    {tab.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    {renderMuscleTabContent()}
+                </ScrollView>
+            ) : viewMode === 'history' ? (
                 <FlatList
                     data={workouts}
                     renderItem={renderWorkoutItem}
@@ -1121,5 +1379,78 @@ const createStyles = (colors: any, contentTop: number) => StyleSheet.create({
     xpFill: {
         height: '100%',
         borderRadius: 5,
+    },
+    visualizerTabBar: {
+        flexDirection: 'row',
+        borderRadius: 16,
+        padding: 4,
+        gap: 4,
+        borderWidth: 1,
+        backgroundColor: colors.background.elevated,
+        borderColor: colors.border.secondary,
+        marginBottom: 20,
+    },
+    visualizerTabItem: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        borderRadius: 12,
+        gap: 6,
+    },
+    visualizerTabLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    legendContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 10,
+        gap: 15,
+        marginTop: 10,
+    },
+    legendItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    legendDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+    },
+    legendText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#94a3b8',
+    },
+    quickStatsRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 16,
+    },
+    quickStatCard: {
+        flex: 1,
+        padding: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    quickStatValue: {
+        fontSize: 20,
+        fontWeight: '900',
+    },
+    quickStatUnit: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    quickStatLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        marginTop: 4,
     },
 });

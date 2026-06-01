@@ -28,13 +28,14 @@ export const MuscleVisualizerCard: React.FC<MuscleVisualizerCardProps> = ({
 
     if (loading) {
         return (
-            <View style={[styles.miniCard, { backgroundColor: colors.background.card }]}>
+            <View style={[styles.miniCardCompact, { backgroundColor: colors.background.card, justifyContent: 'center', alignItems: 'center', height: 72 }]}>
                 <ActivityIndicator size="small" color={colors.accent.primary} />
             </View>
         );
     }
 
     const isDark = colorScheme === 'dark';
+    const muscleNames = workedMuscles.map(([muscle]) => muscle).join(', ');
 
     return (
         <Pressable onPress={onPress}>
@@ -42,53 +43,21 @@ export const MuscleVisualizerCard: React.FC<MuscleVisualizerCardProps> = ({
                 colors={isDark ? ['#1e293b', '#0f172a'] : [colors.background.card, colors.background.elevated]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={[styles.miniCard, { borderColor: colors.border.secondary, borderWidth: isDark ? 0 : 1 }]}
+                style={[styles.miniCardCompact, { borderColor: colors.border.secondary, borderWidth: isDark ? 0 : 1 }]}
             >
-                <View style={styles.content}>
-                    <View style={styles.leftCol}>
-                        <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.background.elevated }]}>
-                            <MaterialCommunityIcons name="lightning-bolt" size={14} color="#f59e0b" />
-                            <Text style={styles.badgeText}>Visual Analytics</Text>
-                        </View>
-                        <Text style={[styles.mainTitle, { color: colors.text.primary }]}>Daily Impact</Text>
-                        <View style={styles.statsRow}>
-                            <View style={styles.compactStat}>
-                                <Text style={[styles.compactVal, { color: colors.text.primary }]}>{totalVolume > 1000 ? (totalVolume/1000).toFixed(1) + 'k' : totalVolume.toFixed(0)}</Text>
-                                <Text style={[styles.compactLabel, { color: colors.text.tertiary }]}>Volume</Text>
-                            </View>
-                            <View style={[styles.statDivider, { backgroundColor: colors.border.secondary }]} />
-                            <View style={styles.compactStat}>
-                                <Text style={[styles.compactVal, { color: colors.text.primary }]}>{muscleCount}</Text>
-                                <Text style={[styles.compactLabel, { color: colors.text.tertiary }]}>Groups</Text>
-                            </View>
-                        </View>
+                <View style={styles.compactRow}>
+                    <View style={[styles.iconCircleCompact, { backgroundColor: colors.accent.primary + '15' }]}>
+                        <MaterialCommunityIcons name="human" size={24} color={colors.accent.primary} />
                     </View>
-
-                    <View style={styles.rightCol}>
-                        {workedMuscles.length > 0 ? (
-                            <View style={[styles.miniList, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.background.elevated }]}>
-                                {workedMuscles.map(([muscle, data]) => (
-                                    <View key={muscle} style={styles.miniMuscleRow}>
-                                        <View style={[styles.dot, { backgroundColor: data.color }]} />
-                                        <Text style={[styles.miniMuscleName, { color: colors.text.secondary }]} numberOfLines={1}>{muscle}</Text>
-                                    </View>
-                                ))}
-                                {muscleCount > 2 && (
-                                    <Text style={[styles.moreText, { color: colors.text.tertiary }]}>+{muscleCount - 2} more</Text>
-                                )}
-                            </View>
-                        ) : (
-                            <View style={styles.emptyState}>
-                                <MaterialCommunityIcons name="dumbbell" size={24} color={colors.text.disabled} />
-                                <Text style={[styles.emptyText, { color: colors.text.disabled }]}>Tap to analyze</Text>
-                            </View>
-                        )}
+                    <View style={styles.textColCompact}>
+                        <Text style={[styles.titleCompact, { color: colors.text.primary }]}>Body Map & Muscles</Text>
+                        <Text style={[styles.subTitleCompact, { color: colors.text.tertiary }]} numberOfLines={1}>
+                            {workedMuscles.length > 0 
+                                ? `Trained: ${muscleNames}${muscleCount > 2 ? ` (+${muscleCount - 2} more)` : ''}`
+                                : 'Tap to track recovery & view trained muscles'}
+                        </Text>
                     </View>
-                </View>
-                
-                <View style={[styles.footer, { borderTopColor: colors.border.secondary }]}>
-                    <Text style={[styles.footerText, { color: colors.text.tertiary }]}>Explore detailed heatmaps & recovery</Text>
-                    <MaterialCommunityIcons name="chevron-right" size={14} color={colors.text.tertiary} />
+                    <MaterialCommunityIcons name="chevron-right" size={20} color={colors.text.tertiary} />
                 </View>
             </LinearGradient>
         </Pressable>
@@ -165,6 +134,42 @@ export const MuscleProgressChart: React.FC<{ muscleData: Map<MuscleGroup, Muscle
 };
 
 const styles = StyleSheet.create({
+    miniCardCompact: {
+        borderRadius: 20,
+        padding: 14,
+        marginBottom: 16,
+        overflow: 'hidden',
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+    },
+    compactRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    iconCircleCompact: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    textColCompact: {
+        flex: 1,
+        justifyContent: 'center',
+        gap: 2,
+    },
+    titleCompact: {
+        fontSize: 15,
+        fontWeight: '800',
+    },
+    subTitleCompact: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
     miniCard: {
         borderRadius: 24,
         padding: 16,

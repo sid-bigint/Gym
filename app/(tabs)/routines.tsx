@@ -8,7 +8,6 @@ import { useTheme } from '../../src/store/useTheme';
 import { useScreenPadding } from '../../src/store/useScreenPadding';
 import { spacing, borderRadius, shadows } from '../../src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { PREDEFINED_BUNDLES } from '../../src/data/exploreBundles';
 import { RoutineCard } from '../../src/components/RoutineCard';
 import { ProgramCard } from '../../src/components/ProgramCard';
@@ -39,81 +38,81 @@ export default function RoutinesScreen() {
     const [tourStep, setTourStep] = useState(1);
 
     const ROUTINES_TOUR_STEPS: TourStepConfig[] = [
-      {
-        title: 'Routines Overview',
-        description: 'This is where all your workout routines live. You can see your total routines count in the top-right badge.',
-        icon: 'barbell',
-      },
-      {
-        title: 'Quick Stats',
-        description: 'See how many routines you\'ve completed and how many you have in total at a glance.',
-        icon: 'stats-chart',
-      },
-      {
-        title: 'Quick Start',
-        description: 'Tap this banner to instantly begin a freestyle workout without picking a routine.',
-        icon: 'flash',
-      },
-      {
-        title: 'Your Routine Cards',
-        description: 'Each card is a workout routine. Tap to start, long-press to select multiple, swipe to pin or delete.',
-        icon: 'list',
-      },
-      {
-        title: 'The Create Menu',
-        description: 'The + button opens a menu with multiple ways to create workouts.',
-        icon: 'add-circle',
-        placement: 'top',
-      },
-      {
-        title: 'AI & Custom Routines',
-        description: 'Use the AI generator to instantly build a personalized plan, or create your own custom workout from scratch.',
-        icon: 'hardware-chip',
-        placement: 'top',
-      },
-      {
-        title: 'Log Past Workouts',
-        description: 'Forgot to track a workout? You can easily log a past session here to keep your progress history accurate.',
-        icon: 'time',
-        placement: 'top',
-      },
+        {
+            title: 'Routines Overview',
+            description: 'This is where all your workout routines live. You can see your total routines count in the top-right badge.',
+            icon: 'barbell',
+        },
+        {
+            title: 'Quick Stats',
+            description: 'See how many routines you\'ve completed and how many you have in total at a glance.',
+            icon: 'stats-chart',
+        },
+        {
+            title: 'Quick Start',
+            description: 'Tap this banner to instantly begin a freestyle workout without picking a routine.',
+            icon: 'flash',
+        },
+        {
+            title: 'Your Routine Cards',
+            description: 'Each card is a workout routine. Tap to start, long-press to select multiple, swipe to pin or delete.',
+            icon: 'list',
+        },
+        {
+            title: 'The Create Menu',
+            description: 'The + button opens a menu with multiple ways to create workouts.',
+            icon: 'add-circle',
+            placement: 'top',
+        },
+        {
+            title: 'AI & Custom Routines',
+            description: 'Use the AI generator to instantly build a personalized plan, or create your own custom workout from scratch.',
+            icon: 'hardware-chip',
+            placement: 'top',
+        },
+        {
+            title: 'Log Past Workouts',
+            description: 'Forgot to track a workout? You can easily log a past session here to keep your progress history accurate.',
+            icon: 'time',
+            placement: 'top',
+        },
     ];
 
     useEffect(() => {
-      const checkTour = async () => {
-        try {
-          const seen = await AsyncStorage.getItem('@has_seen_routines_tour_v1');
-          if (!seen) {
-            setTimeout(() => {
-              setIsTourVisible(true);
-              setTourStep(1);
-            }, 800);
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      };
-      checkTour();
+        const checkTour = async () => {
+            try {
+                const seen = await AsyncStorage.getItem('@has_seen_routines_tour_v1');
+                if (!seen) {
+                    setTimeout(() => {
+                        setIsTourVisible(true);
+                        setTourStep(1);
+                    }, 800);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        };
+        checkTour();
     }, []);
 
     const handleTourStepChange = (nextStep: number) => {
-      setTourStep(nextStep);
-      const scrollTargets = [0, 0, 50, 200, 0, 0, 0];
-      const targetY = scrollTargets[nextStep - 1] || 0;
-      scrollRef.current?.scrollTo?.({ y: targetY, animated: true });
-      scrollRef.current?.getNode?.()?.scrollTo?.({ y: targetY, animated: true });
+        setTourStep(nextStep);
+        const scrollTargets = [0, 0, 50, 200, 0, 0, 0];
+        const targetY = scrollTargets[nextStep - 1] || 0;
+        scrollRef.current?.scrollTo?.({ y: targetY, animated: true });
+        scrollRef.current?.getNode?.()?.scrollTo?.({ y: targetY, animated: true });
 
-      if (nextStep >= 5) {
-        setFabOpen(true);
-      } else {
-        setFabOpen(false);
-      }
+        if (nextStep >= 5) {
+            setFabOpen(true);
+        } else {
+            setFabOpen(false);
+        }
     };
 
     const finishTour = async () => {
-      setIsTourVisible(false);
-      setFabOpen(false);
-      await AsyncStorage.setItem('@has_seen_routines_tour_v1', 'true');
+        setIsTourVisible(false);
+        setFabOpen(false);
+        await AsyncStorage.setItem('@has_seen_routines_tour_v1', 'true');
     };
 
     useEffect(() => {
@@ -393,21 +392,21 @@ export default function RoutinesScreen() {
     });
 
     return (
-          <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
             {/* Animated Header */}
             <TourHighlightWrapper isActive={isTourVisible && tourStep === 1} borderRadius={24}>
-              <Animated.View style={[styles.header, { opacity: headerOpacity, paddingTop: contentTop }]}>
-                <View>
-                    <Text style={[styles.greeting, { color: colors.text.secondary }]}>{greeting}</Text>
-                    <Text style={[styles.title, { color: colors.text.primary }]}>Your Workouts</Text>
-                </View>
-                <View style={styles.headerStats}>
-                    <View style={[styles.statBadge, { backgroundColor: colors.accent.primary + '15' }]}>
-                        <Ionicons name="barbell-outline" size={16} color={colors.accent.primary} />
-                        <Text style={[styles.statText, { color: colors.accent.primary }]}>{routines.length}</Text>
+                <Animated.View style={[styles.header, { opacity: headerOpacity, paddingTop: contentTop }]}>
+                    <View>
+                        <Text style={[styles.greeting, { color: colors.text.secondary }]}>{greeting}</Text>
+                        <Text style={[styles.title, { color: colors.text.primary }]}>Your Workouts</Text>
                     </View>
-                </View>
-              </Animated.View>
+                    <View style={styles.headerStats}>
+                        <View style={[styles.statBadge, { backgroundColor: colors.accent.primary + '15' }]}>
+                            <Ionicons name="barbell-outline" size={16} color={colors.accent.primary} />
+                            <Text style={[styles.statText, { color: colors.accent.primary }]}>{routines.length}</Text>
+                        </View>
+                    </View>
+                </Animated.View>
             </TourHighlightWrapper>
 
             {/* Main Content */}
@@ -424,32 +423,32 @@ export default function RoutinesScreen() {
                 {/* Quick Stats Row */}
                 {!isSelectionMode && routines.length > 0 && (
                     <TourHighlightWrapper isActive={isTourVisible && tourStep === 2} borderRadius={16}>
-                      <View style={styles.statsRow}>
-                        <View style={[styles.statCard, { backgroundColor: colors.background.elevated }]}>
-                            <LinearGradient
-                                colors={[colors.accent.primary + '20', colors.accent.primary + '05']}
-                                style={styles.statCardGradient}
-                            >
-                                <Ionicons name="calendar-outline" size={24} color={colors.accent.primary} />
-                                <Text style={[styles.statValue, { color: colors.text.primary }]}>
-                                {routines.filter(r => routineAnalytics[r.name]?.lastPerformed).length}
-                                </Text>
-                                <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Completed</Text>
-                            </LinearGradient>
+                        <View style={styles.statsRow}>
+                            <View style={[styles.statCard, { backgroundColor: colors.background.elevated }]}>
+                                <LinearGradient
+                                    colors={[colors.accent.primary + '20', colors.accent.primary + '05']}
+                                    style={styles.statCardGradient}
+                                >
+                                    <Ionicons name="calendar-outline" size={24} color={colors.accent.primary} />
+                                    <Text style={[styles.statValue, { color: colors.text.primary }]}>
+                                        {routines.filter(r => routineAnalytics[r.name]?.lastPerformed).length}
+                                    </Text>
+                                    <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Completed</Text>
+                                </LinearGradient>
+                            </View>
+                            <View style={[styles.statCard, { backgroundColor: colors.background.elevated }]}>
+                                <LinearGradient
+                                    colors={[colors.accent.primary + '20', colors.accent.primary + '05']}
+                                    style={styles.statCardGradient}
+                                >
+                                    <Ionicons name="flame-outline" size={24} color={colors.accent.primary} />
+                                    <Text style={[styles.statValue, { color: colors.text.primary }]}>
+                                        {routines.length}
+                                    </Text>
+                                    <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Total Routines</Text>
+                                </LinearGradient>
+                            </View>
                         </View>
-                        <View style={[styles.statCard, { backgroundColor: colors.background.elevated }]}>
-                            <LinearGradient
-                                colors={[colors.accent.primary + '20', colors.accent.primary + '05']}
-                                style={styles.statCardGradient}
-                            >
-                                <Ionicons name="flame-outline" size={24} color={colors.accent.primary} />
-                                <Text style={[styles.statValue, { color: colors.text.primary }]}>
-                                    {routines.length}
-                                </Text>
-                                <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Total Routines</Text>
-                            </LinearGradient>
-                        </View>
-                    </View>
                     </TourHighlightWrapper>
                 )}
 
@@ -490,50 +489,50 @@ export default function RoutinesScreen() {
                 {/* Quick Start Banner - Enhanced */}
                 {!isSelectionMode && routines.length > 0 && (
                     <TourHighlightWrapper isActive={isTourVisible && tourStep === 3} borderRadius={16}>
-                    <TouchableOpacity
-                        style={[
-                            styles.quickStartBanner,
-                            { opacity: activeWorkout ? 0.5 : 1 }
-                        ]}
-                        onPress={() => handleStartWorkout(null)}
-                        disabled={!!activeWorkout}
-                        activeOpacity={0.8}
-                    >
-                        <LinearGradient
-                            colors={[colors.accent.primary, colors.accent.secondary || colors.accent.primary]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.quickStartGradient}
+                        <TouchableOpacity
+                            style={[
+                                styles.quickStartBanner,
+                                { opacity: activeWorkout ? 0.5 : 1 }
+                            ]}
+                            onPress={() => handleStartWorkout(null)}
+                            disabled={!!activeWorkout}
+                            activeOpacity={0.8}
                         >
-                            <View style={styles.quickStartContent}>
-                                <View style={styles.quickStartIconContainer}>
-                                    <Ionicons name="flash" size={28} color="#fff" />
+                            <LinearGradient
+                                colors={[colors.accent.primary, colors.accent.secondary || colors.accent.primary]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.quickStartGradient}
+                            >
+                                <View style={styles.quickStartContent}>
+                                    <View style={styles.quickStartIconContainer}>
+                                        <Ionicons name="flash" size={28} color="#fff" />
+                                    </View>
+                                    <View style={styles.quickStartTextContainer}>
+                                        <Text style={styles.quickStartTitle}>Quick Start</Text>
+                                        <Text style={styles.quickStartSubtitle}>
+                                            {activeWorkout ? 'Workout in progress' : 'Start a session now'}
+                                        </Text>
+                                    </View>
+                                    <View style={styles.quickStartArrow}>
+                                        <Ionicons name="arrow-forward" size={24} color="#fff" />
+                                    </View>
                                 </View>
-                                <View style={styles.quickStartTextContainer}>
-                                    <Text style={styles.quickStartTitle}>Quick Start</Text>
-                                    <Text style={styles.quickStartSubtitle}>
-                                        {activeWorkout ? 'Workout in progress' : 'Start a session now'}
-                                    </Text>
-                                </View>
-                                <View style={styles.quickStartArrow}>
-                                    <Ionicons name="arrow-forward" size={24} color="#fff" />
-                                </View>
-                            </View>
-                        </LinearGradient>
-                    </TouchableOpacity>
+                            </LinearGradient>
+                        </TouchableOpacity>
                     </TourHighlightWrapper>
                 )}
 
                 {/* Routines List */}
                 {!isSelectionMode && routines.length > 0 && (
                     <TourHighlightWrapper isActive={isTourVisible && tourStep === 4} borderRadius={16}>
-                      <View style={styles.listContainer}>
-                        {displayedItems.map((item, index) => (
-                            <View key={`${item.type}-${item.data?.id || item.id || index}`}>
-                                {renderItem({ item })}
-                            </View>
-                        ))}
-                      </View>
+                        <View style={styles.listContainer}>
+                            {displayedItems.map((item, index) => (
+                                <View key={`${item.type}-${item.data?.id || item.id || index}`}>
+                                    {renderItem({ item })}
+                                </View>
+                            ))}
+                        </View>
                     </TourHighlightWrapper>
                 )}
 
@@ -550,116 +549,102 @@ export default function RoutinesScreen() {
                     </View>
                 )}
 
-                {/* --- DEV TOOLS: Temporary Reset Button --- */}
-                <TouchableOpacity 
-                  style={{ alignSelf: 'center', marginVertical: 30, padding: 10, backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: 12 }}
-                  onPress={async () => {
-                    await AsyncStorage.removeItem('@has_seen_routines_tour_v1');
-                    setTourStep(1);
-                    setIsTourVisible(true);
-                    scrollRef.current?.scrollTo?.({ y: 0, animated: true });
-                    scrollRef.current?.getNode?.()?.scrollTo?.({ y: 0, animated: true });
-                  }}
-                >
-                  <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>Test Tutorial Again</Text>
-                </TouchableOpacity>
-                {/* -------------------------------------- */}
             </Animated.ScrollView>
 
             {/* Floating Action Button */}
             {!isSelectionMode && (
                 <TourHighlightWrapper isActive={isTourVisible && tourStep === 5} borderRadius={40}>
-                <View style={styles.fabContainer}>
-                    {fabOpen && (
-                        <TouchableWithoutFeedback onPress={() => setFabOpen(false)}>
-                            <View style={styles.fabBackdrop} />
-                        </TouchableWithoutFeedback>
-                    )}
-
-                    <Animated.View style={[styles.fabMenu, { transform: [{ scale: fabScale }] }]}>
+                    <View style={styles.fabContainer}>
                         {fabOpen && (
-                            <>
-                                <TouchableOpacity
-                                    style={[styles.fabAction, { backgroundColor: '#8B5CF6' }]}
-                                    onPress={() => handleFabAction('ai')}
-                                    activeOpacity={0.8}
-                                >
-                                    <LinearGradient
-                                        colors={['#8B5CF6', '#7C3AED']}
-                                        style={styles.fabActionGradient}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 1 }}
-                                    >
-                                        <Ionicons name="sparkles" size={22} color="#fff" />
-                                        <Text style={styles.fabActionLabel}>AI Generate</Text>
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.fabAction, { backgroundColor: '#FF2D55' }]}
-                                    onPress={() => handleFabAction('explore')}
-                                    activeOpacity={0.8}
-                                >
-                                    <LinearGradient
-                                        colors={['#FF2D55', '#FF0A3D']}
-                                        style={styles.fabActionGradient}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 1 }}
-                                    >
-                                        <Ionicons name="compass" size={22} color="#fff" />
-                                        <Text style={styles.fabActionLabel}>Explore</Text>
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.fabAction, { backgroundColor: '#007AFF' }]}
-                                    onPress={() => handleFabAction('custom')}
-                                    activeOpacity={0.8}
-                                >
-                                    <LinearGradient
-                                        colors={['#007AFF', '#0051D5']}
-                                        style={styles.fabActionGradient}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 1 }}
-                                    >
-                                        <Ionicons name="create" size={22} color="#fff" />
-                                        <Text style={styles.fabActionLabel}>Custom</Text>
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.fabAction, { backgroundColor: '#10B981' }]}
-                                    onPress={() => handleFabAction('log')}
-                                    activeOpacity={0.8}
-                                >
-                                    <LinearGradient
-                                        colors={['#10B981', '#059669']}
-                                        style={styles.fabActionGradient}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 1 }}
-                                    >
-                                        <Ionicons name="calendar" size={22} color="#fff" />
-                                        <Text style={styles.fabActionLabel}>Log Past</Text>
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                            </>
+                            <TouchableWithoutFeedback onPress={() => setFabOpen(false)}>
+                                <View style={styles.fabBackdrop} />
+                            </TouchableWithoutFeedback>
                         )}
-                    </Animated.View>
 
-                    <TouchableOpacity
-                        style={[styles.fab, { backgroundColor: colors.accent.primary }]}
-                        onPress={() => setFabOpen(!fabOpen)}
-                        activeOpacity={0.8}
-                    >
-                        <LinearGradient
-                            colors={[colors.accent.primary, colors.accent.secondary || colors.accent.primary]}
-                            style={styles.fabGradient}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
+                        <Animated.View style={[styles.fabMenu, { transform: [{ scale: fabScale }] }]}>
+                            {fabOpen && (
+                                <>
+                                    <TouchableOpacity
+                                        style={[styles.fabAction, { backgroundColor: '#8B5CF6' }]}
+                                        onPress={() => handleFabAction('ai')}
+                                        activeOpacity={0.8}
+                                    >
+                                        <LinearGradient
+                                            colors={['#8B5CF6', '#7C3AED']}
+                                            style={styles.fabActionGradient}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
+                                        >
+                                            <Ionicons name="sparkles" size={22} color="#fff" />
+                                            <Text style={styles.fabActionLabel}>AI Generate</Text>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.fabAction, { backgroundColor: '#FF2D55' }]}
+                                        onPress={() => handleFabAction('explore')}
+                                        activeOpacity={0.8}
+                                    >
+                                        <LinearGradient
+                                            colors={['#FF2D55', '#FF0A3D']}
+                                            style={styles.fabActionGradient}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
+                                        >
+                                            <Ionicons name="compass" size={22} color="#fff" />
+                                            <Text style={styles.fabActionLabel}>Explore</Text>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.fabAction, { backgroundColor: '#007AFF' }]}
+                                        onPress={() => handleFabAction('custom')}
+                                        activeOpacity={0.8}
+                                    >
+                                        <LinearGradient
+                                            colors={['#007AFF', '#0051D5']}
+                                            style={styles.fabActionGradient}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
+                                        >
+                                            <Ionicons name="create" size={22} color="#fff" />
+                                            <Text style={styles.fabActionLabel}>Custom</Text>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.fabAction, { backgroundColor: '#10B981' }]}
+                                        onPress={() => handleFabAction('log')}
+                                        activeOpacity={0.8}
+                                    >
+                                        <LinearGradient
+                                            colors={['#10B981', '#059669']}
+                                            style={styles.fabActionGradient}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
+                                        >
+                                            <Ionicons name="calendar" size={22} color="#fff" />
+                                            <Text style={styles.fabActionLabel}>Log Past</Text>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+                        </Animated.View>
+
+                        <TouchableOpacity
+                            style={[styles.fab, { backgroundColor: colors.accent.primary }]}
+                            onPress={() => setFabOpen(!fabOpen)}
+                            activeOpacity={0.8}
                         >
-                            <Animated.View style={{ transform: [{ rotate: fabRotate }] }}>
-                                <Ionicons name="add" size={28} color="#fff" />
-                            </Animated.View>
-                        </LinearGradient>
-                    </TouchableOpacity>
-                </View>
+                            <LinearGradient
+                                colors={[colors.accent.primary, colors.accent.secondary || colors.accent.primary]}
+                                style={styles.fabGradient}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                            >
+                                <Animated.View style={{ transform: [{ rotate: fabRotate }] }}>
+                                    <Ionicons name="add" size={28} color="#fff" />
+                                </Animated.View>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    </View>
                 </TourHighlightWrapper>
             )}
 
@@ -806,7 +791,7 @@ export default function RoutinesScreen() {
                 onStepChange={handleTourStepChange}
                 onFinish={finishTour}
             />
-          </View>
+        </View>
     );
 }
 

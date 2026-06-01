@@ -88,6 +88,7 @@ export default function LoginScreen() {
             const safeProfileData = {
                 ...tempProfileData,
                 name: tempProfileData.name?.trim() || 'Guest User',
+                picture: user?.picture || null,
             };
             await updateProfile(safeProfileData);
             setTempProfileData(null);
@@ -102,6 +103,9 @@ export default function LoginScreen() {
             if (!userState || !userState.name || userState.name === 'User') {
                 router.replace('/onboarding');
             } else {
+                if (user && !user.isAnonymous && user.picture) {
+                    await useUserStore.getState().updateProfile({ picture: user.picture });
+                }
                 router.replace('/(tabs)');
             }
         }

@@ -240,75 +240,90 @@ export default function ProfileScreen() {
                     onPress={() => setShowLevelInfo(true)}
                 >
                     <LinearGradient
-                        colors={[colors.accent.primary, colors.accent.secondary, mode === 'dark' ? '#0F172A' : '#1E293B']}
+                        colors={
+                            mode === 'dark' 
+                                ? [colors.accent.primary + '40', colors.accent.secondary + '20', '#020617'] 
+                                : [colors.accent.primary + '15', colors.accent.secondary + '05', '#ffffff']
+                        }
+                        locations={[0, 0.4, 1]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
-                        style={[styles.profileHeaderCard, { shadowColor: colors.accent.primary }]}
+                        style={[styles.profileHeaderCardCentered, { borderColor: colors.accent.primary + '40', borderWidth: 1.5 }]}
                     >
                         {/* Decorative Patterns & Glows */}
-                        <View style={[styles.cardGlow, { backgroundColor: colors.accent.primary + '40' }]} />
-                        <Ionicons name="shield" size={180} color="rgba(255,255,255,0.03)" style={styles.bgIconLarge} />
+                        <Ionicons name="hardware-chip-outline" size={280} color={colors.accent.primary} style={[styles.bgIconLarge, { opacity: mode === 'dark' ? 0.12 : 0.04 }]} />
+                        <View style={[styles.cardGlowCentered, { backgroundColor: colors.accent.primary, opacity: mode === 'dark' ? 0.4 : 0.15 }]} />
+                        <View style={[styles.cardGlowSecondaryCentered, { backgroundColor: colors.accent.secondary, opacity: mode === 'dark' ? 0.3 : 0.1 }]} />
 
-                        <View style={styles.cardTopSection}>
-                            <View style={styles.avatarWrapper}>
-                                <View style={[styles.avatarContainer, { borderColor: 'rgba(255,255,255,0.2)', borderWidth: 2 }]}>
-                                    {user?.picture ? (
-                                        <Image source={{ uri: user.picture }} style={styles.profileAvatar} />
-                                    ) : (
-                                        <View style={[styles.avatarPlaceholder, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                                            <Ionicons name="person" size={40} color="white" />
-                                        </View>
-                                    )}
-                                    <View style={styles.levelShieldFloating}>
-                                        <Text style={styles.levelShieldText}>{user?.level || 1}</Text>
+                        <View style={styles.cardTopSectionCentered}>
+                            <View style={styles.avatarWrapperCentered}>
+                                <LinearGradient
+                                    colors={[colors.accent.primary, colors.accent.secondary]}
+                                    style={styles.avatarGradientRing}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                >
+                                    <View style={[styles.avatarContainerCentered, { backgroundColor: colors.background.card }]}>
+                                        {(user?.picture || authUser?.picture) ? (
+                                            <Image source={{ uri: user?.picture || authUser?.picture }} style={styles.profileAvatarCentered} />
+                                        ) : (
+                                            <View style={[styles.avatarPlaceholderCentered, { backgroundColor: colors.background.elevated }]}>
+                                                <Ionicons name="person" size={40} color={colors.text.tertiary} />
+                                            </View>
+                                        )}
                                     </View>
-                                </View>
+                                </LinearGradient>
                                 <TouchableOpacity 
-                                    style={[styles.editPhotoBtnCompact, { backgroundColor: colors.accent.primary, borderColor: colors.background.card }]} 
+                                    style={[styles.editPhotoBtnCentered, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]} 
                                     onPress={handleAvatarPress}
                                 >
-                                    <Ionicons name="camera" size={10} color="white" />
+                                    <Ionicons name="camera" size={14} color={colors.text.primary} />
                                 </TouchableOpacity>
                             </View>
 
-                            <View style={styles.headerTextSection}>
-                                <View style={styles.rankBadgeGold}>
-                                    <Text style={styles.rankBadgeText}>
+                            <View style={styles.headerTextSectionCentered}>
+                                <View style={[styles.rankBadgeGoldCentered, { backgroundColor: colors.accent.primary + '15', borderColor: colors.accent.primary + '30' }]}>
+                                    <Ionicons name="shield-checkmark" size={12} color={colors.accent.primary} />
+                                    <Text style={[styles.rankBadgeTextCentered, { color: colors.accent.primary }]}>
                                         {(user?.level || 1) < 5 ? 'NOVICE ATHLETE' : (user?.level || 1) < 15 ? 'WARRIOR' : 'ELITE TITAN'}
                                     </Text>
                                 </View>
-                                <Text style={styles.profileNameMain}>{user?.name || 'Athlete'}</Text>
-                                
-                                <View style={styles.miniStatsRow}>
-                                    <View style={styles.miniStatItem}>
-                                        <Ionicons name="barbell" size={12} color="rgba(255,255,255,0.6)" />
-                                        <Text style={styles.miniStatText}>{totalWorkouts} Workouts</Text>
-                                    </View>
-                                    <View style={styles.miniStatItem}>
-                                        <Ionicons name="flash" size={12} color="rgba(255,255,255,0.6)" />
-                                        <Text style={styles.miniStatText}>{user?.xp || 0} Total XP</Text>
-                                    </View>
+                                <Text style={[styles.profileNameMainCentered, { color: colors.text.primary }]}>{user?.name || 'Athlete'}</Text>
+                            </View>
+                            
+                            <View style={[styles.miniStatsRowCentered, { backgroundColor: colors.background.elevated, borderColor: colors.border.secondary }]}>
+                                <View style={styles.miniStatItemCentered}>
+                                    <Text style={[styles.miniStatValueCentered, { color: colors.text.primary }]}>{totalWorkouts}</Text>
+                                    <Text style={[styles.miniStatLabelCentered, { color: colors.text.tertiary }]}>Workouts</Text>
+                                </View>
+                                <View style={[styles.miniStatDivider, { backgroundColor: colors.border.secondary }]} />
+                                <View style={styles.miniStatItemCentered}>
+                                    <Text style={[styles.miniStatValueCentered, { color: colors.text.primary }]}>{user?.xp || 0}</Text>
+                                    <Text style={[styles.miniStatLabelCentered, { color: colors.text.tertiary }]}>Total XP</Text>
+                                </View>
+                                <View style={[styles.miniStatDivider, { backgroundColor: colors.border.secondary }]} />
+                                <View style={styles.miniStatItemCentered}>
+                                    <Text style={[styles.miniStatValueCentered, { color: colors.text.primary }]}>{user?.streakShields || 0}</Text>
+                                    <Text style={[styles.miniStatLabelCentered, { color: colors.text.tertiary }]}>Shields</Text>
                                 </View>
                             </View>
                         </View>
 
                         {/* Enhanced XP Bar */}
-                        <View style={styles.xpProgressSection}>
-                            <View style={styles.xpLabelRow}>
-                                <Text style={styles.xpLabelLeft}>LVL {user?.level || 1}</Text>
-                                <Text style={styles.xpLabelRight}>{Math.round(Math.min(((user?.xp || 0) / ((user?.level || 1) * 100)) * 100, 100))}% to NEXT LEVEL</Text>
+                        <View style={styles.xpProgressSectionCentered}>
+                            <View style={styles.xpLabelRowCentered}>
+                                <Text style={[styles.xpLabelLeftCentered, { color: colors.text.primary }]}>LEVEL <Text style={{color: colors.accent.primary}}>{user?.level || 1}</Text></Text>
+                                <Text style={[styles.xpLabelRightCentered, { color: colors.text.tertiary }]}>{Math.round(Math.min(((user?.xp || 0) / ((user?.level || 1) * 100)) * 100, 100))}% to next</Text>
                             </View>
-                            <View style={styles.xpBarContainerNew}>
-                                <View style={[styles.xpBarBackgroundNew, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-                                    <LinearGradient
-                                        colors={['#FDE68A', '#F59E0B']}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 0 }}
-                                        style={[styles.xpBarFillNew, { width: `${Math.min(((user?.xp || 0) / ((user?.level || 1) * 100)) * 100, 100)}%` }]}
-                                    >
-                                        <View style={styles.xpBarShine} />
-                                    </LinearGradient>
-                                </View>
+                            <View style={[styles.xpBarContainerNewCentered, { backgroundColor: colors.background.elevated }]}>
+                                <LinearGradient
+                                    colors={[colors.accent.primary, colors.accent.secondary]}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={[styles.xpBarFillNewCentered, { width: `${Math.min(((user?.xp || 0) / ((user?.level || 1) * 100)) * 100, 100)}%` }]}
+                                >
+                                    <View style={styles.xpBarShineCentered} />
+                                </LinearGradient>
                             </View>
                         </View>
                     </LinearGradient>
@@ -787,171 +802,175 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.xl,
         marginTop: 20,
     },
-    profileHeaderCard: {
-        borderRadius: 36,
+    profileHeaderCardCentered: {
+        borderRadius: 32,
         padding: 24,
         overflow: 'hidden',
-        elevation: 15,
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.4,
-        shadowRadius: 24,
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
     },
-    cardGlow: {
+    cardGlowCentered: {
         position: 'absolute',
-        top: -80,
-        right: -80,
-        width: 280,
-        height: 280,
-        borderRadius: 140,
+        top: -60,
+        right: -60,
+        width: 200,
+        height: 200,
+        borderRadius: 100,
+    },
+    cardGlowSecondaryCentered: {
+        position: 'absolute',
+        bottom: -40,
+        left: -60,
+        width: 160,
+        height: 160,
+        borderRadius: 80,
     },
     bgIconLarge: {
         position: 'absolute',
-        bottom: -40,
+        bottom: -60,
         left: -40,
-        transform: [{ rotate: '15deg' }],
+        transform: [{ rotate: '-20deg' }],
     },
-    cardTopSection: {
-        flexDirection: 'row',
+    cardTopSectionCentered: {
         alignItems: 'center',
-        gap: 24,
-        marginBottom: 32,
+        marginBottom: 24,
     },
-    avatarWrapper: {
+    avatarWrapperCentered: {
         position: 'relative',
+        marginBottom: 16,
     },
-    avatarContainer: {
-        width: 84,
-        height: 84,
-        borderRadius: 42,
+    avatarGradientRing: {
+        padding: 3,
+        borderRadius: 50,
+    },
+    avatarContainerCentered: {
+        width: 86,
+        height: 86,
+        borderRadius: 43,
         padding: 4,
-        position: 'relative',
     },
-    profileAvatar: {
+    profileAvatarCentered: {
         width: '100%',
         height: '100%',
         borderRadius: 40,
     },
-    avatarPlaceholder: {
+    avatarPlaceholderCentered: {
         width: '100%',
         height: '100%',
         borderRadius: 40,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    levelShieldFloating: {
+    editPhotoBtnCentered: {
         position: 'absolute',
-        bottom: -4,
-        right: -4,
-        backgroundColor: '#F59E0B',
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        borderWidth: 3,
-        borderColor: '#1E293B',
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 4,
-    },
-    levelShieldText: {
-        color: 'white',
-        fontSize: 12,
-        fontWeight: '900',
-    },
-    editPhotoBtnCompact: {
-        position: 'absolute',
-        top: 0,
+        bottom: 0,
         right: 0,
-        width: 22,
-        height: 22,
-        borderRadius: 11,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         borderWidth: 2,
         alignItems: 'center',
         justifyContent: 'center',
-        elevation: 2,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
     },
-    headerTextSection: {
-        flex: 1,
+    headerTextSectionCentered: {
+        alignItems: 'center',
+        width: '100%',
     },
-    rankBadgeGold: {
-        backgroundColor: 'rgba(253, 230, 138, 0.15)',
-        alignSelf: 'flex-start',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 8,
-        marginBottom: 6,
+    rankBadgeGoldCentered: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        marginBottom: 10,
         borderWidth: 1,
-        borderColor: 'rgba(253, 230, 138, 0.3)',
     },
-    rankBadgeText: {
-        color: '#FDE68A',
+    rankBadgeTextCentered: {
         fontSize: 10,
         fontWeight: '900',
         letterSpacing: 1.5,
         textTransform: 'uppercase',
     },
-    profileNameMain: {
+    profileNameMainCentered: {
         fontSize: 26,
         fontWeight: '900',
-        color: 'white',
         letterSpacing: -0.5,
-        marginBottom: 8,
+        marginBottom: 20,
     },
-    miniStatsRow: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    miniStatItem: {
+    miniStatsRowCentered: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        justifyContent: 'space-evenly',
+        width: '100%',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        borderWidth: 1,
     },
-    miniStatText: {
-        color: 'rgba(255,255,255,0.7)',
-        fontSize: 11,
+    miniStatItemCentered: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    miniStatValueCentered: {
+        fontSize: 18,
+        fontWeight: '800',
+        marginBottom: 2,
+    },
+    miniStatLabelCentered: {
+        fontSize: 10,
         fontWeight: '600',
+        textTransform: 'uppercase',
     },
-    xpProgressSection: {
-        marginTop: 'auto',
+    miniStatDivider: {
+        width: 1,
+        height: 24,
     },
-    xpLabelRow: {
+    xpProgressSectionCentered: {
+        width: '100%',
+    },
+    xpLabelRowCentered: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-end',
         marginBottom: 8,
     },
-    xpLabelLeft: {
-        color: 'white',
-        fontSize: 11,
+    xpLabelLeftCentered: {
+        fontSize: 12,
         fontWeight: '900',
         letterSpacing: 1,
     },
-    xpLabelRight: {
-        color: 'rgba(255,255,255,0.6)',
+    xpLabelRightCentered: {
         fontSize: 10,
         fontWeight: '700',
         letterSpacing: 0.5,
     },
-    xpBarContainerNew: {
-        height: 10,
+    xpBarContainerNewCentered: {
+        height: 8,
         width: '100%',
-    },
-    xpBarBackgroundNew: {
-        flex: 1,
-        borderRadius: 5,
+        borderRadius: 4,
         overflow: 'hidden',
     },
-    xpBarFillNew: {
+    xpBarFillNewCentered: {
         height: '100%',
-        borderRadius: 5,
+        borderRadius: 4,
         position: 'relative',
     },
-    xpBarShine: {
+    xpBarShineCentered: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         height: '40%',
-        backgroundColor: 'rgba(255,255,255,0.3)',
+        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     content: {
         paddingTop: 24,

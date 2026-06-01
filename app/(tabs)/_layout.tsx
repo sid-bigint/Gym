@@ -67,20 +67,20 @@ export default function TabsLayout() {
                     }}
                 />
                 <SwipeTabs.Screen
-                    name="history"
-                    options={{
-                        title: 'Progress',
-                        tabBarIcon: ({ color, focused }: { color: string; focused: boolean }) => (
-                            <Ionicons name={focused ? "analytics" : "analytics-outline"} size={26} color={color} />
-                        ),
-                    }}
-                />
-                <SwipeTabs.Screen
                     name="nutrition"
                     options={{
                         title: 'Nutrition',
                         tabBarIcon: ({ color, focused }: { color: string; focused: boolean }) => (
                             <Ionicons name={focused ? "restaurant" : "restaurant-outline"} size={26} color={color} />
+                        ),
+                    }}
+                />
+                <SwipeTabs.Screen
+                    name="history"
+                    options={{
+                        title: 'Progress',
+                        tabBarIcon: ({ color, focused }: { color: string; focused: boolean }) => (
+                            <Ionicons name={focused ? "analytics" : "analytics-outline"} size={26} color={color} />
                         ),
                     }}
                 />

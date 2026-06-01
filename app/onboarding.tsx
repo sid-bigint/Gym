@@ -293,6 +293,7 @@ export default function OnboardingScreen() {
                 age: Number(formData.age) || 25,
                 height: Math.round(finalHeight),
                 weight: Math.round(finalWeight),
+                picture: authUser?.picture || null,
             };
 
             const profileWithTargets = calculateUserTargets(finalProfile);

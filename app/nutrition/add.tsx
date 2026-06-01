@@ -97,9 +97,11 @@ export default function AddFoodScreen() {
             const staples = [
                 'chicken_breast', 'egg_whole', 'egg_white', 'roti_whole_wheat', 'rice_white', 'oats', 
                 'paneer_bhurji', 'yogurt_greek', 'banana', 'apple', 'broccoli', 
-                'spinach', 'fish_salmon', 'sweet_potato', 'almonds', 'blueberry', 'strawberry'
+                'spinach', 'fish_salmon', 'sweet_potato', 'almonds', 'blueberry', 'strawberry',
+                'whey_protein_powder', 'peanut_butter', 'milk_whole', 'milk_skim', 'paneer',
+                'tofu', 'avocado', 'rice_brown', 'rice_basmati', 'almond_butter', 'coffee_black', 'tea_black'
             ];
-            return combinedFoods.filter(f => staples.includes(f.id)).slice(0, 16);
+            return combinedFoods.filter(f => staples.includes(f.id)).slice(0, 30);
         }
         return combinedFoods.filter(f => 
             f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
