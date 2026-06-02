@@ -329,6 +329,9 @@ export default function RoutinesScreen() {
                 case 'custom':
                     router.push('/programs/create');
                     break;
+                case 'import':
+                    router.push('/routines/import');
+                    break;
                 case 'log':
                     setShowPastLogModal(true);
                     break;
@@ -609,6 +612,23 @@ export default function RoutinesScreen() {
                                             <Text style={styles.fabActionLabel}>Custom</Text>
                                         </LinearGradient>
                                     </TouchableOpacity>
+                                    {/* HIDING IMPORT FEATURE FOR NOW 
+                                    <TouchableOpacity
+                                        style={[styles.fabAction, { backgroundColor: '#F59E0B' }]}
+                                        onPress={() => handleFabAction('import')}
+                                        activeOpacity={0.8}
+                                    >
+                                        <LinearGradient
+                                            colors={['#F59E0B', '#D97706']}
+                                            style={styles.fabActionGradient}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
+                                        >
+                                            <Ionicons name="document-text" size={22} color="#fff" />
+                                            <Text style={styles.fabActionLabel}>Import Bulk</Text>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                    */}
                                     <TouchableOpacity
                                         style={[styles.fabAction, { backgroundColor: '#10B981' }]}
                                         onPress={() => handleFabAction('log')}

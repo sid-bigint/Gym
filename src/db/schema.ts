@@ -73,6 +73,25 @@ export const exercises = sqliteTable('exercises', {
     userId: integer('user_id'), // Null for global exercises, set for custom ones
 });
 
+// Workout Routines (Templates e.g. "Push Day")
+export const routines = sqliteTable('routines', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id').references(() => users.id),
+    name: text('name').notNull(),
+    description: text('description'),
+    createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+});
+
+// Routine Exercises (Exercises inside a routine)
+export const routineExercises = sqliteTable('routine_exercises', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    routineId: integer('routine_id').references(() => routines.id).notNull(),
+    exerciseId: integer('exercise_id').references(() => exercises.id).notNull(),
+    orderIndex: integer('order_index').notNull(),
+    targetSets: integer('target_sets'),
+    targetReps: integer('target_reps'),
+});
+
 // Workout Sessions (A single performed workout)
 export const workoutSessions = sqliteTable('workout_sessions', {
     id: integer('id').primaryKey({ autoIncrement: true }),
