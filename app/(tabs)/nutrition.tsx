@@ -277,6 +277,10 @@ export default function NutritionScreen() {
                 renderItem={renderLogItem}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
+                initialNumToRender={8}
+                maxToRenderPerBatch={8}
+                windowSize={5}
+                removeClippedSubviews={true}
                 ListHeaderComponent={
                     <>
                         {/* Macro Dashboard */}

@@ -122,7 +122,7 @@ interface WorkoutState {
 
     loadRoutines: () => Promise<void>;
     loadExercises: () => Promise<void>;
-    loadHistory: (limit?: number) => Promise<void>;
+    loadHistory: (limit?: number, offset?: number, append?: boolean) => Promise<void>;
     addExercise: (exercise: { name: string; muscleGroup: string; type?: string; instructions?: string[]; images?: string[] }) => Promise<Exercise>;
     createRoutine: (name: string, exercises: { exerciseId: number; sets: number; reps: number }[], programId?: string) => Promise<void>;
     updateRoutine: (id: number, name: string, exercises: { exerciseId: number; sets: number; reps: number }[]) => Promise<void>;
@@ -142,7 +142,7 @@ interface WorkoutState {
     removeActiveSet: (index: number) => void;
     finishActiveWorkout: (notes?: string) => Promise<number | null>;
     cancelActiveWorkout: () => void;
-    getWorkoutHistory: (limit?: number) => Promise<any[]>;
+    getWorkoutHistory: (limit?: number, offset?: number) => Promise<any[]>;
     getExerciseHistory: (exerciseId: number) => Promise<any[]>;
     loadStreak: () => Promise<void>;
 }
@@ -859,7 +859,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
         set({ activeWorkout: null });
     },
 
-    getWorkoutHistory: async (limit = 10) => {
+    getWorkoutHistory: async (limit = 10, offset = 0) => {
         try {
             const { useUserStore } = require('./useUserStore');
             const userStore = useUserStore.getState();
@@ -868,10 +868,10 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             if (!userId) return [];
 
             const db = await getDatabase();
-            // Query workout_sessions
+            // Query workout_sessions with offset
             const sessions = await db.getAllAsync<any>(
-                'SELECT * FROM workout_sessions WHERE user_id = ? ORDER BY date DESC LIMIT ?',
-                [userId, limit]
+                'SELECT * FROM workout_sessions WHERE user_id = ? ORDER BY date DESC LIMIT ? OFFSET ?',
+                [userId, limit, offset]
             );
 
             // Enrich with summary data from workout_sets_v2
@@ -937,9 +937,17 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
         }
     },
 
-    loadHistory: async (limit = 10) => {
-        const history = await get().getWorkoutHistory(limit);
-        set({ history });
+    loadHistory: async (limit = 10, offset = 0, append = false) => {
+        const history = await get().getWorkoutHistory(limit, offset);
+        if (append) {
+            const currentHistory = get().history;
+            // Prevent duplicates when appending
+            const existingIds = new Set(currentHistory.map(h => h.id));
+            const newHistory = history.filter(h => !existingIds.has(h.id));
+            set({ history: [...currentHistory, ...newHistory] });
+        } else {
+            set({ history });
+        }
     },
 
     loadStreak: async () => {

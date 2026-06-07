@@ -995,33 +995,23 @@ export default function Dashboard() {
         {/* Action Buttons */}
         <TourHighlightWrapper isActive={isTourVisible && tourStep === 4} borderRadius={20}>
           <View style={styles.actionGrid}>
+
           <TouchableOpacity
             style={[styles.heroActionBtn, { backgroundColor: colors.background.card }]}
             onPress={() => {
-              if (isHealthConnectAvailable && hasStepPermission) {
-                bootstrapHealthConnect();
-              } else if (!isHealthConnectAvailable) {
-                openHealthConnectApp();
-              } else {
-                connectAndSync();
-              }
-              // Advance tutorial if on step 4
+              router.push('/(tabs)/routines');
               if (isTourVisible && tourStep === 4) {
                 setTimeout(() => handleStepChange(5), 400);
               }
             }}
           >
-            <View style={[styles.actionIconContainer, { backgroundColor: 'rgba(34, 197, 94, 0.12)' }]}>
-              <Ionicons name="footsteps" size={24} color="#22C55E" />
+            <View style={[styles.actionIconContainer, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
+              <Ionicons name="barbell" size={24} color="#3B82F6" />
             </View>
             <View>
-              <Text style={[styles.actionBtnLabel, { color: colors.text.primary, fontSize: 14 }]}>Health Steps</Text>
-              <Text style={{ color: colors.text.tertiary, fontSize: 12, fontWeight: '600' }}>
-                {isHealthConnectLoading
-                  ? 'Syncing...'
-                  : isHealthConnectAvailable && hasStepPermission
-                    ? `${todaySteps.toLocaleString()} today`
-                    : 'Tap to connect'}
+              <Text style={[styles.actionBtnLabel, { color: colors.text.primary, fontSize: 14 }]}>Start Workout</Text>
+              <Text style={{ color: colors.text.tertiary, fontSize: 12, fontWeight: '600', marginTop: 4 }}>
+                 Pick a routine
               </Text>
             </View>
           </TouchableOpacity>
@@ -1030,10 +1020,15 @@ export default function Dashboard() {
             style={[styles.heroActionBtn, { backgroundColor: colors.background.card }]}
             onPress={() => router.push('/nutrition/add')}
           >
-            <View style={[styles.actionIconContainer, { backgroundColor: 'rgba(236, 72, 153, 0.1)' }]}>
+            <View style={[styles.actionIconContainer, { backgroundColor: 'rgba(236, 72, 153, 0.12)' }]}>
               <Ionicons name="restaurant" size={24} color="#EC4899" />
             </View>
-            <Text style={[styles.actionBtnLabel, { color: colors.text.primary }]}>Log Meal</Text>
+            <View>
+              <Text style={[styles.actionBtnLabel, { color: colors.text.primary, fontSize: 14 }]}>Log Meal</Text>
+              <Text style={{ color: colors.text.tertiary, fontSize: 12, fontWeight: '600', marginTop: 4 }}>
+                 Track calories
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
         </TourHighlightWrapper>

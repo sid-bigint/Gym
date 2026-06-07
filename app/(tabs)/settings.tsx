@@ -27,7 +27,7 @@ const { width } = Dimensions.get('window');
 export default function ProfileScreen() {
     const { user } = useUserStore();
     const { user: authUser } = useAuthStore();
-    const { logout } = useAuthStore();
+    const { logout, deleteAccount } = useAuthStore();
     const { measurements, loadMeasurements, deleteMeasurement, addMeasurement } = useProgressStore();
     const { history: workoutHistory, loadHistory: loadWorkoutHistory } = useWorkoutStore();
     const {
@@ -160,6 +160,28 @@ export default function ProfileScreen() {
         );
     };
 
+    const handleDeleteAccount = async () => {
+        useAlertStore.getState().showAlert(
+            "Delete Account",
+            "Are you sure you want to delete your account? This action cannot be undone and will permanently erase all your data.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await deleteAccount();
+                            router.replace('/auth/login');
+                        } catch (error: any) {
+                            useAlertStore.getState().showAlert("Error", error.message || "Failed to delete account. Please try again.");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const handleDeleteWeight = (id: number) => {
         setDeleteId(id);
     };
@@ -265,7 +287,7 @@ export default function ProfileScreen() {
                                 >
                                     <View style={[styles.avatarContainerCentered, { backgroundColor: colors.background.card }]}>
                                         {(user?.picture || authUser?.picture) ? (
-                                            <Image source={{ uri: user?.picture || authUser?.picture }} style={styles.profileAvatarCentered} />
+                                            <Image source={{ uri: (user?.picture || authUser?.picture) as string }} style={styles.profileAvatarCentered} />
                                         ) : (
                                             <View style={[styles.avatarPlaceholderCentered, { backgroundColor: colors.background.elevated }]}>
                                                 <Ionicons name="person" size={40} color={colors.text.tertiary} />
@@ -403,68 +425,7 @@ export default function ProfileScreen() {
                 {/* Section: Preferences & Tools */}
                 <Text style={[styles.sectionTitleNew, { color: colors.text.primary, marginTop: 24, marginBottom: 14 }]}>Preferences & Tools</Text>
 
-                <View style={[styles.menuItemNew, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}>
-                    <View style={[styles.menuIconCircle, { backgroundColor: '#22C55E15' }]}>
-                        <Ionicons name="footsteps" size={20} color="#22C55E" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[styles.menuItemTitle, { color: colors.text.primary }]}>Health Connect</Text>
-                        <Text style={[styles.menuItemSub, { color: colors.text.tertiary }]}>
-                            {isHealthConnectLoading
-                                ? 'Checking Health Connect...'
-                                : isHealthConnectAvailable && hasStepPermission
-                                    ? `${todaySteps.toLocaleString()} steps today`
-                                    : isHealthConnectAvailable
-                                        ? 'Connect step data from Health Connect'
-                                        : 'Install or enable Health Connect on this Android device'}
-                        </Text>
-                        {!!lastSyncedAt && isHealthConnectAvailable && hasStepPermission && (
-                            <Text style={{ color: colors.text.disabled, fontSize: 11, marginTop: 6 }}>
-                                Last synced {format(new Date(lastSyncedAt), 'h:mm a')}
-                            </Text>
-                        )}
-                        {!!healthConnectError && !isHealthConnectLoading && (
-                            <Text style={{ color: '#F97316', fontSize: 11, marginTop: 6 }}>
-                                {healthConnectError}
-                            </Text>
-                        )}
-                    </View>
-                    <TouchableOpacity
-                        onPress={() => {
-                            if (isHealthConnectAvailable && hasStepPermission) {
-                                openPermissionsScreen();
-                            } else if (isHealthConnectAvailable) {
-                                connectAndSync();
-                            } else {
-                                openHealthConnectApp();
-                            }
-                        }}
-                        style={{
-                            paddingHorizontal: 12,
-                            paddingVertical: 10,
-                            borderRadius: 12,
-                            backgroundColor: isHealthConnectAvailable && hasStepPermission
-                                ? colors.accent.primary + '15'
-                                : '#22C55E15',
-                            borderWidth: 1,
-                            borderColor: isHealthConnectAvailable && hasStepPermission
-                                ? colors.accent.primary + '30'
-                                : '#22C55E30'
-                        }}
-                    >
-                        <Text style={{
-                            color: isHealthConnectAvailable && hasStepPermission ? colors.accent.primary : '#22C55E',
-                            fontSize: 12,
-                            fontWeight: '700'
-                        }}>
-                            {isHealthConnectAvailable && hasStepPermission
-                                ? 'Manage'
-                                : isHealthConnectAvailable
-                                    ? 'Connect'
-                                    : 'Install'}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
+
 
                 <TouchableOpacity
                     style={[styles.menuItemNew, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}
@@ -566,6 +527,15 @@ export default function ProfileScreen() {
                         <Text style={[styles.actionBtnTextSec, { color: '#EF4444' }]}>Log Out</Text>
                     </TouchableOpacity>
                 </View>
+
+                {/* Delete Account */}
+                <TouchableOpacity
+                    style={[styles.actionBtnPrimary, { backgroundColor: '#EF4444' + '15', marginTop: 12, paddingVertical: 14 }]}
+                    onPress={handleDeleteAccount}
+                >
+                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                    <Text style={{ color: '#EF4444', fontWeight: '800', marginLeft: 8 }}>Delete Account</Text>
+                </TouchableOpacity>
 
                 <View style={{ height: 40 }} />
             </View>

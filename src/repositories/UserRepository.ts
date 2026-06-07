@@ -199,5 +199,26 @@ export const UserRepository = {
             console.error('Error updating user / Validation fail:', e);
             return null;
         }
+    },
+
+    async clearAllUserData(): Promise<boolean> {
+        try {
+            const db = await getDatabase();
+            await db.withTransactionAsync(async () => {
+                const tablesToClear = [
+                    'users', 'routines', 'routine_exercises', 'workouts', 'workout_sets',
+                    'workout_sessions', 'workout_sets_v2', 'muscle_stats', 'muscle_recovery',
+                    'nutrition_logs', 'custom_foods', 'saved_meals', 'recent_foods',
+                    'water_logs', 'user_settings', 'progress_measurements', 'pending_syncs', 'folders'
+                ];
+                for (const table of tablesToClear) {
+                    await db.runAsync(`DELETE FROM ${table}`);
+                }
+            });
+            return true;
+        } catch (e) {
+            console.error('Error clearing user data:', e);
+            return false;
+        }
     }
 };

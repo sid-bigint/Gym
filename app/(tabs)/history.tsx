@@ -40,6 +40,9 @@ export default function ProgressScreen() {
     const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | null>(null);
 
     const [workouts, setWorkouts] = useState<any[]>([]);
+    const [workoutOffset, setWorkoutOffset] = useState(0);
+    const [hasMoreWorkouts, setHasMoreWorkouts] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [nutritionHistory, setNutritionHistory] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -205,18 +208,36 @@ export default function ProgressScreen() {
         }
     };
 
-    const loadHistory = async () => {
-        setIsLoading(true);
+    const loadHistory = async (reset = false) => {
+        if (!reset) setIsLoading(true);
+        const currentOffset = reset ? 0 : workoutOffset;
+        
         const [wHistory, nHistory] = await Promise.all([
-            getWorkoutHistory(50),
+            getWorkoutHistory(10, currentOffset),
             getNutritionHistory(7),
             loadMeasurements()
         ]);
-        setWorkouts(wHistory);
-        setNutritionHistory(nHistory);
+        
+        if (wHistory.length < 10) {
+            setHasMoreWorkouts(false);
+        } else if (reset) {
+            setHasMoreWorkouts(true);
+        }
+
+        if (reset) {
+            setWorkouts(wHistory);
+            setWorkoutOffset(10);
+        } else {
+            // Handled by loadMoreWorkouts
+            setWorkouts(wHistory);
+        }
+        
+        if (reset) {
+            setNutritionHistory(nHistory);
+        }
 
         // Load muscle data for the heat map
-        if (user?.id) {
+        if (user?.id && reset) {
             try {
                 setMuscleLoading(true);
                 const userIdStr = String(user.id);
@@ -236,18 +257,29 @@ export default function ProgressScreen() {
             }
         }
 
-        setIsLoading(false);
+        if (!reset) setIsLoading(false);
+    };
+
+    const loadMoreWorkouts = async () => {
+        if (!hasMoreWorkouts || isLoadingMore) return;
+        setIsLoadingMore(true);
+        try {
+            const moreWorkouts = await getWorkoutHistory(10, workoutOffset);
+            if (moreWorkouts.length < 10) {
+                setHasMoreWorkouts(false);
+            }
+            setWorkouts(prev => [...prev, ...moreWorkouts]);
+            setWorkoutOffset(prev => prev + 10);
+        } catch (e) {
+            console.error("Failed to load more workouts", e);
+        } finally {
+            setIsLoadingMore(false);
+        }
     };
 
     const onRefresh = async () => {
         setRefreshing(true);
-        const [wHistory, nHistory] = await Promise.all([
-            getWorkoutHistory(50),
-            getNutritionHistory(7),
-            loadMeasurements()
-        ]);
-        setWorkouts(wHistory);
-        setNutritionHistory(nHistory);
+        await loadHistory(true);
 
         // Refresh muscle data
         if (user?.id) {
@@ -662,6 +694,13 @@ export default function ProgressScreen() {
                     renderItem={renderWorkoutItem}
                     keyExtractor={(item) => item.id.toString()}
                     contentContainerStyle={styles.listContent}
+                    initialNumToRender={8}
+                    maxToRenderPerBatch={8}
+                    windowSize={5}
+                    removeClippedSubviews={true}
+                    onEndReached={loadMoreWorkouts}
+                    onEndReachedThreshold={0.5}
+                    ListFooterComponent={isLoadingMore ? <ActivityIndicator color={colors.accent.primary} style={{ margin: 20 }} /> : null}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent.primary} />
                     }

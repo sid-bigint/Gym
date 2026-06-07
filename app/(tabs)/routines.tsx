@@ -413,8 +413,15 @@ export default function RoutinesScreen() {
             </TourHighlightWrapper>
 
             {/* Main Content */}
-            <Animated.ScrollView
+            <Animated.FlatList
                 ref={scrollRef}
+                data={isSelectionMode ? displayedItems.filter(item => item.type === 'routine' || item.type === 'program') : displayedItems}
+                keyExtractor={(item: any, index: number) => `select-${item.type}-${item.data?.id || item.id || index}`}
+                renderItem={({ item }: { item: any }) => (
+                    <View style={styles.listContainer}>
+                        {renderItem({ item })}
+                    </View>
+                )}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
                 onScroll={Animated.event(
@@ -422,137 +429,117 @@ export default function RoutinesScreen() {
                     { useNativeDriver: false }
                 )}
                 scrollEventThrottle={16}
-            >
-                {/* Quick Stats Row */}
-                {!isSelectionMode && routines.length > 0 && (
-                    <TourHighlightWrapper isActive={isTourVisible && tourStep === 2} borderRadius={16}>
-                        <View style={styles.statsRow}>
-                            <View style={[styles.statCard, { backgroundColor: colors.background.elevated }]}>
+                initialNumToRender={8}
+                maxToRenderPerBatch={8}
+                windowSize={5}
+                removeClippedSubviews={true}
+                ListHeaderComponent={
+                    <>
+                        {/* Quick Stats Row */}
+                        {!isSelectionMode && routines.length > 0 && (
+                            <TourHighlightWrapper isActive={isTourVisible && tourStep === 2} borderRadius={16}>
+                                <View style={styles.statsRow}>
+                                    <View style={[styles.statCard, { backgroundColor: colors.background.elevated }]}>
+                                        <LinearGradient
+                                            colors={[colors.accent.primary + '20', colors.accent.primary + '05']}
+                                            style={styles.statCardGradient}
+                                        >
+                                            <Ionicons name="calendar-outline" size={24} color={colors.accent.primary} />
+                                            <Text style={[styles.statValue, { color: colors.text.primary }]}>
+                                                {routines.filter(r => routineAnalytics[r.name]?.lastPerformed).length}
+                                            </Text>
+                                            <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Completed</Text>
+                                        </LinearGradient>
+                                    </View>
+                                    <View style={[styles.statCard, { backgroundColor: colors.background.elevated }]}>
+                                        <LinearGradient
+                                            colors={[colors.accent.primary + '20', colors.accent.primary + '05']}
+                                            style={styles.statCardGradient}
+                                        >
+                                            <Ionicons name="flame-outline" size={24} color={colors.accent.primary} />
+                                            <Text style={[styles.statValue, { color: colors.text.primary }]}>
+                                                {routines.length}
+                                            </Text>
+                                            <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Total Routines</Text>
+                                        </LinearGradient>
+                                    </View>
+                                </View>
+                            </TourHighlightWrapper>
+                        )}
+
+                        {/* Empty State */}
+                        {!isSelectionMode && routines.length === 0 && (
+                            <View style={styles.emptyStateContainer}>
                                 <LinearGradient
                                     colors={[colors.accent.primary + '20', colors.accent.primary + '05']}
-                                    style={styles.statCardGradient}
+                                    style={styles.emptyStateGradient}
                                 >
-                                    <Ionicons name="calendar-outline" size={24} color={colors.accent.primary} />
-                                    <Text style={[styles.statValue, { color: colors.text.primary }]}>
-                                        {routines.filter(r => routineAnalytics[r.name]?.lastPerformed).length}
+                                    <View style={styles.emptyStateIconContainer}>
+                                        <Ionicons name="fitness" size={80} color={colors.accent.primary} />
+                                    </View>
+                                    <Text style={[styles.emptyStateTitle, { color: colors.text.primary }]}>No workouts yet</Text>
+                                    <Text style={[styles.emptyStateSubtitle, { color: colors.text.secondary }]}>
+                                        Create your first workout to start tracking
                                     </Text>
-                                    <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Completed</Text>
+                                    <View style={styles.emptyStateActions}>
+                                        <TouchableOpacity
+                                            style={[styles.emptyStateButton, { backgroundColor: '#8B5CF6' }]}
+                                            onPress={() => router.push('/programs/generate')}
+                                        >
+                                            <Ionicons name="sparkles" size={20} color="#fff" />
+                                            <Text style={styles.emptyStateButtonText}>AI Generate</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.emptyStateButton, { backgroundColor: '#007AFF' }]}
+                                            onPress={() => router.push('/programs/create')}
+                                        >
+                                            <Ionicons name="create" size={20} color="#fff" />
+                                            <Text style={styles.emptyStateButtonText}>Custom</Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 </LinearGradient>
                             </View>
-                            <View style={[styles.statCard, { backgroundColor: colors.background.elevated }]}>
-                                <LinearGradient
-                                    colors={[colors.accent.primary + '20', colors.accent.primary + '05']}
-                                    style={styles.statCardGradient}
-                                >
-                                    <Ionicons name="flame-outline" size={24} color={colors.accent.primary} />
-                                    <Text style={[styles.statValue, { color: colors.text.primary }]}>
-                                        {routines.length}
-                                    </Text>
-                                    <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Total Routines</Text>
-                                </LinearGradient>
-                            </View>
-                        </View>
-                    </TourHighlightWrapper>
-                )}
+                        )}
 
-                {/* Empty State */}
-                {!isSelectionMode && routines.length === 0 && (
-                    <View style={styles.emptyStateContainer}>
-                        <LinearGradient
-                            colors={[colors.accent.primary + '20', colors.accent.primary + '05']}
-                            style={styles.emptyStateGradient}
-                        >
-                            <View style={styles.emptyStateIconContainer}>
-                                <Ionicons name="fitness" size={80} color={colors.accent.primary} />
-                            </View>
-                            <Text style={[styles.emptyStateTitle, { color: colors.text.primary }]}>No workouts yet</Text>
-                            <Text style={[styles.emptyStateSubtitle, { color: colors.text.secondary }]}>
-                                Create your first workout to start tracking
-                            </Text>
-                            <View style={styles.emptyStateActions}>
+                        {/* Quick Start Banner - Enhanced */}
+                        {!isSelectionMode && routines.length > 0 && (
+                            <TourHighlightWrapper isActive={isTourVisible && tourStep === 3} borderRadius={16}>
                                 <TouchableOpacity
-                                    style={[styles.emptyStateButton, { backgroundColor: '#8B5CF6' }]}
-                                    onPress={() => router.push('/programs/generate')}
+                                    style={[
+                                        styles.quickStartBanner,
+                                        { opacity: activeWorkout ? 0.5 : 1 }
+                                    ]}
+                                    onPress={() => handleStartWorkout(null)}
+                                    disabled={!!activeWorkout}
+                                    activeOpacity={0.8}
                                 >
-                                    <Ionicons name="sparkles" size={20} color="#fff" />
-                                    <Text style={styles.emptyStateButtonText}>AI Generate</Text>
+                                    <LinearGradient
+                                        colors={[colors.accent.primary, colors.accent.secondary || colors.accent.primary]}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={styles.quickStartGradient}
+                                    >
+                                        <View style={styles.quickStartContent}>
+                                            <View style={styles.quickStartIconContainer}>
+                                                <Ionicons name="flash" size={28} color="#fff" />
+                                            </View>
+                                            <View style={styles.quickStartTextContainer}>
+                                                <Text style={styles.quickStartTitle}>Quick Start</Text>
+                                                <Text style={styles.quickStartSubtitle}>
+                                                    {activeWorkout ? 'Workout in progress' : 'Start a session now'}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.quickStartArrow}>
+                                                <Ionicons name="arrow-forward" size={24} color="#fff" />
+                                            </View>
+                                        </View>
+                                    </LinearGradient>
                                 </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.emptyStateButton, { backgroundColor: '#007AFF' }]}
-                                    onPress={() => router.push('/programs/create')}
-                                >
-                                    <Ionicons name="create" size={20} color="#fff" />
-                                    <Text style={styles.emptyStateButtonText}>Custom</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </LinearGradient>
-                    </View>
-                )}
-
-                {/* Quick Start Banner - Enhanced */}
-                {!isSelectionMode && routines.length > 0 && (
-                    <TourHighlightWrapper isActive={isTourVisible && tourStep === 3} borderRadius={16}>
-                        <TouchableOpacity
-                            style={[
-                                styles.quickStartBanner,
-                                { opacity: activeWorkout ? 0.5 : 1 }
-                            ]}
-                            onPress={() => handleStartWorkout(null)}
-                            disabled={!!activeWorkout}
-                            activeOpacity={0.8}
-                        >
-                            <LinearGradient
-                                colors={[colors.accent.primary, colors.accent.secondary || colors.accent.primary]}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.quickStartGradient}
-                            >
-                                <View style={styles.quickStartContent}>
-                                    <View style={styles.quickStartIconContainer}>
-                                        <Ionicons name="flash" size={28} color="#fff" />
-                                    </View>
-                                    <View style={styles.quickStartTextContainer}>
-                                        <Text style={styles.quickStartTitle}>Quick Start</Text>
-                                        <Text style={styles.quickStartSubtitle}>
-                                            {activeWorkout ? 'Workout in progress' : 'Start a session now'}
-                                        </Text>
-                                    </View>
-                                    <View style={styles.quickStartArrow}>
-                                        <Ionicons name="arrow-forward" size={24} color="#fff" />
-                                    </View>
-                                </View>
-                            </LinearGradient>
-                        </TouchableOpacity>
-                    </TourHighlightWrapper>
-                )}
-
-                {/* Routines List */}
-                {!isSelectionMode && routines.length > 0 && (
-                    <TourHighlightWrapper isActive={isTourVisible && tourStep === 4} borderRadius={16}>
-                        <View style={styles.listContainer}>
-                            {displayedItems.map((item, index) => (
-                                <View key={`${item.type}-${item.data?.id || item.id || index}`}>
-                                    {renderItem({ item })}
-                                </View>
-                            ))}
-                        </View>
-                    </TourHighlightWrapper>
-                )}
-
-                {/* Selection Mode */}
-                {isSelectionMode && (
-                    <View style={styles.listContainer}>
-                        {displayedItems
-                            .filter(item => item.type === 'routine' || item.type === 'program')
-                            .map((item, index) => (
-                                <View key={`select-${item.type}-${item.data?.id || item.id || index}`}>
-                                    {renderItem({ item })}
-                                </View>
-                            ))}
-                    </View>
-                )}
-
-            </Animated.ScrollView>
+                            </TourHighlightWrapper>
+                        )}
+                    </>
+                }
+            />
 
             {/* Floating Action Button */}
             {!isSelectionMode && (
@@ -715,9 +702,16 @@ export default function RoutinesScreen() {
                         )}
                     </View>
 
-                    <ScrollView contentContainerStyle={{ padding: 20 }}>
-                        {modalRoutines.map((routine) => (
-                            <View key={routine.id} style={{ marginBottom: 16 }}>
+                    <FlatList
+                        data={modalRoutines}
+                        keyExtractor={(routine) => routine.id.toString()}
+                        contentContainerStyle={{ padding: 20 }}
+                        initialNumToRender={5}
+                        maxToRenderPerBatch={5}
+                        windowSize={3}
+                        removeClippedSubviews={true}
+                        renderItem={({ item: routine }) => (
+                            <View style={{ marginBottom: 16 }}>
                                 <RoutineCard
                                     item={routine}
                                     analytics={routineAnalytics[routine.name]}
@@ -730,8 +724,8 @@ export default function RoutinesScreen() {
                                     onStartWorkout={handleStartWorkout}
                                 />
                             </View>
-                        ))}
-                    </ScrollView>
+                        )}
+                    />
                 </View>
             </Modal>
 

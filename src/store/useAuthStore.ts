@@ -20,6 +20,7 @@ interface AuthState {
     loadAuthState: () => Promise<void>;
     signInAsGuest: () => Promise<void>;
     logout: () => Promise<void>;
+    deleteAccount: () => Promise<void>;
 }
 
 let authStateUnsubscribe: (() => void) | null = null;
@@ -104,6 +105,28 @@ export const useAuthStore = create<AuthState>((set) => ({
             set({ user: null, isAuthenticated: false });
         } catch (error) {
             console.error('Logout failed', error);
+        }
+    },
+
+    deleteAccount: async () => {
+        try {
+            const { UserRepository } = await import('../repositories/UserRepository');
+            const currentUser = auth.currentUser;
+            
+            if (currentUser) {
+                await currentUser.delete();
+            }
+            
+            await signOutGoogleSession();
+            await UserRepository.clearAllUserData();
+            
+            set({ user: null, isAuthenticated: false });
+        } catch (error: any) {
+            console.error('Account deletion failed', error);
+            if (error.code === 'auth/requires-recent-login') {
+                throw new Error('Please sign out and sign in again before deleting your account.');
+            }
+            throw error;
         }
     }
 }));
