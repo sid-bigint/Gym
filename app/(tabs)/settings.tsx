@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, Linking, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { CalorieCalculator } from '../../src/components/CalorieCalculator';
 import { accentColors, shadows, spacing, ThemeType } from '../../src/constants/theme';
 import { BADGES } from '../../src/constants/badges';
@@ -508,6 +508,22 @@ export default function ProfileScreen() {
                         )}
                     </TouchableOpacity>
                 </View>
+
+                {/* Legal */}
+                <Text style={[styles.sectionTitleNew, { color: colors.text.primary, marginTop: 24, marginBottom: 14 }]}>Legal</Text>
+                <TouchableOpacity
+                    style={[styles.menuItemNew, { backgroundColor: colors.background.card, borderColor: colors.border.secondary }]}
+                    onPress={() => Linking.openURL('https://sid-bigint.github.io/gymGuide360/privacy-policy.html')}
+                >
+                    <View style={[styles.menuIconCircle, { backgroundColor: '#6366F115' }]}>
+                        <Ionicons name="document-text-outline" size={20} color="#6366F1" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.menuItemTitle, { color: colors.text.primary }]}>Privacy Policy</Text>
+                        <Text style={[styles.menuItemSub, { color: colors.text.tertiary }]}>How we handle your data</Text>
+                    </View>
+                    <Ionicons name="open-outline" size={18} color={colors.text.disabled} />
+                </TouchableOpacity>
 
                 {/* Account Actions */}
                 <View style={[styles.actionRowNew, { marginTop: 24 }]}>
