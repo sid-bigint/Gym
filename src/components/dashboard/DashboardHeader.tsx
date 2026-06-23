@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -7,11 +7,52 @@ import { useTheme } from '../../store/useTheme';
 import { spacing } from '../../constants/theme';
 import { UserProfile, WorkoutStreak } from '../../types';
 import LevelInfoModal from './LevelInfoModal';
+import { useSyncStore } from '../../store/useSyncStore';
 
 interface DashboardHeaderProps {
     user: UserProfile | null;
     streak: WorkoutStreak;
     greeting: string;
+}
+
+function SyncIndicator() {
+    const { isSyncing, lastSyncedAt } = useSyncStore();
+    const [showSynced, setShowSynced] = useState(false);
+    const opacityAnim = useRef(new Animated.Value(0)).current;
+    const prevSyncedAt = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (lastSyncedAt && lastSyncedAt !== prevSyncedAt.current) {
+            prevSyncedAt.current = lastSyncedAt;
+            setShowSynced(true);
+            Animated.sequence([
+                Animated.timing(opacityAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+                Animated.delay(2500),
+                Animated.timing(opacityAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+            ]).start(() => setShowSynced(false));
+        }
+    }, [lastSyncedAt, opacityAnim]);
+
+    if (!isSyncing && !showSynced) return null;
+
+    return (
+        <Animated.View style={[
+            styles.syncPill,
+            isSyncing ? undefined : { opacity: opacityAnim },
+        ]}>
+            {isSyncing ? (
+                <>
+                    <Ionicons name="cloud-upload-outline" size={11} color="rgba(255,255,255,0.75)" />
+                    <Text style={styles.syncText}>Syncing…</Text>
+                </>
+            ) : (
+                <>
+                    <Ionicons name="checkmark-circle-outline" size={11} color="rgba(255,255,255,0.75)" />
+                    <Text style={styles.syncText}>Synced</Text>
+                </>
+            )}
+        </Animated.View>
+    );
 }
 
 export function DashboardHeader({ user, streak, greeting }: DashboardHeaderProps) {
@@ -101,6 +142,8 @@ export function DashboardHeader({ user, streak, greeting }: DashboardHeaderProps
                         Best {streak.longest}
                     </Text>
                     
+                    <SyncIndicator />
+
                     {/* Gamification Streak Shields Badge */}
                     {user?.streakShields ? (
                         <View style={{
@@ -108,7 +151,7 @@ export function DashboardHeader({ user, streak, greeting }: DashboardHeaderProps
                             alignItems: 'center',
                             gap: 4,
                             marginLeft: 'auto',
-                            backgroundColor: 'rgba(59, 130, 246, 0.2)', // Blue tint for shields
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
                             paddingHorizontal: 8,
                             paddingVertical: 4,
                             borderRadius: 12,
@@ -202,5 +245,21 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 11,
         fontWeight: '800',
+    },
+    syncPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 999,
+        backgroundColor: 'rgba(255,255,255,0.12)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.18)',
+    },
+    syncText: {
+        color: 'rgba(255,255,255,0.75)',
+        fontSize: 10,
+        fontWeight: '600',
     },
 });

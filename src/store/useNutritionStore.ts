@@ -13,6 +13,16 @@ export interface NutritionLog {
     carbs: number;
     fats: number;
     mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+    mealSessionId?: number | null;
+}
+
+export interface MealSession {
+    id: number;
+    name: string;
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+    date: string;
+    logs: NutritionLog[];
+    totals: { calories: number; protein: number; carbs: number; fats: number };
 }
 
 export interface RecentFood {
@@ -28,16 +38,25 @@ export interface RecentFood {
     servingUnit?: string;
 }
 
+function calcTotals(logs: NutritionLog[]) {
+    return logs.reduce(
+        (acc, l) => ({
+            calories: acc.calories + (l.calories || 0),
+            protein: acc.protein + (l.protein || 0),
+            carbs: acc.carbs + (l.carbs || 0),
+            fats: acc.fats + (l.fats || 0),
+        }),
+        { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    );
+}
+
 interface NutritionState {
     logs: NutritionLog[];
+    mealSessions: MealSession[];
+    ungroupedLogs: NutritionLog[];
     recentFoods: RecentFood[];
     savedMeals: SavedMeal[];
-    totals: {
-        calories: number;
-        protein: number;
-        carbs: number;
-        fats: number;
-    };
+    totals: { calories: number; protein: number; carbs: number; fats: number };
     isLoading: boolean;
     selectedDate: Date;
 
@@ -47,6 +66,16 @@ interface NutritionState {
     updateLog: (log: NutritionLog) => Promise<void>;
     deleteLog: (id: number) => Promise<void>;
     getNutritionHistory: (days?: number) => Promise<any[]>;
+
+    // Meal Session Actions
+    createMealSession: (
+        name: string,
+        mealType: string,
+        items: Array<Omit<NutritionLog, 'id' | 'date'>>,
+        existingSessionId?: number
+    ) => Promise<void>;
+    renameMealSession: (id: number, name: string) => Promise<void>;
+    deleteMealSession: (id: number) => Promise<void>;
 
     // Recent Foods Actions
     loadRecentFoods: () => Promise<void>;
@@ -60,7 +89,7 @@ interface NutritionState {
     deleteSavedMeal: (id: number) => Promise<void>;
     duplicateSavedMeal: (meal: SavedMeal) => Promise<void>;
     copyDay: (sourceDate: Date, targetDate: Date) => Promise<void>;
-    
+
     // Water Tracking
     waterGlasses: number;
     loadWater: () => Promise<void>;
@@ -70,6 +99,8 @@ interface NutritionState {
 
 export const useNutritionStore = create<NutritionState>((set, get) => ({
     logs: [],
+    mealSessions: [],
+    ungroupedLogs: [],
     recentFoods: [],
     savedMeals: [],
     totals: { calories: 0, protein: 0, carbs: 0, fats: 0 },
@@ -90,21 +121,32 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
 
         try {
             const { useUserStore } = require('./useUserStore');
-            const userStore = useUserStore.getState();
-            const userId = userStore.user?.id;
+            const userId = useUserStore.getState().user?.id;
 
             if (!userId) {
-                set({ logs: [], totals: { calories: 0, protein: 0, carbs: 0, fats: 0 }, isLoading: false });
+                set({
+                    logs: [], mealSessions: [], ungroupedLogs: [],
+                    totals: { calories: 0, protein: 0, carbs: 0, fats: 0 },
+                    isLoading: false,
+                });
                 return;
             }
 
             const db = await getDatabase();
-            const logs = await db.getAllAsync<any>(
-                'SELECT * FROM nutrition_logs WHERE date LIKE ? AND user_id = ? ORDER BY id DESC',
-                [`${dateStr}%`, userId]
-            );
 
-            const mappedLogs: NutritionLog[] = logs.map(l => ({
+            // Load sessions + logs in parallel
+            const [sessionRows, logRows] = await Promise.all([
+                db.getAllAsync<any>(
+                    'SELECT * FROM meal_sessions WHERE date = ? AND user_id = ? ORDER BY id ASC',
+                    [dateStr, userId]
+                ),
+                db.getAllAsync<any>(
+                    'SELECT * FROM nutrition_logs WHERE date LIKE ? AND user_id = ? ORDER BY id ASC',
+                    [`${dateStr}%`, userId]
+                ),
+            ]);
+
+            const allLogs: NutritionLog[] = logRows.map((l: any) => ({
                 id: l.id,
                 date: l.date,
                 foodName: l.name,
@@ -112,25 +154,117 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
                 protein: l.protein,
                 carbs: l.carbs,
                 fats: l.fats,
-                mealType: l.type
+                mealType: l.type,
+                mealSessionId: l.meal_session_id ?? null,
             }));
 
-            const totals = mappedLogs.reduce((acc, log) => ({
-                calories: acc.calories + (log.calories || 0),
-                protein: acc.protein + (log.protein || 0),
-                carbs: acc.carbs + (log.carbs || 0),
-                fats: acc.fats + (log.fats || 0)
-            }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
+            // Build session objects with their logs
+            const mealSessions: MealSession[] = sessionRows.map((s: any) => {
+                const sessionLogs = allLogs.filter(l => l.mealSessionId === s.id);
+                return {
+                    id: s.id,
+                    name: s.name,
+                    mealType: s.meal_type,
+                    date: s.date,
+                    logs: sessionLogs,
+                    totals: calcTotals(sessionLogs),
+                };
+            });
 
-            set({ logs: mappedLogs, totals });
+            const ungroupedLogs = allLogs.filter(l => !l.mealSessionId);
+            const totals = calcTotals(allLogs);
+
+            set({ logs: allLogs, mealSessions, ungroupedLogs, totals });
             await get().loadRecentFoods();
             await get().loadSavedMeals();
             await get().loadWater();
-
         } catch (e) {
             console.error("Failed to load nutrition logs", e);
         } finally {
             set({ isLoading: false });
+        }
+    },
+
+    // Create a new named meal session and log all items under it.
+    // If existingSessionId is provided, just adds items to that session instead.
+    createMealSession: async (name, mealType, items, existingSessionId) => {
+        const { selectedDate } = get();
+        const dateStr = format(selectedDate, 'yyyy-MM-dd');
+
+        try {
+            const { useUserStore } = require('./useUserStore');
+            const userId = useUserStore.getState().user?.id;
+            if (!userId) throw new Error("No user ID");
+
+            const db = await getDatabase();
+            let sessionId = existingSessionId;
+
+            if (!sessionId) {
+                const result = await db.runAsync(
+                    'INSERT INTO meal_sessions (user_id, date, name, meal_type) VALUES (?, ?, ?, ?)',
+                    [userId, dateStr, name.trim() || mealType, mealType]
+                );
+                sessionId = result.lastInsertRowId;
+            }
+
+            for (const item of items) {
+                await db.runAsync(
+                    `INSERT INTO nutrition_logs (date, name, calories, protein, carbs, fats, type, user_id, meal_session_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [dateStr, item.foodName, item.calories, item.protein, item.carbs, item.fats, mealType, userId, sessionId]
+                );
+                await get().addRecentFood({
+                    name: item.foodName,
+                    calories: item.calories,
+                    protein: item.protein,
+                    carbs: item.carbs,
+                    fats: item.fats,
+                });
+            }
+
+            await get().loadLogs();
+            CloudSyncService.scheduleBackup('meal-session-created');
+        } catch (e) {
+            console.error("Failed to create meal session", e);
+            throw e;
+        }
+    },
+
+    renameMealSession: async (id, name) => {
+        // Optimistic update
+        set(state => ({
+            mealSessions: state.mealSessions.map(s =>
+                s.id === id ? { ...s, name: name.trim() } : s
+            ),
+        }));
+        try {
+            const db = await getDatabase();
+            await db.runAsync('UPDATE meal_sessions SET name = ? WHERE id = ?', [name.trim(), id]);
+            CloudSyncService.scheduleBackup('meal-session-renamed');
+        } catch (e) {
+            console.error("Failed to rename meal session", e);
+            await get().loadLogs();
+        }
+    },
+
+    deleteMealSession: async (id) => {
+        // Optimistic: remove session + its logs from state
+        const snapshot = { mealSessions: get().mealSessions, logs: get().logs, ungroupedLogs: get().ungroupedLogs };
+        set(state => ({
+            mealSessions: state.mealSessions.filter(s => s.id !== id),
+            logs: state.logs.filter(l => l.mealSessionId !== id),
+        }));
+        try {
+            const db = await getDatabase();
+            await db.runAsync('DELETE FROM nutrition_logs WHERE meal_session_id = ?', [id]);
+            await db.runAsync('DELETE FROM meal_sessions WHERE id = ?', [id]);
+            // Recompute totals
+            const remaining = get().logs;
+            set({ totals: calcTotals(remaining) });
+            CloudSyncService.scheduleBackup('meal-session-deleted');
+        } catch (e) {
+            set(snapshot);
+            console.error("Failed to delete meal session", e);
         }
     },
 
@@ -140,25 +274,22 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
 
         try {
             const { useUserStore } = require('./useUserStore');
-            const userStore = useUserStore.getState();
-            const userId = userStore.user?.id;
-
+            const userId = useUserStore.getState().user?.id;
             if (!userId) throw new Error("No user ID found");
 
             const db = await getDatabase();
             await db.runAsync(
                 `INSERT INTO nutrition_logs (date, name, calories, protein, carbs, fats, type, user_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
                 [dateStr, log.foodName, log.calories, log.protein, log.carbs, log.fats, log.mealType, userId]
             );
 
-            // Add to recent foods
             await get().addRecentFood({
                 name: log.foodName,
                 calories: log.calories,
                 protein: log.protein,
                 carbs: log.carbs,
-                fats: log.fats
+                fats: log.fats,
             });
 
             await get().loadLogs();
@@ -173,7 +304,7 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
         try {
             const db = await getDatabase();
             await db.runAsync(
-                `UPDATE nutrition_logs 
+                `UPDATE nutrition_logs
                  SET name = ?, calories = ?, protein = ?, carbs = ?, fats = ?, type = ?
                  WHERE id = ?`,
                 [log.foodName, log.calories, log.protein, log.carbs, log.fats, log.mealType, log.id]
@@ -189,7 +320,22 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
     deleteLog: async (id) => {
         try {
             const db = await getDatabase();
+            const log = get().logs.find(l => l.id === id);
+            const sessionId = log?.mealSessionId;
+
             await db.runAsync('DELETE FROM nutrition_logs WHERE id = ?', [id]);
+
+            // Auto-delete session if now empty
+            if (sessionId) {
+                const remaining = await db.getAllAsync<any>(
+                    'SELECT id FROM nutrition_logs WHERE meal_session_id = ?',
+                    [sessionId]
+                );
+                if (remaining.length === 0) {
+                    await db.runAsync('DELETE FROM meal_sessions WHERE id = ?', [sessionId]);
+                }
+            }
+
             await get().loadLogs();
             CloudSyncService.scheduleBackup('nutrition-log-deleted');
         } catch (e) {
@@ -200,19 +346,17 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
     getNutritionHistory: async (days = 7) => {
         try {
             const { useUserStore } = require('./useUserStore');
-            const userStore = useUserStore.getState();
-            const userId = userStore.user?.id;
-
+            const userId = useUserStore.getState().user?.id;
             if (!userId) return [];
 
             const db = await getDatabase();
             const results = await db.getAllAsync<any>(
-                `SELECT date, SUM(calories) as calories, SUM(protein) as protein, 
+                `SELECT date, SUM(calories) as calories, SUM(protein) as protein,
                         SUM(carbs) as carbs, SUM(fats) as fats
-                 FROM nutrition_logs 
+                 FROM nutrition_logs
                  WHERE user_id = ?
-                 GROUP BY date 
-                 ORDER BY date DESC 
+                 GROUP BY date
+                 ORDER BY date DESC
                  LIMIT ?`,
                 [userId, days]
             );
@@ -247,8 +391,6 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
             if (!userId) return;
 
             const db = await getDatabase();
-
-            // Check if food exists to update frequency or insert new
             const existing = await db.getFirstAsync<any>(
                 'SELECT id, frequency_count FROM recent_foods WHERE user_id = ? AND name = ?',
                 [userId, food.name]
@@ -261,8 +403,7 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
                 );
             } else {
                 await db.runAsync(
-                    `INSERT INTO recent_foods (user_id, name, calories, protein, carbs, fats)
-                     VALUES (?, ?, ?, ?, ?, ?)`,
+                    `INSERT INTO recent_foods (user_id, name, calories, protein, carbs, fats) VALUES (?, ?, ?, ?, ?, ?)`,
                     [userId, food.name, food.calories, food.protein, food.carbs, food.fats]
                 );
             }
@@ -293,11 +434,11 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
             const items = logs.map(l => ({
                 id: String(l.id),
                 name: l.foodName,
-                grams: 100, // Default to 100g or preserve from log if we had it
+                grams: 100,
                 calories: l.calories,
                 protein: l.protein,
                 carbs: l.carbs,
-                fats: l.fats
+                fats: l.fats,
             }));
 
             await addSavedMeal(userId as any, name, items);
@@ -316,24 +457,31 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
             if (!userId) return;
 
             const db = await getDatabase();
-            
+
+            // Create a session for the saved meal
+            const result = await db.runAsync(
+                'INSERT INTO meal_sessions (user_id, date, name, meal_type) VALUES (?, ?, ?, ?)',
+                [userId, dateStr, meal.name, mealType]
+            );
+            const sessionId = result.lastInsertRowId;
+
             for (const item of meal.items) {
                 await db.runAsync(
-                    `INSERT INTO nutrition_logs (date, name, calories, protein, carbs, fats, type, user_id)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [dateStr, item.name, item.calories, item.protein, item.carbs, item.fats, mealType, userId]
+                    `INSERT INTO nutrition_logs (date, name, calories, protein, carbs, fats, type, user_id, meal_session_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [dateStr, item.name, item.calories, item.protein, item.carbs, item.fats, mealType, userId, sessionId]
                 );
-                
                 await get().addRecentFood({
                     name: item.name,
                     calories: item.calories,
                     protein: item.protein,
                     carbs: item.carbs,
-                    fats: item.fats
+                    fats: item.fats,
                 });
             }
 
             await get().loadLogs();
+            CloudSyncService.scheduleBackup('saved-meal-logged');
         } catch (e) {
             console.error("Failed to log saved meal", e);
         }
@@ -373,8 +521,8 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
             const userId = useUserStore.getState().user?.id;
             if (!userId) return;
 
-            const { addSavedMeal } = require('../services/savedMealsService');
-            await addSavedMeal(userId as any, `${meal.name} (Copy)`, meal.items);
+            const { addSavedMeal: addService } = require('../services/savedMealsService');
+            await addService(userId as any, `${meal.name} (Copy)`, meal.items);
             await get().loadSavedMeals();
         } catch (e) {
             console.error("Failed to duplicate saved meal", e);
@@ -390,22 +538,46 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
             if (!userId) return;
 
             const db = await getDatabase();
-            
-            // Get logs from source date
+
             const sourceLogs = await db.getAllAsync<any>(
                 'SELECT * FROM nutrition_logs WHERE date LIKE ? AND user_id = ?',
                 [`${sourceStr}%`, userId]
             );
-
             if (sourceLogs.length === 0) return;
 
-            // Insert into target date
+            // Group by original session so the copy preserves structure
+            const sessionMap = new Map<number | null, any[]>();
             for (const log of sourceLogs) {
-                await db.runAsync(
-                    `INSERT INTO nutrition_logs (date, name, calories, protein, carbs, fats, type, user_id)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [targetStr, log.name, log.calories, log.protein, log.carbs, log.fats, log.type, userId]
-                );
+                const key = log.meal_session_id ?? null;
+                const arr = sessionMap.get(key) || [];
+                arr.push(log);
+                sessionMap.set(key, arr);
+            }
+
+            for (const [origSessionId, logs] of sessionMap) {
+                let newSessionId: number | null = null;
+
+                if (origSessionId !== null) {
+                    const origSession = await db.getFirstAsync<any>(
+                        'SELECT * FROM meal_sessions WHERE id = ?',
+                        [origSessionId]
+                    );
+                    if (origSession) {
+                        const res = await db.runAsync(
+                            'INSERT INTO meal_sessions (user_id, date, name, meal_type) VALUES (?, ?, ?, ?)',
+                            [userId, targetStr, origSession.name, origSession.meal_type]
+                        );
+                        newSessionId = res.lastInsertRowId;
+                    }
+                }
+
+                for (const log of logs) {
+                    await db.runAsync(
+                        `INSERT INTO nutrition_logs (date, name, calories, protein, carbs, fats, type, user_id, meal_session_id)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [targetStr, log.name, log.calories, log.protein, log.carbs, log.fats, log.type, userId, newSessionId]
+                    );
+                }
             }
 
             await get().loadLogs();
@@ -464,25 +636,25 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
 
             const db = await getDatabase();
             const results = await db.getAllAsync<any>(
-                `SELECT DISTINCT name, calories, protein, carbs, fats, type 
-                 FROM nutrition_logs 
-                 WHERE user_id = ? 
-                 ORDER BY id DESC 
+                `SELECT DISTINCT name, calories, protein, carbs, fats, type
+                 FROM nutrition_logs
+                 WHERE user_id = ?
+                 ORDER BY id DESC
                  LIMIT ?`,
                 [userId, limit]
             );
-            
-            return results.map(r => ({
+
+            return results.map((r: any) => ({
                 foodName: r.name,
                 calories: r.calories,
                 protein: r.protein,
                 carbs: r.carbs,
                 fats: r.fats,
-                mealType: r.type
+                mealType: r.type,
             }));
         } catch (e) {
             console.error("Failed to get recent logs", e);
             return [];
         }
-    }
+    },
 }));

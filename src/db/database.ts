@@ -308,6 +308,16 @@ export async function initDatabase() {
                 UNIQUE(user_id, muscle_group, date)
             );
 
+            -- Meal Sessions (named groupings of nutrition logs)
+            CREATE TABLE IF NOT EXISTS meal_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                date TEXT NOT NULL,
+                name TEXT NOT NULL,
+                meal_type TEXT NOT NULL DEFAULT 'snack',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+
             -- Nutrition logs
             CREATE TABLE IF NOT EXISTS nutrition_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -318,7 +328,8 @@ export async function initDatabase() {
                 carbs INTEGER,
                 fats INTEGER,
                 type TEXT,
-                user_id TEXT
+                user_id TEXT,
+                meal_session_id INTEGER
             );
 
             -- Custom foods
@@ -395,6 +406,18 @@ export async function initDatabase() {
                 status TEXT DEFAULT 'PENDING'
             );
         `);
+
+    // --- MEAL SESSION MIGRATION ---
+    try {
+      const nlInfo = await db.getAllAsync<any>("PRAGMA table_info(nutrition_logs)");
+      const hasSessionId = nlInfo.some((col: any) => col.name === 'meal_session_id');
+      if (!hasSessionId && nlInfo.length > 0) {
+        console.log("Migrating nutrition_logs: Adding meal_session_id column");
+        await db.execAsync("ALTER TABLE nutrition_logs ADD COLUMN meal_session_id INTEGER");
+      }
+    } catch (e) {
+      console.warn("meal_session_id migration failed:", e);
+    }
 
     // --- UNIQUE INDEXES FOR RECOVERY & STATS ---
     try {

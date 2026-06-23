@@ -11,7 +11,7 @@ interface ProgramCardProps {
     onDelete: (id: string) => void;
 }
 
-export function ProgramCard({ item, onSelect, onDelete }: ProgramCardProps) {
+export const ProgramCard = React.memo(function ProgramCard({ item, onSelect, onDelete }: ProgramCardProps) {
     const { colors } = useTheme();
 
     return (
@@ -66,7 +66,7 @@ export function ProgramCard({ item, onSelect, onDelete }: ProgramCardProps) {
             </View>
         </TouchableOpacity>
     );
-}
+});
 
 const styles = StyleSheet.create({
     card: {

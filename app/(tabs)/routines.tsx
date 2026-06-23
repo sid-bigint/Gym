@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ScrollView, Modal, Animated, Dimensions, TouchableWithoutFeedback } from 'react-native';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { useAlertStore } from '../../src/store/useAlertStore';
@@ -14,6 +14,7 @@ import { ProgramCard } from '../../src/components/ProgramCard';
 import { LogPastWorkoutModal } from '../../src/components/routines/LogPastWorkoutModal';
 import { TutorialOverlay, TourStepConfig } from '../../src/components/dashboard/TutorialOverlay';
 import { TourHighlightWrapper } from '../../src/components/dashboard/TourHighlightWrapper';
+import { ContextualTipBanner } from '../../src/components/ContextualTipBanner';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -136,7 +137,7 @@ export default function RoutinesScreen() {
 
     const isSelectionMode = selectedRoutineIds.size > 0;
 
-    const toggleSelection = (id: number) => {
+    const toggleSelection = useCallback((id: number) => {
         const newSet = new Set(selectedRoutineIds);
         if (newSet.has(id)) {
             newSet.delete(id);
@@ -144,9 +145,9 @@ export default function RoutinesScreen() {
             newSet.add(id);
         }
         setSelectedRoutineIds(newSet);
-    };
+    }, [selectedRoutineIds]);
 
-    const handleBulkDelete = async () => {
+    const handleBulkDelete = useCallback(async () => {
         if (selectedRoutineIds.size === 0) return;
 
         useAlertStore.getState().showAlert(
@@ -166,7 +167,7 @@ export default function RoutinesScreen() {
                 }
             ]
         );
-    };
+    }, [selectedRoutineIds, deleteRoutine]);
 
     // Group routines by program
     const displayedItems = React.useMemo(() => {
@@ -277,7 +278,7 @@ export default function RoutinesScreen() {
         loadRoutines();
     }, []);
 
-    const handleStartWorkout = async (routineId: number | null) => {
+    const handleStartWorkout = useCallback(async (routineId: number | null) => {
         if (activeWorkout) {
             useAlertStore.getState().showAlert(
                 "Workout in Progress",
@@ -297,9 +298,9 @@ export default function RoutinesScreen() {
         } catch (e) {
             useAlertStore.getState().showAlert("Error", "Failed to start workout");
         }
-    };
+    }, [activeWorkout, startWorkout]);
 
-    const handleConfirmDeleteProgram = async () => {
+    const handleConfirmDeleteProgram = useCallback(async () => {
         if (!deleteProgramId) return;
         const programRoutines = routines.filter(r => r.programId === deleteProgramId);
         for (const r of programRoutines) {
@@ -307,16 +308,16 @@ export default function RoutinesScreen() {
         }
         setDeleteProgramId(null);
         setSelectedProgram(null);
-    };
+    }, [deleteProgramId, routines, deleteRoutine]);
 
-    const confirmDelete = async () => {
+    const confirmDelete = useCallback(async () => {
         if (deleteId) {
             await deleteRoutine(deleteId);
             setDeleteId(null);
         }
-    };
+    }, [deleteId, deleteRoutine]);
 
-    const handleFabAction = (action: string) => {
+    const handleFabAction = useCallback((action: string) => {
         setFabOpen(false);
         setTimeout(() => {
             switch (action) {
@@ -337,9 +338,9 @@ export default function RoutinesScreen() {
                     break;
             }
         }, 100);
-    };
+    }, []);
 
-    const renderItem = ({ item }: { item: any }) => {
+    const renderItem = useCallback(({ item }: { item: any }) => {
         if (item.type === 'section_header') {
             return (
                 <View style={styles.sectionHeaderContainer}>
@@ -351,27 +352,31 @@ export default function RoutinesScreen() {
 
         if (item.type === 'program') {
             return (
-                <ProgramCard
-                    item={item}
-                    onSelect={setSelectedProgram}
-                    onDelete={setDeleteProgramId}
-                />
+                <View style={styles.listContainer}>
+                    <ProgramCard
+                        item={item}
+                        onSelect={setSelectedProgram}
+                        onDelete={setDeleteProgramId}
+                    />
+                </View>
             );
         }
         return (
-            <RoutineCard
-                item={item.data}
-                analytics={routineAnalytics[item.data.name]}
-                isSelectable={true}
-                isSelectionMode={isSelectionMode}
-                isSelected={selectedRoutineIds.has(item.data.id)}
-                onToggleSelection={toggleSelection}
-                onDelete={setDeleteId}
-                onPin={togglePinRoutine}
-                onStartWorkout={handleStartWorkout}
-            />
+            <View style={styles.listContainer}>
+                <RoutineCard
+                    item={item.data}
+                    analytics={routineAnalytics[item.data.name]}
+                    isSelectable={true}
+                    isSelectionMode={isSelectionMode}
+                    isSelected={selectedRoutineIds.has(item.data.id)}
+                    onToggleSelection={toggleSelection}
+                    onDelete={setDeleteId}
+                    onPin={togglePinRoutine}
+                    onStartWorkout={handleStartWorkout}
+                />
+            </View>
         );
-    };
+    }, [colors, routineAnalytics, isSelectionMode, selectedRoutineIds, toggleSelection, handleStartWorkout, togglePinRoutine]);
 
     const modalRoutines = React.useMemo(() => {
         if (!selectedProgram) return [];
@@ -412,16 +417,21 @@ export default function RoutinesScreen() {
                 </Animated.View>
             </TourHighlightWrapper>
 
+            {/* Contextual tip: shown once when user has routines */}
+            {routines.length > 0 && (
+                <ContextualTipBanner
+                    tipKey="routines_longpress"
+                    message="Long-press any routine to select multiple and bulk delete"
+                    icon="hand-left-outline"
+                />
+            )}
+
             {/* Main Content */}
             <Animated.FlatList
                 ref={scrollRef}
                 data={isSelectionMode ? displayedItems.filter(item => item.type === 'routine' || item.type === 'program') : displayedItems}
                 keyExtractor={(item: any, index: number) => `select-${item.type}-${item.data?.id || item.id || index}`}
-                renderItem={({ item }: { item: any }) => (
-                    <View style={styles.listContainer}>
-                        {renderItem({ item })}
-                    </View>
-                )}
+                renderItem={renderItem}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
                 onScroll={Animated.event(

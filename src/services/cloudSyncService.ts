@@ -1,6 +1,7 @@
 import { child, get, ref, set } from 'firebase/database';
 import { auth, rtdb } from '../config/firebase';
 import { getDatabase } from '../db/database';
+import { useSyncStore } from '../store/useSyncStore';
 
 type TableSnapshot = Record<string, any[]>;
 
@@ -116,16 +117,20 @@ export const CloudSyncService = {
         if (!user) return;
 
         isSyncing = true;
+        useSyncStore.setState({ isSyncing: true, hasPendingChanges: false });
         try {
             const data = await exportLocalSnapshot();
+            const syncedAt = new Date().toISOString();
             await set(ref(rtdb, `users/${user.uid}/backup`), {
                 version: 1,
                 reason,
-                updatedAt: new Date().toISOString(),
+                updatedAt: syncedAt,
                 data,
             });
+            useSyncStore.setState({ isSyncing: false, lastSyncedAt: syncedAt });
             console.log(`Cloud backup completed: ${reason}`);
         } catch (error) {
+            useSyncStore.setState({ isSyncing: false });
             console.error('Cloud backup failed:', error);
         } finally {
             isSyncing = false;
@@ -134,6 +139,8 @@ export const CloudSyncService = {
 
     scheduleBackup(reason = 'local-change') {
         if (!canSync()) return;
+
+        useSyncStore.setState({ hasPendingChanges: true });
 
         if (syncTimer) {
             clearTimeout(syncTimer);

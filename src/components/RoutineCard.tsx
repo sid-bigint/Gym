@@ -19,7 +19,7 @@ interface RoutineCardProps {
     styleOverride?: any;
 }
 
-export function RoutineCard({
+export const RoutineCard = React.memo(function RoutineCard({
     item,
     analytics,
     isSelectable = false,
@@ -142,7 +142,7 @@ export function RoutineCard({
             </View>
         </TouchableOpacity>
     );
-}
+});
 
 const styles = StyleSheet.create({
     card: {
