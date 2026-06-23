@@ -44,7 +44,7 @@ export function MealSessionCard({
     onEditLog,
 }: Props) {
     const { colors } = useTheme();
-    const [expanded, setExpanded] = useState(true);
+    const [expanded, setExpanded] = useState(false);
     const [isRenaming, setIsRenaming] = useState(false);
     const [draftName, setDraftName] = useState(session.name);
     const renameInputRef = useRef<TextInput>(null);

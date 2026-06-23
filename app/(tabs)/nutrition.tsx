@@ -30,7 +30,6 @@ const AnimatedView = Animated.createAnimatedComponent(View);
 
 type ListItem =
     | { type: 'session'; session: MealSession }
-    | { type: 'ungrouped'; logs: NutritionLog[] }
     | { type: 'ungrouped_item'; log: NutritionLog };
 
 export default function NutritionScreen() {
@@ -57,10 +56,10 @@ export default function NutritionScreen() {
     const celebrationAnim = useRef(new Animated.Value(0)).current;
     const celebratedGoalsRef = useRef<Set<string>>(new Set());
 
-    const calAnim = useRef(new Animated.Value(0)).current;
+    const calAnim  = useRef(new Animated.Value(0)).current;
     const protAnim = useRef(new Animated.Value(0)).current;
     const carbAnim = useRef(new Animated.Value(0)).current;
-    const fatAnim = useRef(new Animated.Value(0)).current;
+    const fatAnim  = useRef(new Animated.Value(0)).current;
 
     const [editForm, setEditForm] = useState({
         foodName: '', calories: '', protein: '', carbs: '', fats: '',
@@ -80,7 +79,7 @@ export default function NutritionScreen() {
         Animated.parallel([
             Animated.spring(calAnim,  { toValue: getVal(totals.calories, user?.calorieGoal || 2000), tension: 20, friction: 8, useNativeDriver: false }),
             Animated.spring(protAnim, { toValue: getVal(totals.protein,  user?.targetProtein  || 150),  tension: 20, friction: 8, useNativeDriver: false }),
-            Animated.spring(carbAnim, { toValue: getVal(totals.carbs,    user?.targetCarbs    || 200),  tension: 20, friction: 8, useNativeDriver: false }),
+            Animated.spring(carbAnim, { toValue: getVal(totals.carbs,    user?.targetCarbs    || 250),  tension: 20, friction: 8, useNativeDriver: false }),
             Animated.spring(fatAnim,  { toValue: getVal(totals.fats,     user?.targetFats     || 70),   tension: 20, friction: 8, useNativeDriver: false }),
         ]).start();
     }, [totals, user]);
@@ -203,24 +202,14 @@ export default function NutritionScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     };
 
-    const renderProgressBar = (label: string, current: number, target: number, anim: Animated.Value, color: string) => (
-        <View style={styles.progressContainer}>
-            <View style={styles.progressHeader}>
-                <Text style={[styles.progressLabel, { color: colors.text.primary }]}>{label}</Text>
-                <Text style={[styles.progressValue, { color: colors.text.tertiary }]}>
-                    {current} / {target} {label === 'Calories' ? 'kcal' : 'g'}
-                </Text>
-            </View>
-            <View style={[styles.track, { backgroundColor: colors.background.secondary }]}>
-                <AnimatedView style={[styles.fill, {
-                    width: anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
-                    backgroundColor: color,
-                }]} />
-            </View>
-        </View>
-    );
+    // Macro values
+    const calGoal  = user?.calorieGoal   || 2000;
+    const protGoal = user?.targetProtein || 150;
+    const carbGoal = user?.targetCarbs   || 250;
+    const fatGoal  = user?.targetFats    || 70;
+    const remaining = Math.max(0, calGoal - totals.calories);
+    const isOver    = totals.calories > calGoal;
 
-    // Build the flat list data: sessions first, then ungrouped individual items
     const listData: ListItem[] = [
         ...mealSessions.map(s => ({ type: 'session' as const, session: s })),
         ...ungroupedLogs.map(l => ({ type: 'ungrouped_item' as const, log: l })),
@@ -233,7 +222,10 @@ export default function NutritionScreen() {
                     session={item.session}
                     onDeleteSession={(id) => deleteMealSession(id)}
                     onRenameSession={(id, name) => renameMealSession(id, name)}
-                    onDeleteLog={handleDeleteLog}
+                    onDeleteLog={(logId) => {
+                        const log = item.session.logs.find(l => l.id === logId);
+                        if (log) handleDeleteLog(log);
+                    }}
                     onAddMore={(sessionId, mealType) =>
                         router.push(`/nutrition/add?sessionId=${sessionId}&mealType=${mealType}` as any)
                     }
@@ -245,22 +237,25 @@ export default function NutritionScreen() {
             const log = item.log;
             return (
                 <TouchableOpacity
-                    style={[styles.logItem, { backgroundColor: colors.background.card }]}
+                    style={[styles.logItem, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
                     onPress={() => handleEdit(log)}
                     onLongPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                         handleDeleteLog(log);
                     }}
                 >
+                    <View style={[styles.logDot, { backgroundColor: colors.accent.primary + '22' }]}>
+                        <Ionicons name="nutrition-outline" size={16} color={colors.accent.primary} />
+                    </View>
                     <View style={styles.logLeft}>
                         <Text style={[styles.logName, { color: colors.text.primary }]}>{log.foodName}</Text>
                         <Text style={[styles.logMacros, { color: colors.text.tertiary }]}>
-                            P: {log.protein}g · C: {log.carbs}g · F: {log.fats}g
+                            P {log.protein}g · C {log.carbs}g · F {log.fats}g
                         </Text>
                     </View>
                     <View style={styles.logRight}>
-                        <Text style={[styles.logCal, { color: colors.nutrition.calories }]}>{log.calories}</Text>
-                        <Text style={[styles.logCalUnit, { color: colors.text.tertiary }]}>kcal</Text>
+                        <Text style={[styles.logCal, { color: colors.accent.primary }]}>{log.calories}</Text>
+                        <Text style={[styles.logCalUnit, { color: colors.text.disabled }]}>kcal</Text>
                     </View>
                 </TouchableOpacity>
             );
@@ -270,18 +265,97 @@ export default function NutritionScreen() {
 
     const hasAnyFood = logs.length > 0;
 
-    return (
-        <View style={[styles.container, { backgroundColor: colors.background.primary, paddingTop: contentTop }]}>
-            {/* Header */}
-            <View style={styles.header}>
-                <View>
-                    <Text style={[styles.title, { color: colors.text.primary }]}>Nutrition</Text>
-                    <Text style={[styles.subtitle, { color: colors.text.tertiary }]}>Track your macros & fuel</Text>
+    const ListHeader = (
+        <>
+            {/* ── Macro Dashboard ── */}
+            <View style={[styles.macroCard, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}>
+                {/* Top row: calorie summary */}
+                <View style={styles.calRow}>
+                    <View style={styles.calLeft}>
+                        <Text style={[styles.calNumber, { color: colors.text.primary }]}>
+                            {totals.calories.toLocaleString()}
+                        </Text>
+                        <Text style={[styles.calGoalText, { color: colors.text.tertiary }]}>
+                            / {calGoal.toLocaleString()} kcal
+                        </Text>
+                    </View>
+                    <View style={[
+                        styles.remainingBadge,
+                        { backgroundColor: isOver ? '#EF4444' + '18' : colors.accent.primary + '15' },
+                    ]}>
+                        <Text style={[styles.remainingText, { color: isOver ? '#EF4444' : colors.accent.primary }]}>
+                            {isOver ? `+${(totals.calories - calGoal).toLocaleString()} over` : `${remaining.toLocaleString()} left`}
+                        </Text>
+                    </View>
                 </View>
-                <TouchableOpacity onPress={handleExport} style={[styles.shareBtn, { backgroundColor: colors.background.elevated }]}>
-                    <Ionicons name="share-outline" size={22} color={colors.accent.primary} />
+
+                {/* Calorie bar */}
+                <View style={[styles.bigTrack, { backgroundColor: colors.background.secondary }]}>
+                    <AnimatedView style={[styles.bigFill, {
+                        width: calAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                        backgroundColor: isOver ? '#EF4444' : colors.accent.primary,
+                    }]} />
+                </View>
+
+                {/* Macro pills row */}
+                <View style={styles.macroPillsRow}>
+                    <MacroColumn
+                        label="Protein"
+                        current={totals.protein}
+                        goal={protGoal}
+                        anim={protAnim}
+                        color="#10B981"
+                        colors={colors}
+                    />
+                    <View style={[styles.macroDivider, { backgroundColor: colors.border.secondary }]} />
+                    <MacroColumn
+                        label="Carbs"
+                        current={totals.carbs}
+                        goal={carbGoal}
+                        anim={carbAnim}
+                        color="#F59E0B"
+                        colors={colors}
+                    />
+                    <View style={[styles.macroDivider, { backgroundColor: colors.border.secondary }]} />
+                    <MacroColumn
+                        label="Fats"
+                        current={totals.fats}
+                        goal={fatGoal}
+                        anim={fatAnim}
+                        color="#EF4444"
+                        colors={colors}
+                    />
+                </View>
+            </View>
+
+            {/* ── Date Navigator ── */}
+            <View style={[styles.dateNav, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}>
+                <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDate(addDays(selectedDate, -1)); }}>
+                    <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+                </TouchableOpacity>
+                <View style={styles.dateInfo}>
+                    <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
+                    <Text style={[styles.dateText, { color: colors.text.primary }]}>
+                        {isSameDay(selectedDate, new Date())
+                            ? 'Today'
+                            : isSameDay(selectedDate, addDays(new Date(), -1))
+                                ? 'Yesterday'
+                                : format(selectedDate, 'MMM do, yyyy')}
+                    </Text>
+                </View>
+                <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDate(addDays(selectedDate, 1)); }}>
+                    <Ionicons name="chevron-forward" size={24} color={colors.text.primary} />
                 </TouchableOpacity>
             </View>
+
+            {repeatFlash && (
+                <View style={[styles.flashBanner, { backgroundColor: colors.accent.primary + '20' }]}>
+                    <Ionicons name="checkmark-circle" size={16} color={colors.accent.primary} />
+                    <Text style={[styles.flashText, { color: colors.accent.primary }]}>
+                        {repeatFlash} added again!
+                    </Text>
+                </View>
+            )}
 
             {hasAnyFood && (
                 <ContextualTipBanner
@@ -292,9 +366,41 @@ export default function NutritionScreen() {
                 />
             )}
 
+            {/* Section label */}
+            {hasAnyFood && (
+                <View style={styles.sectionRow}>
+                    <Text style={[styles.sectionLabel, { color: colors.text.disabled }]}>
+                        {mealSessions.length > 0
+                            ? `${mealSessions.length} meal${mealSessions.length > 1 ? 's' : ''} · ${logs.length} item${logs.length > 1 ? 's' : ''}`
+                            : `${logs.length} item${logs.length > 1 ? 's' : ''} logged`}
+                    </Text>
+                </View>
+            )}
+
+            {ungroupedLogs.length > 0 && mealSessions.length > 0 && (
+                <Text style={[styles.ungroupedLabel, { color: colors.text.disabled }]}>
+                    Individual items
+                </Text>
+            )}
+        </>
+    );
+
+    return (
+        <View style={[styles.container, { backgroundColor: colors.background.primary, paddingTop: contentTop }]}>
+            {/* Header */}
+            <View style={styles.header}>
+                <View>
+                    <Text style={[styles.title, { color: colors.text.primary }]}>Nutrition</Text>
+                    <Text style={[styles.subtitle, { color: colors.text.tertiary }]}>Track macros & hydration</Text>
+                </View>
+                <TouchableOpacity onPress={handleExport} style={[styles.shareBtn, { backgroundColor: colors.background.elevated }]}>
+                    <Ionicons name="share-outline" size={20} color={colors.accent.primary} />
+                </TouchableOpacity>
+            </View>
+
             <FlatList
                 data={listData}
-                keyExtractor={(item, idx) =>
+                keyExtractor={(item) =>
                     item.type === 'session'
                         ? `session-${item.session.id}`
                         : `ungrouped-${item.log.id}`
@@ -306,78 +412,23 @@ export default function NutritionScreen() {
                 maxToRenderPerBatch={6}
                 windowSize={5}
                 removeClippedSubviews={true}
-                ListHeaderComponent={
-                    <>
-                        {/* Macro Dashboard */}
-                        <View style={[styles.card, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}>
-                            {renderProgressBar('Calories', totals.calories, user?.calorieGoal || 2000, calAnim, colors.nutrition.calories)}
-                            <View style={styles.macroRow}>
-                                <View style={{ flex: 1 }}>
-                                    {renderProgressBar('Protein', totals.protein, user?.targetProtein || 150, protAnim, colors.nutrition.protein)}
-                                </View>
-                                <View style={{ width: 12 }} />
-                                <View style={{ flex: 1 }}>
-                                    {renderProgressBar('Carbs', totals.carbs, user?.targetCarbs || 200, carbAnim, colors.nutrition.carbs)}
-                                </View>
-                            </View>
-                            {renderProgressBar('Fats', totals.fats, user?.targetFats || 70, fatAnim, colors.nutrition.fats)}
-                        </View>
-
-                        {/* Date Navigator */}
-                        <View style={[styles.dateNav, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}>
-                            <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDate(addDays(selectedDate, -1)); }}>
-                                <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
-                            </TouchableOpacity>
-                            <View style={styles.dateInfo}>
-                                <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
-                                <Text style={[styles.dateText, { color: colors.text.primary }]}>
-                                    {isSameDay(selectedDate, new Date())
-                                        ? "Today"
-                                        : isSameDay(selectedDate, addDays(new Date(), -1))
-                                            ? "Yesterday"
-                                            : format(selectedDate, 'MMM do, yyyy')}
-                                </Text>
-                            </View>
-                            <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDate(addDays(selectedDate, 1)); }}>
-                                <Ionicons name="chevron-forward" size={24} color={colors.text.primary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        {repeatFlash && (
-                            <View style={[styles.flashBanner, { backgroundColor: colors.accent.primary + '20' }]}>
-                                <Ionicons name="checkmark-circle" size={16} color={colors.accent.primary} />
-                                <Text style={[styles.flashText, { color: colors.accent.primary }]}>
-                                    {repeatFlash} added again!
-                                </Text>
-                            </View>
-                        )}
-
-                        {/* Section label */}
-                        {hasAnyFood && (
-                            <View style={styles.sectionRow}>
-                                <Text style={[styles.sectionLabel, { color: colors.text.tertiary }]}>
-                                    {mealSessions.length > 0
-                                        ? `${mealSessions.length} meal${mealSessions.length > 1 ? 's' : ''} · ${logs.length} item${logs.length > 1 ? 's' : ''}`
-                                        : `${logs.length} item${logs.length > 1 ? 's' : ''} logged`}
-                                </Text>
-                            </View>
-                        )}
-
-                        {/* Ungrouped section header */}
-                        {ungroupedLogs.length > 0 && mealSessions.length > 0 && (
-                            <Text style={[styles.ungroupedLabel, { color: colors.text.disabled }]}>
-                                Individual items
-                            </Text>
-                        )}
-                    </>
-                }
+                ListHeaderComponent={ListHeader}
                 ListEmptyComponent={
                     <View style={styles.emptyState}>
-                        <Ionicons name="restaurant-outline" size={48} color={colors.text.disabled} />
-                        <Text style={[styles.emptyTitle, { color: colors.text.secondary }]}>No food logged</Text>
+                        <View style={[styles.emptyIcon, { backgroundColor: colors.background.elevated }]}>
+                            <Text style={{ fontSize: 36 }}>🍽️</Text>
+                        </View>
+                        <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Nothing logged yet</Text>
                         <Text style={[styles.emptySubtitle, { color: colors.text.disabled }]}>
-                            Tap the + button below to log your first meal
+                            Tap the + button to log your first meal today
                         </Text>
+                        <TouchableOpacity
+                            style={[styles.emptyBtn, { backgroundColor: colors.accent.primary }]}
+                            onPress={() => router.push('/nutrition/add')}
+                        >
+                            <Ionicons name="add" size={18} color="#fff" />
+                            <Text style={styles.emptyBtnText}>Log a Meal</Text>
+                        </TouchableOpacity>
                     </View>
                 }
                 ListFooterComponent={<View style={{ height: 120 }} />}
@@ -417,7 +468,7 @@ export default function NutritionScreen() {
                     activeOpacity={0.9}
                 >
                     <AnimatedView style={{ transform: [{ rotate: fabAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '45deg'] }) }] }}>
-                        <Ionicons name="add" size={32} color={colors.text.inverse} />
+                        <Ionicons name="add" size={32} color="#fff" />
                     </AnimatedView>
                 </TouchableOpacity>
             </View>
@@ -546,7 +597,7 @@ export default function NutritionScreen() {
                                 </View>
                             </View>
                             <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.accent.primary }]} onPress={handleSaveEdit}>
-                                <Text style={[styles.saveBtnText, { color: colors.text.inverse }]}>Save Changes</Text>
+                                <Text style={[styles.saveBtnText, { color: '#fff' }]}>Save Changes</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -556,60 +607,155 @@ export default function NutritionScreen() {
     );
 }
 
+// ── Sub-component: macro column ──
+function MacroColumn({
+    label, current, goal, anim, color, colors,
+}: {
+    label: string; current: number; goal: number;
+    anim: Animated.Value; color: string; colors: any;
+}) {
+    const pct = goal > 0 ? Math.round(Math.min((current / goal) * 100, 100)) : 0;
+    return (
+        <View style={macroColStyles.wrapper}>
+            <Text style={[macroColStyles.label, { color }]}>{label}</Text>
+            <Text style={[macroColStyles.current, { color: colors.text.primary }]}>
+                {current}<Text style={[macroColStyles.unit, { color: colors.text.disabled }]}>g</Text>
+            </Text>
+            <Text style={[macroColStyles.goal, { color: colors.text.disabled }]}>/ {goal}g</Text>
+            <View style={[macroColStyles.track, { backgroundColor: colors.background.secondary }]}>
+                <Animated.View style={[macroColStyles.fill, {
+                    width: anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                    backgroundColor: color,
+                }]} />
+            </View>
+            <Text style={[macroColStyles.pct, { color: pct >= 100 ? color : colors.text.disabled }]}>{pct}%</Text>
+        </View>
+    );
+}
+
+const macroColStyles = StyleSheet.create({
+    wrapper: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
+    label: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
+    current: { fontSize: 18, fontWeight: '800' },
+    unit: { fontSize: 11, fontWeight: '600' },
+    goal: { fontSize: 11 },
+    track: { width: '80%', height: 5, borderRadius: 3, overflow: 'hidden', marginTop: 2 },
+    fill: { height: '100%', borderRadius: 3 },
+    pct: { fontSize: 10, fontWeight: '700', marginTop: 1 },
+});
+
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 8, marginTop: 8 },
-    title: { fontSize: 32, fontWeight: 'bold' },
-    subtitle: { fontSize: 14, fontWeight: '500', marginTop: 2 },
-    shareBtn: { padding: 10, borderRadius: 12 },
-    listContent: { paddingHorizontal: 20 },
-    card: { padding: 20, borderRadius: 24, marginBottom: 16, borderWidth: 1 },
-    macroRow: { flexDirection: 'row', marginVertical: 12 },
-    progressContainer: { width: '100%' },
-    progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-    progressLabel: { fontWeight: '700', fontSize: 13 },
-    progressValue: { fontSize: 12 },
-    track: { height: 8, borderRadius: 4, overflow: 'hidden' },
-    fill: { height: '100%', borderRadius: 4 },
-    dateNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 16, marginBottom: 16, borderWidth: 1 },
+
+    header: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        paddingHorizontal: 20, marginBottom: 4, marginTop: 8,
+    },
+    title: { fontSize: 30, fontWeight: '800', letterSpacing: -0.5 },
+    subtitle: { fontSize: 13, fontWeight: '500', marginTop: 2 },
+    shareBtn: { padding: 10, borderRadius: 14 },
+
+    listContent: { paddingHorizontal: 16 },
+
+    // Macro dashboard
+    macroCard: {
+        borderRadius: 24, borderWidth: 1, padding: 18, marginBottom: 12,
+    },
+    calRow: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10,
+    },
+    calLeft: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+    calNumber: { fontSize: 36, fontWeight: '800', letterSpacing: -1 },
+    calGoalText: { fontSize: 13, fontWeight: '600' },
+    remainingBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
+    remainingText: { fontSize: 12, fontWeight: '700' },
+    bigTrack: { height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: 18 },
+    bigFill: { height: '100%', borderRadius: 5 },
+    macroPillsRow: { flexDirection: 'row', alignItems: 'center' },
+    macroDivider: { width: 1, height: 60, marginHorizontal: 6 },
+
+    dateNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 16, marginBottom: 14, borderWidth: 1 },
     dateInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     dateText: { fontSize: 15, fontWeight: '600' },
-    sectionRow: { marginBottom: 10 },
-    sectionLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+
+    flashBanner: {
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+        paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, marginBottom: 10,
+    },
+    flashText: { fontSize: 13, fontWeight: '600' },
+
+    sectionRow: { marginBottom: 10, marginTop: 4 },
+    sectionLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
     ungroupedLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginTop: 4 },
-    flashBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, marginBottom: 12 },
-    flashText: { fontSize: 14, fontWeight: '600' },
-    logItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, marginBottom: 10 },
-    logLeft: { flex: 1, marginRight: 16 },
-    logName: { fontSize: 16, fontWeight: '600' },
-    logMacros: { fontSize: 12, marginTop: 4 },
-    logRight: { alignItems: 'flex-end', marginRight: 8 },
-    logCal: { fontSize: 20, fontWeight: 'bold' },
-    logCalUnit: { fontSize: 11 },
+
+    // Ungrouped log item
+    logItem: {
+        flexDirection: 'row', alignItems: 'center', padding: 14,
+        borderRadius: 16, marginBottom: 10, borderWidth: 1, gap: 12,
+    },
+    logDot: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    logLeft: { flex: 1 },
+    logName: { fontSize: 15, fontWeight: '600' },
+    logMacros: { fontSize: 11, marginTop: 3 },
+    logRight: { alignItems: 'flex-end' },
+    logCal: { fontSize: 18, fontWeight: '800' },
+    logCalUnit: { fontSize: 10 },
+
+    // Empty state
     emptyState: { alignItems: 'center', paddingVertical: 48, gap: 12 },
-    emptyTitle: { fontSize: 18, fontWeight: '600' },
-    emptySubtitle: { fontSize: 13, textAlign: 'center', paddingHorizontal: 32 },
+    emptyIcon: { width: 80, height: 80, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+    emptyTitle: { fontSize: 18, fontWeight: '700' },
+    emptySubtitle: { fontSize: 13, textAlign: 'center', paddingHorizontal: 40, lineHeight: 20 },
+    emptyBtn: {
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+        paddingVertical: 12, paddingHorizontal: 24, borderRadius: 14, marginTop: 8,
+    },
+    emptyBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+    // FAB
     fabContainer: { position: 'absolute', bottom: 32, right: 20, alignItems: 'flex-end', gap: 12 },
     subFabContainer: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    fabLabel: { fontSize: 14, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
-    mainFab: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
-    miniFab: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 1, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
-    celebrationToast: { position: 'absolute', top: 100, alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 20, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+    fabLabel: { fontSize: 13, fontWeight: '700' },
+    mainFab: {
+        width: 62, height: 62, borderRadius: 31,
+        alignItems: 'center', justifyContent: 'center',
+        elevation: 8, shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8,
+    },
+    miniFab: {
+        width: 46, height: 46, borderRadius: 23,
+        alignItems: 'center', justifyContent: 'center', borderWidth: 1,
+        elevation: 4, shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4,
+    },
+
+    celebrationToast: {
+        position: 'absolute', top: 100, alignSelf: 'center',
+        paddingVertical: 12, paddingHorizontal: 24,
+        borderRadius: 20, elevation: 10,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8,
+    },
     celebrationText: { color: 'white', fontSize: 16, fontWeight: '800' },
+
+    // Modals
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1 },
-    modalTitle: { fontSize: 20, fontWeight: 'bold' },
+    modalHeader: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        padding: 20, borderBottomWidth: 1,
+    },
+    modalTitle: { fontSize: 20, fontWeight: '800' },
     modalBody: { padding: 20 },
-    inputLabel: { fontSize: 13, marginBottom: 6, fontWeight: '600' },
+    inputLabel: { fontSize: 12, marginBottom: 6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
     input: { height: 48, borderRadius: 12, borderWidth: 1, paddingHorizontal: 16, marginBottom: 14, fontSize: 16 },
     row: { flexDirection: 'row', gap: 12 },
     col: { flex: 1 },
-    saveBtn: { height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 20 },
-    saveBtnText: { fontSize: 16, fontWeight: 'bold' },
+    saveBtn: { height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+    saveBtnText: { fontSize: 16, fontWeight: '800' },
+
     quickItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, marginBottom: 10, borderWidth: 1 },
     quickName: { fontSize: 15, fontWeight: '600' },
     quickMacros: { fontSize: 12, marginTop: 2 },
     searchNewBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, borderRadius: 12, marginBottom: 20 },
-    searchNewText: { fontSize: 15, fontWeight: 'bold' },
+    searchNewText: { fontSize: 15, fontWeight: '700' },
 });
