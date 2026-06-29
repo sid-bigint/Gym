@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ScrollView, Modal, Animated, Dimensions, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ScrollView, Modal, Animated, Dimensions } from 'react-native';
 import { useWorkoutStore } from '../../src/store/useWorkoutStore';
 import { useAlertStore } from '../../src/store/useAlertStore';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useTheme } from '../../src/store/useTheme';
 import { useScreenPadding } from '../../src/store/useScreenPadding';
 import { spacing, borderRadius, shadows } from '../../src/constants/theme';
@@ -31,6 +31,7 @@ export default function RoutinesScreen() {
     const [fabOpen, setFabOpen] = useState(false);
     const scrollY = useRef(new Animated.Value(0)).current;
     const fabAnim = useRef(new Animated.Value(0)).current;
+    const fabOpenAnim = useRef(new Animated.Value(0)).current;
     const [greeting, setGreeting] = useState('');
     const scrollRef = useRef<any>(null);
 
@@ -274,9 +275,12 @@ export default function RoutinesScreen() {
         return result;
     }, [routines]);
 
-    useEffect(() => {
+    useFocusEffect(useCallback(() => {
         loadRoutines();
-    }, []);
+        setFabOpen(false);
+        Animated.timing(fabOpenAnim, { toValue: 0, duration: 0, useNativeDriver: true }).start();
+        Animated.spring(fabAnim, { toValue: 1, friction: 6, tension: 40, useNativeDriver: true }).start();
+    }, []));
 
     const handleStartWorkout = useCallback(async (routineId: number | null) => {
         if (activeWorkout) {
@@ -319,6 +323,7 @@ export default function RoutinesScreen() {
 
     const handleFabAction = useCallback((action: string) => {
         setFabOpen(false);
+        Animated.timing(fabOpenAnim, { toValue: 0, duration: 160, useNativeDriver: true }).start();
         setTimeout(() => {
             switch (action) {
                 case 'ai':
@@ -394,9 +399,9 @@ export default function RoutinesScreen() {
         outputRange: [0.8, 1],
     });
 
-    const fabRotate = fabAnim.interpolate({
+    const fabRotate = fabOpenAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: ['0deg', '90deg'],
+        outputRange: ['0deg', '45deg'],
     });
 
     return (
@@ -555,12 +560,6 @@ export default function RoutinesScreen() {
             {!isSelectionMode && (
                 <TourHighlightWrapper isActive={isTourVisible && tourStep === 5} borderRadius={40}>
                     <View style={styles.fabContainer}>
-                        {fabOpen && (
-                            <TouchableWithoutFeedback onPress={() => setFabOpen(false)}>
-                                <View style={styles.fabBackdrop} />
-                            </TouchableWithoutFeedback>
-                        )}
-
                         <Animated.View style={[styles.fabMenu, { transform: [{ scale: fabScale }] }]}>
                             {fabOpen && (
                                 <>
@@ -647,7 +646,11 @@ export default function RoutinesScreen() {
 
                         <TouchableOpacity
                             style={[styles.fab, { backgroundColor: colors.accent.primary }]}
-                            onPress={() => setFabOpen(!fabOpen)}
+                            onPress={() => {
+                                const next = !fabOpen;
+                                setFabOpen(next);
+                                Animated.spring(fabOpenAnim, { toValue: next ? 1 : 0, useNativeDriver: true, friction: 6, tension: 50 }).start();
+                            }}
                             activeOpacity={0.8}
                         >
                             <LinearGradient
@@ -1003,14 +1006,6 @@ const styles = StyleSheet.create({
         bottom: 24,
         right: 24,
         alignItems: 'flex-end',
-    },
-    fabBackdrop: {
-        position: 'absolute',
-        top: -SCREEN_HEIGHT,
-        left: -SCREEN_WIDTH,
-        right: -SCREEN_WIDTH,
-        bottom: -SCREEN_HEIGHT,
-        backgroundColor: 'rgba(0,0,0,0.4)',
     },
     fabMenu: {
         alignItems: 'flex-end',

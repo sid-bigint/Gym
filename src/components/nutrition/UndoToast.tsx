@@ -94,7 +94,7 @@ export const UndoToast: React.FC<UndoToastProps> = ({
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        bottom: 100,
+        bottom: 130,
         left: 20,
         right: 20,
         height: 56,

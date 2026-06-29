@@ -37,7 +37,7 @@ export default function NutritionScreen() {
         logs, totals, mealSessions, ungroupedLogs,
         loadLogs, deleteLog, updateLog, addLog,
         deleteMealSession, renameMealSession,
-        selectedDate, setDate, getRecentLogs,
+        selectedDate, setDate, getRecentLogs, copyDay,
     } = useNutritionStore();
     const { user, loadUser } = useUserStore();
     const { colors } = useTheme();
@@ -72,6 +72,9 @@ export default function NutritionScreen() {
 
     useFocusEffect(useCallback(() => {
         loadLogs();
+        // Collapse FAB whenever the tab comes back into focus
+        setIsFabExpanded(false);
+        Animated.spring(fabAnim, { toValue: 0, useNativeDriver: true, friction: 5, tension: 40 }).start();
     }, [selectedDate]));
 
     useEffect(() => {
@@ -172,6 +175,25 @@ export default function NutritionScreen() {
         }
     };
 
+    const handleCopyDay = () => {
+        const sourceDate = addDays(selectedDate, -1);
+        const sourceName = isSameDay(sourceDate, new Date()) ? 'today' : isSameDay(sourceDate, addDays(new Date(), -1)) ? 'yesterday' : format(sourceDate, 'MMM do');
+        Alert.alert(
+            'Copy Meals',
+            `Copy all meals from ${sourceName} to ${isSameDay(selectedDate, new Date()) ? 'today' : format(selectedDate, 'MMM do')}?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Copy',
+                    onPress: async () => {
+                        await copyDay(sourceDate, selectedDate);
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    },
+                },
+            ]
+        );
+    };
+
     const openQuickAdd = async () => {
         const history = await getRecentLogs(10);
         setRecentHistory(history);
@@ -196,9 +218,13 @@ export default function NutritionScreen() {
     };
 
     const toggleFab = () => {
-        const toValue = isFabExpanded ? 0 : 1;
-        Animated.spring(fabAnim, { toValue, useNativeDriver: true, friction: 5, tension: 40 }).start();
-        setIsFabExpanded(!isFabExpanded);
+        const expanding = !isFabExpanded;
+        if (expanding) {
+            Animated.spring(fabAnim, { toValue: 1, useNativeDriver: true, friction: 6, tension: 50 }).start();
+        } else {
+            Animated.timing(fabAnim, { toValue: 0, duration: 160, useNativeDriver: true }).start();
+        }
+        setIsFabExpanded(expanding);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     };
 
@@ -343,9 +369,19 @@ export default function NutritionScreen() {
                                 : format(selectedDate, 'MMM do, yyyy')}
                     </Text>
                 </View>
-                <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDate(addDays(selectedDate, 1)); }}>
-                    <Ionicons name="chevron-forward" size={24} color={colors.text.primary} />
-                </TouchableOpacity>
+                <View style={styles.dateNavRight}>
+                    <TouchableOpacity
+                        onPress={handleCopyDay}
+                        style={[styles.copyBtn, { backgroundColor: colors.accent.primary + '15' }]}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
+                    >
+                        <Ionicons name="copy-outline" size={14} color={colors.accent.primary} />
+                        <Text style={[styles.copyBtnText, { color: colors.accent.primary }]}>Copy prev</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDate(addDays(selectedDate, 1)); }}>
+                        <Ionicons name="chevron-forward" size={24} color={colors.text.primary} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {repeatFlash && (
@@ -436,30 +472,35 @@ export default function NutritionScreen() {
 
             {/* FAB */}
             <View style={styles.fabContainer}>
-                <AnimatedView style={[styles.subFabContainer, {
-                    opacity: fabAnim,
-                    transform: [{ translateY: fabAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
-                }]}>
-                    <Text style={[styles.fabLabel, { color: colors.text.primary }]}>Search & New</Text>
-                    <TouchableOpacity
-                        style={[styles.miniFab, { backgroundColor: colors.background.elevated, borderColor: colors.border.primary }]}
-                        onPress={() => { toggleFab(); router.push('/nutrition/add'); }}
-                    >
-                        <Ionicons name="search" size={22} color={colors.accent.primary} />
-                    </TouchableOpacity>
-                </AnimatedView>
-
-                <AnimatedView style={[styles.subFabContainer, {
-                    opacity: fabAnim,
-                    transform: [{ translateY: fabAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
-                }]}>
-                    <Text style={[styles.fabLabel, { color: colors.text.primary }]}>Quick Add</Text>
-                    <TouchableOpacity
-                        style={[styles.miniFab, { backgroundColor: colors.background.elevated, borderColor: colors.border.primary }]}
-                        onPress={() => { toggleFab(); openQuickAdd(); }}
-                    >
-                        <Ionicons name="time-outline" size={24} color={colors.accent.primary} />
-                    </TouchableOpacity>
+                {/* Sub-buttons: absolutely positioned above the main FAB, never in layout flow */}
+                <AnimatedView
+                    pointerEvents={isFabExpanded ? 'auto' : 'none'}
+                    style={[styles.subStack, {
+                        opacity: fabAnim,
+                        transform: [
+                            { translateY: fabAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) },
+                            { scale: fabAnim.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }) },
+                        ],
+                    }]}
+                >
+                    <View style={styles.subRow}>
+                        <Text style={[styles.fabLabel, { color: colors.text.primary }]}>Search & New</Text>
+                        <TouchableOpacity
+                            style={[styles.miniFab, { backgroundColor: colors.background.elevated, borderColor: colors.border.primary }]}
+                            onPress={() => { toggleFab(); router.push('/nutrition/add'); }}
+                        >
+                            <Ionicons name="search" size={22} color={colors.accent.primary} />
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.subRow}>
+                        <Text style={[styles.fabLabel, { color: colors.text.primary }]}>Quick Add</Text>
+                        <TouchableOpacity
+                            style={[styles.miniFab, { backgroundColor: colors.background.elevated, borderColor: colors.border.primary }]}
+                            onPress={() => { toggleFab(); openQuickAdd(); }}
+                        >
+                            <Ionicons name="time-outline" size={24} color={colors.accent.primary} />
+                        </TouchableOpacity>
+                    </View>
                 </AnimatedView>
 
                 <TouchableOpacity
@@ -677,6 +718,9 @@ const styles = StyleSheet.create({
     dateNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 16, marginBottom: 14, borderWidth: 1 },
     dateInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     dateText: { fontSize: 15, fontWeight: '600' },
+    dateNavRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    copyBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
+    copyBtnText: { fontSize: 11, fontWeight: '700' },
 
     flashBanner: {
         flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -713,8 +757,9 @@ const styles = StyleSheet.create({
     emptyBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 
     // FAB
-    fabContainer: { position: 'absolute', bottom: 32, right: 20, alignItems: 'flex-end', gap: 12 },
-    subFabContainer: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    fabContainer: { position: 'absolute', bottom: 32, right: 20, alignItems: 'flex-end' },
+    subStack: { position: 'absolute', bottom: 74, right: 0, alignItems: 'flex-end', gap: 10 },
+    subRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     fabLabel: { fontSize: 13, fontWeight: '700' },
     mainFab: {
         width: 62, height: 62, borderRadius: 31,
