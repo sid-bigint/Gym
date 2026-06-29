@@ -15,6 +15,7 @@ import { widgetTaskHandler } from '../src/widgets/WidgetTaskHandler';
 registerWidgetTaskHandler(widgetTaskHandler);
 
 import { useWorkoutNotification } from "../src/hooks/useWorkoutNotification";
+import { init as initDailyReminders } from "../src/services/DailyReminderService";
 // Ignore specific warnings that are irrelevant to our Local Notification implementation
 LogBox.ignoreLogs([
   "expo-notifications: Android Push notifications",
@@ -45,6 +46,9 @@ export default function RootLayout() {
 
         await loadUser();
         console.log('User loaded');
+
+        // Schedule daily reminders (runs once per day, no-ops if already done)
+        initDailyReminders().catch(() => {});
 
         console.log('=== App Initialization Completed ===');
       } catch (e) {

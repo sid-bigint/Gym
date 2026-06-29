@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Dimensions, Image, Linking, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, Linking, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { CalorieCalculator } from '../../src/components/CalorieCalculator';
 import { accentColors, shadows, spacing, ThemeType } from '../../src/constants/theme';
 import { BADGES } from '../../src/constants/badges';
@@ -21,6 +21,7 @@ import { subDays, startOfDay, isWithinInterval } from 'date-fns';
 import { useAlertStore } from '../../src/store/useAlertStore';
 import LevelInfoModal from '../../src/components/dashboard/LevelInfoModal';
 import { DataExportService } from '../../src/services/DataExportService';
+import { useReminderSettings } from '../../src/hooks/useReminderSettings';
 
 const { width } = Dimensions.get('window');
 
@@ -43,6 +44,7 @@ export default function ProfileScreen() {
         openHealthConnectApp,
     } = useHealthConnectStore();
     const { mode, setThemeMode, themeType, setThemeType, colors, initTheme } = useTheme();
+    const { enabled: remindersEnabled, toggle: toggleReminders } = useReminderSettings();
     const { contentTop } = useScreenPadding();
 
 
@@ -476,6 +478,31 @@ export default function ProfileScreen() {
                             />
                         ))}
                     </ScrollView>
+                </View>
+
+                {/* Notifications */}
+                <View style={[styles.menuItemNew, {
+                    backgroundColor: colors.background.card,
+                    borderColor: colors.border.secondary,
+                    marginTop: 0,
+                }]}>
+                    <View style={[styles.menuIconCircle, { backgroundColor: '#F59E0B15' }]}>
+                        <Ionicons name="notifications" size={20} color="#F59E0B" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.menuItemTitle, { color: colors.text.primary }]}>Daily Reminders</Text>
+                        <Text style={[styles.menuItemSub, { color: colors.text.tertiary }]}>
+                            {remindersEnabled
+                                ? '5 smart reminders: 7:30 AM · 12:15 PM · 3 PM · 6:30 PM · 9 PM'
+                                : 'Tap to enable meal & workout reminders'}
+                        </Text>
+                    </View>
+                    <Switch
+                        value={remindersEnabled ?? true}
+                        onValueChange={toggleReminders}
+                        trackColor={{ false: colors.border.primary, true: '#F59E0B55' }}
+                        thumbColor={remindersEnabled ? '#F59E0B' : colors.text.disabled}
+                    />
                 </View>
 
                 {/* Data & Privacy */}
